@@ -1,7 +1,7 @@
 import '../styles/globals.css'
 import { useAuth } from '../utils/auth'
 import setupAxiosInterceptors from '../utils/axiosInterceptor'
-import Head from 'next/head'; // Importa o Head
+import Head from 'next/head';
 import { useEffect } from 'react'
 
 export default function App({ Component, pageProps }) {
@@ -15,11 +15,10 @@ export default function App({ Component, pageProps }) {
   return (
     <div>
       <Head>
-        <title>Aura8</title>
-        <link rel="icon" href="/img/favicon-32x32.png" type="image/png" />
+        <title>DevSongs — O Player de Música para Devs</title>
+        <link rel="icon" href="/favicon.png" type="image/png" />
       </Head>
       <Component {...pageProps} auth={auth} />
     </div>
   )
 }
-
