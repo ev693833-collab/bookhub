@@ -1,6 +1,7 @@
 console.log("Iniciando servidor...");
 const express = require("express");
 const cors = require("cors");
+// Configura variáveis de ambiente do .env
 require("dotenv").config();
 const routes = require("./routes");
 
@@ -8,6 +9,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use('/api', routes);
 app.use(routes);
 
 // Definir porta dinâmica para produção ou desenvolvimento
