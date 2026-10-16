@@ -493,23 +493,27 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
 }
 
-/* Botões com tokens */
-button {
+/* Botões com tokens (apenas botões genéricos sem classes customizadas) */
+button:not([class]),
+button.btn-token {
   background-color: var(--color-button-normal);
   color: white;
   border: none;
   transition: background-color 0.3s ease;
 }
 
-button:hover {
+button:not([class]):hover,
+button.btn-token:hover {
   background-color: var(--color-button-hover);
 }
 
-button:active {
+button:not([class]):active,
+button.btn-token:active {
   background-color: var(--color-button-pressed);
 }
 
-button:disabled {
+button:not([class]):disabled,
+button.btn-token:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
