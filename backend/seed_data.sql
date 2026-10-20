@@ -23,3 +23,4 @@ ON DUPLICATE KEY UPDATE discount_value = VALUES(discount_value);
 INSERT INTO notifications (user_id, title, message, type, link_url)
 SELECT id, 'Bem-vindo ao DevSongs!', 'Aproveite o cupom BEMVINDO10 para ganhar 10% de desconto na sua primeira compra de faixa exclusiva.', 'promo', '/profile'
 FROM users WHERE email = 'admin@devsongs.com' LIMIT 1;
+

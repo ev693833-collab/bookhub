@@ -50,8 +50,12 @@
 }
 
 .sidebarArtist {
+  background: transparent !important;
   background-color: transparent !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .sidebarArtist.sidebarOpen {
@@ -62,34 +66,21 @@
   box-shadow: 10px 0 35px rgba(0, 0, 0, 0.85);
 }
 
-/* Modo Artista: barra superior e barra lateral transparentes sobre o banner cinematográfico */
+/* Modo Artista: Sincronia TOTAL e Idêntica entre TopAppBar e Sidebar */
+
+/* 1. Estado NÃO ROLADO (!isScrolled): TopAppBar e Sidebar 100% transparentes, sem cortes */
 .appContainerArtist .topAppBar {
   position: absolute !important;
   top: 0;
   left: 0;
   right: 0;
   z-index: 50;
+  background: transparent !important;
   background-color: transparent !important;
   border-bottom: 1px solid transparent !important;
-}
-
-.appContainerArtist .topAppBar.topAppBarScrolled {
-  background-color: #030303 !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
-
-.appContainerArtist .topAppBar.topAppBarOpen {
-  background-color: #030303 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border-bottom: 1px solid transparent !important;
-}
-
-.appContainerArtist .appBody {
-  height: 100vh !important;
-  position: relative !important;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .appContainerArtist .sidebar {
@@ -99,23 +90,59 @@
   bottom: 0;
   z-index: 40;
   padding-top: 1rem !important;
+  background: transparent !important;
   background-color: transparent !important;
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+  border-right: 1px solid transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, border-color 0.25s ease;
 }
 
-/* Quando recolhida (72px) no modo artista: 100% transparente flutuando perfeitamente sobre o banner */
 .appContainerArtist .sidebar.sidebarCollapsed {
   width: 72px !important;
   min-width: 72px !important;
   background: transparent !important;
   background-color: transparent !important;
-  border-right: none !important;
+  border-right: 1px solid transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-/* Quando expandida (240px) no modo artista: gaveta com fundo escuro e borda sutil */
+.appContainerArtist .sidebar.sidebarCollapsed .navItem {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+}
+
+.appContainerArtist .sidebar.sidebarCollapsed .navItem span {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+  font-weight: 600;
+}
+
+/* 2. Estado ROLADO (isScrolled): TopAppBar e Sidebar perfeitamente sincronizados em #030303 */
+.appContainerArtist .topAppBar.topAppBarScrolled {
+  background: #030303 !important;
+  background-color: #030303 !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.appContainerArtist .sidebar.sidebarArtistScrolled {
+  background: #030303 !important;
+  background-color: #030303 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 3. Estado EXPANDIDO (sidebarOpen): Ambos sincronizados em #030303 */
+.appContainerArtist .topAppBar.topAppBarOpen {
+  background: #030303 !important;
+  background-color: #030303 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid transparent !important;
+}
+
 .appContainerArtist .sidebar.sidebarOpen {
   width: 240px !important;
   min-width: 240px !important;
@@ -490,83 +517,89 @@
 }
 
 .searchWrap {
-  flex: 0 1 480px;
+  flex: 0 1 540px;
   width: 100%;
-  max-width: 480px;
+  max-width: 540px;
   position: relative;
   transition: max-width 0.2s ease;
 }
 
 .searchIcon {
   position: absolute;
-  left: 16px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: #a7a7a7;
+  color: rgba(255, 255, 255, 0.65);
   pointer-events: none;
+  z-index: 3;
 }
 
 .searchField {
   width: 100%;
-  padding: 0.85rem 1.25rem 0.85rem 3.25rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  height: 40px;
+  padding: 0 2.5rem 0 2.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
   color: #ffffff;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
+  font-weight: 400;
   outline: none;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
 .searchField:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .searchField:focus {
-  background: rgba(26, 26, 26, 0.94);
+  background: rgba(18, 18, 18, 0.96);
   border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
+  box-shadow: none;
 }
 
 .searchField::placeholder {
-  color: #888888;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 400;
+  font-size: 0.95rem;
 }
 
-/* Transparência e integração perfeita quando a barra superior estiver transparente (Perfil do Artista) */
+/* Transparência e integração perfeita quando a barra superior estiver sobre o banner do artista */
 .topAppBarTransparent .searchField {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: none !important;
   color: #ffffff !important;
 }
 
 .topAppBarTransparent .searchField:hover {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
+  background: rgba(255, 255, 255, 0.13) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
 }
 
 .topAppBarTransparent .searchField:focus {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border-color: rgba(255, 255, 255, 0.45) !important;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35) !important;
+  background: rgba(18, 18, 18, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .topAppBarTransparent .searchIcon {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.65) !important;
+  z-index: 3;
 }
 
 .topAppBarTransparent .searchClearBtn {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.75) !important;
+  z-index: 3;
 }
 
 .topAppBarTransparent .searchField::placeholder {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 .searchClearBtn {
@@ -576,7 +609,7 @@
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: #a7a7a7;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -584,6 +617,7 @@
   padding: 4px;
   border-radius: 50%;
   transition: color 0.15s, background 0.15s;
+  z-index: 3;
 }
 
 .searchClearBtn:hover {
@@ -668,6 +702,10 @@
   object-fit: cover;
   flex-shrink: 0;
   background: #202020;
+}
+
+.searchEntityThumbArtist {
+  border-radius: 50% !important;
 }
 
 .searchEntityContent {
@@ -1420,11 +1458,11 @@
 .artistBannerContainer {
   position: relative;
   width: 100%;
-  min-height: 540px;
+  min-height: 500px;
   margin-top: 0;
   background-image: url('/img/bk_banner.jpg');
   background-size: cover;
-  background-position: center 8%;
+  background-position: center 18%;
   background-repeat: no-repeat;
   display: flex;
   flex-direction: column;
@@ -1434,43 +1472,37 @@
   overflow: hidden;
 }
 
-/* Leve escurecimento lateral cinematográfico nas bordas esquerda e direita */
+/* Remove qualquer escurecimento lateral artificial no canto da sidebar */
 .artistBannerContainer::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to right,
-    rgba(9, 9, 9, 0.50) 0%,
-    transparent 15%,
-    transparent 85%,
-    rgba(9, 9, 9, 0.50) 100%
-  );
-  pointer-events: none;
-  z-index: 1;
+  display: none !important;
 }
 
-/* Gradiente vertical fiel ao visual do YouTube Music:
-   - Imagem bem visível no topo (0% a ~40%) com leve proteção para a topbar
-   - A partir de ~40%: escurecimento suave
-   - Entre 60% e 80%: escurecimento mais intenso
-   - Entre 80% e 100%: desaparece gradualmente até misturar completamente em #090909
+/* Gradiente duplo cinematográfico estilo YouTube Music / Spotify:
+   - Gradiente horizontal à esquerda para garantir legibilidade impecável dos textos e botões
+   - Centro e direita 100% nítidos para destacar o rosto e o corpo do artista
+   - Gradiente vertical suave no rodapé fundindo perfeitamente com o fundo #090909
 */
 .artistBannerContainer::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(9, 9, 9, 0.35) 0%,
-    rgba(9, 9, 9, 0.05) 15%,
-    transparent 35%,
-    transparent 42%,
-    rgba(9, 9, 9, 0.30) 58%,
-    rgba(9, 9, 9, 0.70) 78%,
-    rgba(9, 9, 9, 0.92) 90%,
-    #090909 100%
-  );
+  background:
+    linear-gradient(
+      to right,
+      rgba(9, 9, 9, 0.85) 0%,
+      rgba(9, 9, 9, 0.5) 32%,
+      rgba(9, 9, 9, 0.15) 60%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(3, 3, 3, 0.35) 0%,
+      transparent 90px,
+      transparent 40%,
+      rgba(9, 9, 9, 0.2) 58%,
+      rgba(9, 9, 9, 0.72) 82%,
+      #090909 100%
+    );
   pointer-events: none;
   z-index: 2;
 }
@@ -2390,12 +2422,12 @@
 }
 
 .youtubeDockHidden {
-  position: absolute;
-  top: -9999px;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  opacity: 0.01;
+  position: fixed;
+  bottom: -9999px;
+  right: -9999px;
+  width: 320px;
+  height: 180px;
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -2490,7 +2522,7 @@
     padding: calc(68px + 1.25rem) 1.25rem 2.25rem;
     min-height: 420px;
     background-size: cover;
-    background-position: center 8%;
+    background-position: center 18%;
   }
   .bannerArtistTitle {
     font-size: 2.2rem;
@@ -2503,7 +2535,7 @@
     min-height: 360px;
     padding: calc(64px + 1rem) 1rem 1.75rem;
     background-size: cover;
-    background-position: center 8%;
+    background-position: center 18%;
   }
   .bannerArtistTitle {
     font-size: 1.85rem;
@@ -2515,6 +2547,7 @@
   position: relative;
   width: 100%;
   min-height: 85vh;
+  padding-bottom: 5rem;
 }
 
 /* Fundo Dinâmico com Aura / Ambient Glow da capa do Álbum (Estilo YouTube Music & Spotify) */
@@ -2851,30 +2884,46 @@
   flex-shrink: 0;
 }
 
-/* ─── SEÇÃO "ÁLBUNS DO MESMO TIPO / ARTISTA" ───────────────────────── */
+/* ─── SEÇÃO "ÁLBUNS DO MESMO TIPO / ARTISTA" (Carrossel Horizontal) ── */
 .relatedAlbumsSection {
   position: relative;
   z-index: 2;
   max-width: 1400px;
-  margin: 1.5rem auto 4.5rem;
-  padding: 0 3.5rem;
+  margin: 2rem auto 3.5rem;
+  padding: 0 3.5rem 4rem;
+}
+
+.relatedAlbumsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
 }
 
 .relatedAlbumsHeading {
   font-size: 1.5rem;
   font-weight: 800;
   color: #ffffff;
-  margin-bottom: 1.25rem;
   letter-spacing: -0.01em;
 }
 
-.relatedAlbumsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+.relatedAlbumsCarousel {
+  display: flex;
   gap: 1.25rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  padding: 0.25rem 0.25rem 1rem 0.25rem;
+}
+
+.relatedAlbumsCarousel::-webkit-scrollbar {
+  display: none;
 }
 
 .relatedAlbumCard {
+  flex: 0 0 190px;
+  min-width: 175px;
+  max-width: 200px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
@@ -2966,7 +3015,7 @@
     position: static;
   }
   .relatedAlbumsSection {
-    padding: 0 1.5rem;
+    padding: 0 1.5rem 4rem;
   }
 }
 
