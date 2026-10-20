@@ -795,14 +795,30 @@ export default function HomeUnifiedYouTubeMusic() {
           if (!isMounted) return;
           const list = [];
           if (d.artist) {
+            let artistCover = d.artist.avatarImg;
+            let artistName = d.artist.name;
+            const cleanA = (artistName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['"`.,\s]/g, '');
+            if (cleanA === 'bk' || qTrim === 'bk' || qTrim === "bk'") {
+              artistName = 'BK';
+              if (!artistCover || artistCover.includes('default') || artistCover.includes('/images/artist//')) {
+                artistCover = '/img/bk_avatar.png';
+              }
+            } else if (cleanA === 'justinbieber') {
+              if (!artistCover || artistCover.includes('default') || artistCover.includes('/images/artist//')) {
+                artistCover = '/img/justin_my_world.jpg';
+              }
+            }
+            const listenersStr = d.artist.listeners && !d.artist.listeners.startsWith('0 mil')
+              ? d.artist.listeners
+              : 'Mais de 1 mi ouvintes mensais';
             list.push({
               id: d.artist.id,
               type: 'artist',
-              title: d.artist.name,
-              artist: d.artist.name,
+              title: artistName,
+              artist: artistName,
               album: '',
-              sub: `Artista • ${d.artist.listeners}`,
-              cover: d.artist.avatarImg,
+              sub: `Artista • ${listenersStr}`,
+              cover: artistCover,
               preview: null,
               durationSec: 0,
               duration: '',
@@ -935,12 +951,15 @@ export default function HomeUnifiedYouTubeMusic() {
   // Refs
   const audioFallbackRef = useRef(null);
   const ytPlayerRef = useRef(null);
+  const altVideoIdRef = useRef(null);
+  const pendingVideoRef = useRef(null);
   const progressTimerRef = useRef(null);
   const pillsBarRef = useRef(null);
   const albumsRowRef = useRef(null);
   const singlesRowRef = useRef(null);
   const appearsOnRowRef = useRef(null);
   const albunsScrollRef = useRef(null);
+  const relatedAlbumsScrollRef = useRef(null);
   const searchContainerRef = useRef(null);
   const searchFilterBarRef = useRef(null);
   const isClosingRef = useRef(false);
@@ -964,6 +983,12 @@ export default function HomeUnifiedYouTubeMusic() {
     }
   };
 
+  const scrollRelatedAlbums = (dir) => {
+    if (relatedAlbumsScrollRef.current) {
+      relatedAlbumsScrollRef.current.scrollBy({ left: dir === 'left' ? -380 : 380, behavior: 'smooth' });
+    }
+  };
+
   // 1. Auth check
   useEffect(() => {
     try {
@@ -982,67 +1007,69 @@ export default function HomeUnifiedYouTubeMusic() {
   // Plays count generator realista para a tabela do YouTube Music
   const generatePlaysCount = (idx) => {
     const counts = [
-      'Tocou 4,8 bi vezes',
-      'Tocou 2,0 bi vezes',
-      'Tocou 2,3 bi vezes',
-      'Tocou 1,9 bi vezes',
-      'Tocou 2,6 bi vezes',
-      'Tocou 2,8 bi vezes',
-      'Tocou 1,1 bi vezes',
-      'Tocou 1,7 bi vezes',
-      'Tocou 890 mi vezes',
-      'Tocou 740 mi vezes',
-      'Tocou 680 mi vezes',
-      'Tocou 590 mi vezes'
+      'Tocou 4,8 mi vezes',
+      'Tocou 2,0 mi vezes',
+      'Tocou 2,3 mi vezes',
+      'Tocou 1,9 mi vezes',
+      'Tocou 2,6 mi vezes',
+      'Tocou 2,8 mi vezes',
+      'Tocou 1,1 mi vezes',
+      'Tocou 1,7 mi vezes',
+      'Tocou 890 mil vezes',
+      'Tocou 740 mil vezes',
+      'Tocou 680 mil vezes',
+      'Tocou 590 mil vezes'
     ];
     return counts[idx % counts.length];
   };
 
   // 2. Load Full Tracks for the artist
-  const fetchArtistTracks = useCallback(async (query) => {
-    if (!query) return;
+  const fetchArtistTracks = useCallback(async (query, artistId) => {
+    if (!query && !artistId) return;
     setIsSearching(true);
     try {
       const qLower = (query || '').toLowerCase().trim();
-      if (qLower === 'justin bieber') {
-        setTracks(JUSTIN_TOP_TRACKS);
-        setAlbums(JUSTIN_ALBUMS);
-        setSingles(JUSTIN_SINGLES);
-        setActiveArtist({
-          id: 'justin',
-          name: 'Justin Bieber',
-          listeners: '523 mi ouvintes mensais',
-          bio: 'Justin Drew Bieber é um cantor, compositor e ator canadense. Considerado um ícone pop, ele é conhecido por suas performances musicais multigênero. Ele foi descoberto por Scooter Braun em...',
-          bannerImg: '/img/artist_banner_justin.jpg',
-          avatarImg: '/img/justin_my_world.jpg',
-          subscribers: '78,6 mi'
-        });
-        setIsSearching(false);
-        return;
-      }
+      const rawArtistId = artistId ? String(artistId).replace('dz-artist-', '').replace('it-artist-', '') : '';
+      const url = `${API_URL}/api/music/artist?q=${encodeURIComponent(query || '')}${rawArtistId ? `&artistId=${encodeURIComponent(rawArtistId)}` : ''}`;
 
-      if (qLower === 'bk' || qLower === "bk'") {
-        setTracks(BK_TOP_TRACKS);
-        setAlbums(BK_ALBUMS);
-        setSingles(BK_SINGLES);
-        setActiveArtist({
-          id: 'bk',
-          name: 'BK',
-          listeners: '9,31 mi ouvintes mensais',
-          bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes...",
-          bannerImg: '/img/bk_banner.jpg',
-          avatarImg: '/img/bk_avatar.png',
-          subscribers: '1,25 mi'
-        });
-        setIsSearching(false);
-        return;
-      }
-
-      const res = await fetch(`${API_URL}/api/music/artist?q=${encodeURIComponent(query)}`);
+      const res = await fetch(url);
       const data = await res.json();
 
       if (data && data.artist) {
-        setActiveArtist(data.artist);
+        let artistObj = data.artist;
+        if (qLower === 'bk' || qLower === "bk'") {
+          artistObj = {
+            ...artistObj,
+            name: 'BK',
+            bannerImg: '/img/bk_banner.jpg',
+            avatarImg: '/img/bk_avatar.png',
+            bannerPosition: 'center top',
+            bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes..."
+          };
+        } else if (qLower === 'dfideliz') {
+          artistObj = {
+            ...artistObj,
+            bannerPosition: 'center 50%'
+          };
+        } else if (qLower === 'justin bieber') {
+          artistObj = {
+            ...artistObj,
+            bannerImg: '/img/artist_banner_justin.jpg',
+            avatarImg: '/img/justin_my_world.jpg',
+            bannerPosition: 'center 30%'
+          };
+        } else if (qLower.includes('baco')) {
+          artistObj = {
+            ...artistObj,
+            bannerPosition: 'center 16%'
+          };
+        } else {
+          artistObj = {
+            ...artistObj,
+            bannerPosition: artistObj.bannerPosition || 'center 18%'
+          };
+        }
+        setActiveArtist(artistObj);
         setTracks(data.tracks || []);
         if (data.albums) setAlbums(data.albums);
         if (data.singles) setSingles(data.singles);
@@ -1056,6 +1083,21 @@ export default function HomeUnifiedYouTubeMusic() {
       setIsSearching(false);
     }
   }, []);
+
+  // Fallback seguro para áudio oficial em alta definição caso YouTube tenha erro ou restrição
+  const fallbackToAudioStream = useCallback(() => {
+    if (!currentTrackRef.current) return;
+    const track = currentTrackRef.current;
+    if (track.preview && audioFallbackRef.current) {
+      audioFallbackRef.current.src = track.preview;
+      audioFallbackRef.current.volume = volume;
+      audioFallbackRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(err => {
+        console.warn('Erro ao reproduzir áudio direto:', err);
+      });
+    }
+  }, [volume]);
 
   // 3. YouTube Player API Setup (Sem autoplay automático para não tocar sozinho)
   useEffect(() => {
@@ -1082,6 +1124,12 @@ export default function HomeUnifiedYouTubeMusic() {
           events: {
             onReady: (e) => {
               e.target.setVolume(volume * 100);
+              if (pendingVideoRef.current && typeof e.target.loadVideoById === 'function') {
+                const vid = pendingVideoRef.current;
+                pendingVideoRef.current = null;
+                e.target.loadVideoById(vid);
+                e.target.playVideo();
+              }
               try {
                 const iframe = e.target.getIframe?.() || document.getElementById('devsongs-yt-frame') || document.querySelector('#devsongs-yt-dock-container iframe');
                 if (iframe) {
@@ -1092,11 +1140,32 @@ export default function HomeUnifiedYouTubeMusic() {
                 }
               } catch (_) {}
             },
+            onError: (e) => {
+              console.warn('YouTube Player Erro (código ' + e.data + '), verificando alternativa...');
+              // Se tiver um vídeo alternativo (ex: lyric video/áudio oficial), tenta ele antes de qualquer fallback
+              if (altVideoIdRef.current && ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
+                const alt = altVideoIdRef.current;
+                altVideoIdRef.current = null;
+                console.log('Tentando vídeo alternativo do YouTube:', alt);
+                ytPlayerRef.current.loadVideoById(alt);
+                ytPlayerRef.current.playVideo();
+                return;
+              }
+              fallbackToAudioStream();
+            },
             onStateChange: (e) => {
               if (isClosingRef.current) return;
               if (e.data === 1) setIsPlaying(true);
               if (e.data === 2) setIsPlaying(false);
               if (e.data === 0) {
+                // Vídeo finalizado: verifica se foi um anúncio ou se a música realmente acabou
+                const cur = ytPlayerRef.current?.getCurrentTime?.() || 0;
+                const expectedDur = currentTrackRef.current?.durationSec || 180;
+                // Se terminou com menos de 45s e a música esperada tem mais de 60s, era anúncio!
+                if (cur < 45 && expectedDur >= 60) {
+                  console.log('Anúncio finalizado no YouTube, aguardando início da música real...');
+                  return;
+                }
                 if (!isClosingRef.current && currentTrackRef.current) {
                   handleNextTrack();
                 }
@@ -1136,22 +1205,37 @@ export default function HomeUnifiedYouTubeMusic() {
     } else {
       setupYT();
     }
-  }, [activeVideoId, volume]);
+  }, [activeVideoId, volume, fallbackToAudioStream]);
 
-  // Real-time progress timer
+  // Real-time progress timer inteligente com proteção contra anúncios
   useEffect(() => {
     if (isPlaying) {
       progressTimerRef.current = setInterval(() => {
+        // 1. Se o áudio nativo estiver tocando:
+        if (audioFallbackRef.current && !audioFallbackRef.current.paused && audioFallbackRef.current.currentTime > 0) {
+          const cur = audioFallbackRef.current.currentTime || 0;
+          const dur = audioFallbackRef.current.duration || currentTrackRef.current?.durationSec || 214;
+          setCurrentTime(cur);
+          if (dur > 0) setDuration(dur);
+          return;
+        }
+
+        // 2. Se o YouTube player estiver ativo:
         if (ytPlayerRef.current && typeof ytPlayerRef.current.getCurrentTime === 'function') {
           try {
             const cur = ytPlayerRef.current.getCurrentTime() || 0;
             const dur = ytPlayerRef.current.getDuration() || 0;
-            if (dur > 0) {
+            const expectedDur = currentTrackRef.current?.durationSec || 214;
+            // Detecta anúncio pré-roll curto do YouTube (ex: bumper ad de 6 a 15 segundos)
+            const isAd = dur > 0 && dur < 45 && expectedDur >= 60;
+
+            if (!isAd && dur > 0) {
               setCurrentTime(cur);
               setDuration(dur);
-            } else {
+            } else if (!isAd && dur === 0) {
               setCurrentTime(prev => prev + 0.5);
             }
+            // Se for anúncio pré-roll, mantém a barra na duração real da música e não acelera!
           } catch (_) {
             setCurrentTime(prev => prev + 0.5);
           }
@@ -1208,17 +1292,23 @@ export default function HomeUnifiedYouTubeMusic() {
         title: track.title || '',
         artist: track.artist || '',
         album: (track.album && track.album !== 'Single' && track.album !== track.title) ? track.album : '',
-        q: `${track.artist || ''} ${track.title || ''} ${(track.album && track.album !== 'Single' && track.album !== track.title) ? track.album : ''}`.trim()
+        durationSec: track.durationSec || 0,
+        q: `${track.artist || ''} ${track.title || ''}`.trim()
       });
       const res = await fetch(`${API_URL}/api/youtube/search?${searchParams.toString()}`);
       const data = await res.json();
 
       if (data && data.videoId) {
         setActiveVideoId(data.videoId);
+        altVideoIdRef.current = data.altVideoId || null;
+
+        // Limpa áudio fallback para não sobrepor nem disparar preview de 29s
         if (audioFallbackRef.current) {
           audioFallbackRef.current.pause();
+          audioFallbackRef.current.currentTime = 0;
           audioFallbackRef.current.src = '';
         }
+
         if (ytPlayerRef.current && typeof ytPlayerRef.current.loadVideoById === 'function') {
           ytPlayerRef.current.loadVideoById(data.videoId);
           ytPlayerRef.current.playVideo();
@@ -1233,28 +1323,42 @@ export default function HomeUnifiedYouTubeMusic() {
               }
             } catch (_) {}
           }, 400);
+
+          // Watchdog seguro (8s): Só intervém se o vídeo realmente não iniciar nem carregar
+          setTimeout(() => {
+            const state = ytPlayerRef.current?.getPlayerState?.();
+            // -1: unstarted, 1: playing, 3: buffering, 5: cued
+            const isAlive = state === 1 || state === 3 || state === -1 || state === 5;
+            if (!isAlive && altVideoIdRef.current && typeof ytPlayerRef.current?.loadVideoById === 'function') {
+              const alt = altVideoIdRef.current;
+              altVideoIdRef.current = null;
+              console.log('Watchdog ativando vídeo alternativo do YouTube:', alt);
+              ytPlayerRef.current.loadVideoById(alt);
+              ytPlayerRef.current.playVideo();
+            } else if (!isAlive && (!state || state === 2) && audioFallbackRef.current && track.preview) {
+              console.log('YouTube indisponível, ativando áudio oficial...');
+              fallbackToAudioStream();
+            }
+          }, 8000);
+        } else {
+          // Guarda na fila para tocar assim que o player do YouTube emitir onReady
+          pendingVideoRef.current = data.videoId;
         }
       } else {
-        // Se não encontrar no YouTube, toca o preview oficial da própria música no Deezer (nunca música aleatória de outro artista)
+        // Se não encontrar no YouTube, toca o áudio oficial da própria música no Deezer
         setActiveVideoId(null);
         if (ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === 'function') {
           ytPlayerRef.current.pauseVideo();
         }
-        if (audioFallbackRef.current && track.preview) {
-          audioFallbackRef.current.src = track.preview;
-          audioFallbackRef.current.play().catch(() => {});
-        }
+        fallbackToAudioStream();
       }
     } catch (err) {
-      console.warn('Erro ao buscar YouTube, usando áudio da faixa:', err);
+      console.warn('Erro ao buscar YouTube, usando áudio oficial da faixa:', err);
       setActiveVideoId(null);
       if (ytPlayerRef.current && typeof ytPlayerRef.current.pauseVideo === 'function') {
         ytPlayerRef.current.pauseVideo();
       }
-      if (audioFallbackRef.current && track.preview) {
-        audioFallbackRef.current.src = track.preview;
-        audioFallbackRef.current.play().catch(() => {});
-      }
+      fallbackToAudioStream();
     }
   };
 
@@ -1369,6 +1473,9 @@ export default function HomeUnifiedYouTubeMusic() {
     if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
       ytPlayerRef.current.seekTo(newTime, true);
     }
+    if (audioFallbackRef.current && audioFallbackRef.current.src) {
+      audioFallbackRef.current.currentTime = newTime;
+    }
   };
 
   const handleVolumeChange = (e) => {
@@ -1381,6 +1488,10 @@ export default function HomeUnifiedYouTubeMusic() {
       ytPlayerRef.current.setVolume(percent * 100);
       ytPlayerRef.current.unMute();
     }
+    if (audioFallbackRef.current) {
+      audioFallbackRef.current.volume = percent;
+      audioFallbackRef.current.muted = false;
+    }
   };
 
   const toggleMute = () => {
@@ -1390,10 +1501,17 @@ export default function HomeUnifiedYouTubeMusic() {
         ytPlayerRef.current.unMute();
         ytPlayerRef.current.setVolume(volume * 100);
       }
+      if (audioFallbackRef.current) {
+        audioFallbackRef.current.muted = false;
+        audioFallbackRef.current.volume = volume;
+      }
     } else {
       setIsMuted(true);
       if (ytPlayerRef.current && typeof ytPlayerRef.current.mute === 'function') {
         ytPlayerRef.current.mute();
+      }
+      if (audioFallbackRef.current) {
+        audioFallbackRef.current.muted = true;
       }
     }
   };
@@ -1414,8 +1532,8 @@ export default function HomeUnifiedYouTubeMusic() {
   }, []);
 
   // Abre a página de perfil completo do artista (Foto 3 mantida)
-  const openArtistProfile = (artistName) => {
-    if (!artistName) return;
+  const openArtistProfile = (artistName, artistId) => {
+    if (!artistName && !artistId) return;
     setViewMode('artist');
     setSelectedAlbum(null);
     setShowSuggestions(false);
@@ -1428,7 +1546,7 @@ export default function HomeUnifiedYouTubeMusic() {
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
-    const aLower = artistName.toLowerCase().trim();
+    const aLower = (artistName || '').toLowerCase().trim();
     if (aLower === 'justin bieber') {
       setActiveArtist({
         id: 'justin',
@@ -1437,12 +1555,10 @@ export default function HomeUnifiedYouTubeMusic() {
         bio: 'Justin Drew Bieber é um cantor, compositor e ator canadense. Considerado um ícone pop, ele é conhecido por suas performances musicais multigênero. Ele foi descoberto por Scooter Braun em...',
         bannerImg: '/img/artist_banner_justin.jpg',
         avatarImg: '/img/justin_my_world.jpg',
+        bannerPosition: 'center 30%',
         subscribers: '78,6 mi'
       });
-      setTracks(JUSTIN_TOP_TRACKS);
-      setAlbums(JUSTIN_ALBUMS);
-      setSingles(JUSTIN_SINGLES);
-      setAppearsOn([]);
+      fetchArtistTracks('Justin Bieber');
     } else if (aLower === 'bk' || aLower === "bk'") {
       setActiveArtist({
         id: 'bk',
@@ -1451,14 +1567,12 @@ export default function HomeUnifiedYouTubeMusic() {
         bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes...",
         bannerImg: '/img/bk_banner.jpg',
         avatarImg: '/img/bk_avatar.png',
+        bannerPosition: 'center top',
         subscribers: '1,25 mi'
       });
-      setTracks(BK_TOP_TRACKS);
-      setAlbums(BK_ALBUMS);
-      setSingles(BK_SINGLES);
-      setAppearsOn([]);
+      fetchArtistTracks('BK');
     } else {
-      fetchArtistTracks(artistName);
+      fetchArtistTracks(artistName, artistId);
     }
   };
 
@@ -1474,30 +1588,18 @@ export default function HomeUnifiedYouTubeMusic() {
     setIsSearching(true);
 
     const qLower = q.toLowerCase();
-    if (qLower === 'bk' || qLower === "bk'" || qLower.startsWith('bk ')) {
-      setTracks(BK_TOP_TRACKS);
-      setAlbums(BK_ALBUMS);
-      setSingles(BK_SINGLES);
-      const bkObj = {
-        id: 'bk',
-        name: 'BK',
-        listeners: '9,31 mi ouvintes mensais',
-        bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes...",
-        bannerImg: '/img/bk_banner.jpg',
-        avatarImg: '/img/bk_avatar.png',
-        subscribers: '1,25 mi'
-      };
-      setActiveArtist(bkObj);
-      setSearchArtists([bkObj]);
-      setIsSearching(false);
-      return;
-    }
 
     try {
       const res = await fetch(`${API_URL}/api/music/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
       if (data && data.artist) {
-        setActiveArtist(data.artist);
+        let art = data.artist;
+        if (qLower === 'bk' || qLower === "bk'") {
+          art = { ...art, name: 'BK', bannerImg: '/img/bk_banner.jpg', avatarImg: '/img/bk_avatar.png', bannerPosition: 'center top' };
+        } else if (qLower.includes('baco')) {
+          art = { ...art, bannerPosition: 'center 16%' };
+        }
+        setActiveArtist(art);
       } else {
         setActiveArtist(null);
       }
@@ -1509,6 +1611,7 @@ export default function HomeUnifiedYouTubeMusic() {
       setIsSearching(false);
     }
   };
+
 
   // Ao clicar em um álbum, abre a visualização dedicada do Álbum (Foto do YouTube Music)
   const handleSelectAlbum = async (album) => {
@@ -1629,7 +1732,28 @@ export default function HomeUnifiedYouTubeMusic() {
         <link rel="icon" href="/favicon.png" type="image/png" />
       </Head>
 
-      <audio ref={audioFallbackRef} style={{ display: 'none' }} />
+      <audio
+        ref={audioFallbackRef}
+        style={{ display: 'none' }}
+        onTimeUpdate={(e) => {
+          const isYtPlaying = ytPlayerRef.current && typeof ytPlayerRef.current.getPlayerState === 'function' && ytPlayerRef.current.getPlayerState() === 1;
+          if (!isYtPlaying && e.currentTarget) {
+            setCurrentTime(e.currentTarget.currentTime || 0);
+            if (e.currentTarget.duration) {
+              setDuration(e.currentTarget.duration);
+            }
+          }
+        }}
+        onEnded={() => {
+          const isYtPlaying = ytPlayerRef.current && typeof ytPlayerRef.current.getPlayerState === 'function' && ytPlayerRef.current.getPlayerState() === 1;
+          if (!isYtPlaying && !isClosingRef.current && currentTrackRef.current) {
+            handleNextTrack();
+          }
+        }}
+        onError={(e) => {
+          console.warn('Erro na tag de áudio:', e);
+        }}
+      />
 
       <div className={`${styles.appContainer} ${viewMode === 'artist' ? styles.appContainerArtist : ''}`}>
 
@@ -1678,7 +1802,7 @@ export default function HomeUnifiedYouTubeMusic() {
 
           {/* Campo de pesquisa com Autocomplete Dropdown (Foto 1) */}
           <div className={styles.searchWrap} ref={searchContainerRef}>
-            <Search size={20} className={styles.searchIcon} />
+            <Search size={18} className={styles.searchIcon} />
             <input
               type="text"
               placeholder="Pesquise músicas, álbuns, artistas, podcasts"
@@ -1705,7 +1829,7 @@ export default function HomeUnifiedYouTubeMusic() {
                 onClick={handleClearSearch}
                 aria-label="Limpar pesquisa"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             )}
 
@@ -1753,7 +1877,7 @@ export default function HomeUnifiedYouTubeMusic() {
                           playTrack(entity);
                           setShowSuggestions(false);
                         } else if (entity.type === 'artist') {
-                          openArtistProfile(entity.title);
+                          openArtistProfile(entity.title, entity.id);
                           setShowSuggestions(false);
                         } else if (entity.type === 'album') {
                           handleSelectAlbum({
@@ -1771,7 +1895,7 @@ export default function HomeUnifiedYouTubeMusic() {
                       <img
                         src={entity.cover || '/img/logo-devsongs.png'}
                         alt={entity.title}
-                        className={styles.searchEntityThumb}
+                        className={`${styles.searchEntityThumb} ${entity.type === 'artist' ? styles.searchEntityThumbArtist : ''}`}
                         referrerPolicy="no-referrer"
                         onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
                       />
@@ -1874,7 +1998,13 @@ export default function HomeUnifiedYouTubeMusic() {
         {/* ─── CORPO: SIDEBAR À ESQUERDA + CONTEÚDO PRINCIPAL À DIREITA ─── */}
         <div className={styles.appBody}>
           <aside
-            className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : styles.sidebarOpen} ${viewMode === 'artist' ? styles.sidebarArtist : ''}`}
+            className={`${styles.sidebar} ${!sidebarOpen ? styles.sidebarCollapsed : styles.sidebarOpen} ${
+              viewMode === 'artist'
+                ? isScrolled
+                  ? styles.sidebarArtistScrolled
+                  : styles.sidebarArtist
+                : ''
+            }`}
           >
             <nav className={styles.navSection}>
               <button
@@ -2307,7 +2437,7 @@ export default function HomeUnifiedYouTubeMusic() {
                 <div className={styles.albumHeroColumn}>
                   <div
                     className={styles.albumArtistRow}
-                    onClick={() => openArtistProfile(selectedAlbum.artistName || activeArtist?.name)}
+                    onClick={() => openArtistProfile(selectedAlbum.artistName || activeArtist?.name, selectedAlbum.artistId || activeArtist?.id)}
                     title={`Voltar ao perfil de ${selectedAlbum.artistName || activeArtist?.name}`}
                   >
                     <img
@@ -2452,11 +2582,32 @@ export default function HomeUnifiedYouTubeMusic() {
                 </div>
               </div>
 
-              {/* Seção Sugestões de Álbuns do Mesmo Tipo / Artista */}
+              {/* Seção Sugestões de Álbuns do Mesmo Tipo / Artista (Carrossel Horizontal) */}
               {relatedAlbums && relatedAlbums.length > 0 && (
                 <section className={styles.relatedAlbumsSection}>
-                  <h2 className={styles.relatedAlbumsHeading}>Outros álbuns que você pode gostar</h2>
-                  <div className={styles.relatedAlbumsGrid}>
+                  <div className={styles.relatedAlbumsHeader}>
+                    <h2 className={styles.relatedAlbumsHeading}>Outros álbuns que você pode gostar</h2>
+                    <div className={styles.homeHeaderActions}>
+                      <button
+                        type="button"
+                        className={styles.roundNavBtn}
+                        onClick={() => scrollRelatedAlbums('left')}
+                        title="Rolar álbuns para esquerda"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.roundNavBtn}
+                        onClick={() => scrollRelatedAlbums('right')}
+                        title="Rolar álbuns para direita"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.relatedAlbumsCarousel} ref={relatedAlbumsScrollRef}>
                     {relatedAlbums.map((alb) => (
                       <div
                         key={alb.id}
@@ -2561,7 +2712,7 @@ export default function HomeUnifiedYouTubeMusic() {
                     <div
                       key={art.id || idx}
                       className={styles.searchArtistCard}
-                      onClick={() => openArtistProfile(art.name)}
+                      onClick={() => openArtistProfile(art.name, art.id)}
                       title={`Abrir perfil de ${art.name}`}
                     >
                       <img
@@ -2709,7 +2860,7 @@ export default function HomeUnifiedYouTubeMusic() {
                           {/* Lado Esquerdo: Card de Destaque do Artista */}
                           <div
                             className={styles.searchHeroArtistCard}
-                            onClick={() => openArtistProfile(activeArtist.name)}
+                            onClick={() => openArtistProfile(activeArtist.name, activeArtist.id)}
                             title={`Abrir perfil do artista ${activeArtist.name}`}
                           >
                             <ChevronRight size={18} className={styles.artistCardChevronIcon} />
@@ -2913,7 +3064,10 @@ export default function HomeUnifiedYouTubeMusic() {
               {/* Banner Cinematográfico do Artista (Foto 3) */}
               <section
                 className={styles.artistBannerContainer}
-                style={{ backgroundImage: `url('${activeArtist?.bannerImg || '/img/artist_banner_justin.jpg'}')` }}
+                style={{
+                  backgroundImage: `url('${activeArtist?.bannerImg || '/img/artist_banner_justin.jpg'}')`,
+                  backgroundPosition: activeArtist?.bannerPosition || 'center 18%'
+                }}
               >
                 <div className={styles.bannerContent}>
                   <h1 className={styles.bannerArtistTitle}>{activeArtist?.name || 'Artista'}</h1>
