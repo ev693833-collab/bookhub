@@ -73,6 +73,155 @@ function isBootlegTrack(title, artist) {
   return false;
 }
 
+// Tabela de anos reais de lançamento para álbuns canônicos (Djonga, BK, Baco, Matuê, Ret, etc.)
+function getKnownAlbumYear(title, artist) {
+  if (!title) return null;
+  const clean = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  const t = clean(title);
+  const a = clean(artist);
+
+  // Djonga
+  if (a.includes('djonga') || t.includes('djonga') || t.includes('heresia') || t.includes('meninoquequeriaserdeus') || t.includes('historiasdaminhaarea') || t.includes('odonodolugar') || t.includes('quantomaiseucomo')) {
+    if (t.includes('heresia')) return '2017';
+    if (t.includes('meninoquequeriaserdeus')) return '2018';
+    if (t.includes('ladrao')) return '2019';
+    if (t.includes('historiasdaminhaarea')) return '2020';
+    if (t.includes('nu')) return '2021';
+    if (t.includes('odonodolugar')) return '2022';
+    if (t.includes('demotape') || t.includes('inocente')) return '2023';
+    if (t.includes('quantomaiseucomo')) return '2024';
+  }
+  // BK' / Abebe Bikila
+  if (a.includes('bk') || a.includes('abebe')) {
+    if (t.includes('castelos')) return '2016';
+    if (t.includes('gigantes')) return '2018';
+    if (t.includes('lideremmovimento')) return '2020';
+    if (t.includes('cidadedopecado')) return '2021';
+    if (t.includes('icarus')) return '2022';
+    if (t.includes('diamantes')) return '2025';
+    if (t.includes('produtodoambiente')) return '2024';
+  }
+  // Baco Exu do Blues
+  if (a.includes('baco')) {
+    if (t.includes('esu')) return '2017';
+    if (t.includes('bluesman')) return '2018';
+    if (t.includes('bacanal')) return '2020';
+    if (t.includes('qvvjfa') || t.includes('quantasvezes')) return '2022';
+    if (t.includes('fetiche')) return '2024';
+  }
+  // Matuê
+  if (a.includes('matue')) {
+    if (t.includes('maquinadotempo')) return '2020';
+    if (t.includes('333')) return '2024';
+  }
+  // Filipe Ret
+  if (a.includes('ret')) {
+    if (t.includes('vivaz')) return '2012';
+    if (t.includes('revel')) return '2015';
+    if (t.includes('audaz')) return '2018';
+    if (t.includes('imaterial')) return '2021';
+    if (t.includes('lume')) return '2022';
+    if (t.includes('frxv')) return '2023';
+  }
+  // Veigh
+  if (a.includes('veigh')) {
+    if (t.includes('dosprediosdeluxe')) return '2023';
+    if (t.includes('dospredios')) return '2022';
+  }
+  // KayBlack
+  if (a.includes('kayblack')) {
+    if (t.includes('contradicoes')) return '2023';
+  }
+  // Yago Oproprio
+  if (a.includes('yago')) {
+    if (t.includes('oproprio')) return '2024';
+  }
+  // L7NNON
+  if (a.includes('l7nnon') || a.includes('l7')) {
+    if (t.includes('podresdericos')) return '2019';
+    if (t.includes('hiphoprare')) return '2020';
+    if (t.includes('meespera')) return '2022';
+    if (t.includes('irrastreavel')) return '2024';
+  }
+  // Orochi
+  if (a.includes('orochi')) {
+    if (t.includes('celebridade')) return '2020';
+    if (t.includes('lobo')) return '2021';
+    if (t.includes('vidacara')) return '2023';
+  }
+  // MC Cabelinho
+  if (a.includes('cabelinho')) {
+    if (t.includes('ainda')) return '2020';
+    if (t.includes('littlehair')) return '2021';
+    if (t.includes('littlelove')) return '2022';
+  }
+  // Teto
+  if (a.includes('teto')) {
+    if (t.includes('previas')) return '2021';
+    if (t.includes('1010')) return '2024';
+  }
+  // Wiu
+  if (a.includes('wiu')) {
+    if (t.includes('manualdecomo')) return '2022';
+    if (t.includes('vagabundodeluxo')) return '2024';
+  }
+  // Racionais MC's
+  if (a.includes('racionais')) {
+    if (t.includes('holocausto')) return '1990';
+    if (t.includes('raioxbrasil')) return '1993';
+    if (t.includes('sobrevivendonoinferno')) return '1997';
+    if (t.includes('nadacomoum')) return '2002';
+    if (t.includes('coresevalores')) return '2014';
+  }
+  // Sabotage
+  if (a.includes('sabotage')) {
+    if (t.includes('orap')) return '2001';
+  }
+  // Emicida
+  if (a.includes('emicida')) {
+    if (t.includes('gloriosoretorno')) return '2013';
+    if (t.includes('sobrecriancas')) return '2015';
+    if (t.includes('amarelo')) return '2019';
+  }
+  // Criolo
+  if (a.includes('criolo')) {
+    if (t.includes('aindahatempo')) return '2006';
+    if (t.includes('nonaorelha')) return '2011';
+    if (t.includes('convoqueseubuda')) return '2014';
+    if (t.includes('espiral')) return '2017';
+    if (t.includes('sobreviver')) return '2022';
+  }
+  // Justin Bieber
+  if (a.includes('bieber')) {
+    if (t.includes('myworld2')) return '2010';
+    if (t.includes('myworld')) return '2009';
+    if (t.includes('under') && t.includes('mistletoe')) return '2011';
+    if (t.includes('believe')) return '2012';
+    if (t.includes('journals')) return '2013';
+    if (t.includes('purpose')) return '2015';
+    if (t.includes('changes')) return '2020';
+    if (t.includes('justice')) return '2021';
+    if (t.includes('swag')) return '2025';
+  }
+  // Travis Scott
+  if (a.includes('travis') && a.includes('scott')) {
+    if (t.includes('rodeo')) return '2015';
+    if (t.includes('birdsinthe')) return '2016';
+    if (t.includes('astroworld')) return '2018';
+    if (t.includes('utopia')) return '2023';
+  }
+  // Kendrick Lamar
+  if (a.includes('kendrick')) {
+    if (t.includes('section80')) return '2011';
+    if (t.includes('goodkid')) return '2012';
+    if (t.includes('butterfly')) return '2015';
+    if (t.includes('damn')) return '2017';
+    if (t.includes('mrmorale')) return '2022';
+    if (t.includes('gnx')) return '2024';
+  }
+  return null;
+}
+
 function matchArtistName(query, artistName) {
   if (!query || !artistName) return false;
   const qClean = cleanSimple(query);
@@ -456,7 +605,7 @@ router.get('/artist', async (req, res) => {
             id: `dz-alb-${alb.id}`,
             albumId: alb.id,
             title: alb.title,
-            year: alb.release_date ? alb.release_date.slice(0, 4) : '2024',
+            year: getKnownAlbumYear(alb.title, bestArtist.name) || (alb.release_date ? alb.release_date.slice(0, 4) : '2024'),
             cover: alb.cover_big || alb.cover_medium,
             artist: bestArtist.name,
             explicit: alb.explicit_lyrics || false,
@@ -487,7 +636,7 @@ router.get('/artist', async (req, res) => {
                 id: `dz-feat-${t.album.id}`,
                 albumId: t.album.id,
                 title: t.album.title,
-                year: '2024',
+                year: getKnownAlbumYear(t.album.title, trackArtistName) || '2024',
                 cover: t.album.cover_big || t.album.cover_medium || bestArtist.picture_big,
                 artist: trackArtistName || 'Vários Artistas',
                 albumArtist: trackArtistName || 'Vários Artistas',
@@ -523,7 +672,7 @@ router.get('/artist', async (req, res) => {
           id: `it-alb-${alb.collectionId}`,
           albumId: null,
           title: alb.collectionName.replace(/ - (Single|EP)$/i, ''),
-          year: alb.releaseDate ? alb.releaseDate.slice(0, 4) : '2024',
+          year: getKnownAlbumYear(alb.collectionName, bestArtist.name) || (alb.releaseDate ? alb.releaseDate.slice(0, 4) : '2024'),
           cover: alb.artworkUrl100?.replace('100x100bb', '600x600bb') || '',
           artist: bestArtist.name,
           explicit: alb.collectionExplicitness === 'explicit',
@@ -956,28 +1105,45 @@ async function getRelatedAlbums(artistName, currentAlbumTitle, currentAlbumId) {
     const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['"`.,\s-]/g, '');
     const curNorm = cleanSimple(currentAlbumTitle);
     
-    // 1. Busca álbuns do artista no Deezer
-    const searchRes = await fetchWithTimeout(`https://api.deezer.com/search/album?q=${encodeURIComponent(artistName || 'Brasil')}&limit=15`, {}, 2200)
-      .then(r => r.json())
-      .catch(() => ({ data: [] }));
-    const albums = searchRes.data || [];
+    // 1. Busca primeiro álbuns com data real via endpoint de artista do Deezer
+    let albums = [];
+    const artSearch = await fetchWithTimeout(`https://api.deezer.com/search/artist?q=${encodeURIComponent(artistName || '')}&limit=1`, {}, 1800)
+      .then(r => r.json()).catch(() => ({ data: [] }));
+
+    if (artSearch.data && artSearch.data[0]?.id) {
+      const albRes = await fetchWithTimeout(`https://api.deezer.com/artist/${artSearch.data[0].id}/albums?limit=50`, {}, 2200)
+        .then(r => r.json()).catch(() => ({ data: [] }));
+      albums = albRes.data || [];
+    }
+
+    if (!albums || albums.length === 0) {
+      const searchRes = await fetchWithTimeout(`https://api.deezer.com/search/album?q=${encodeURIComponent(artistName || 'Brasil')}&limit=15`, {}, 2200)
+        .then(r => r.json())
+        .catch(() => ({ data: [] }));
+      albums = searchRes.data || [];
+    }
     
     const unique = [];
     const seen = new Set();
     if (curNorm) seen.add(curNorm);
     
     for (const alb of albums) {
-      if (isBootlegTrack(alb.title, alb.artist?.name)) continue;
+      const albArtist = alb.artist?.name || artistName;
+      if (isBootlegTrack(alb.title, albArtist)) continue;
+      if (/instrumental/i.test(alb.title)) continue;
       const norm = cleanSimple(alb.title);
       if (seen.has(norm) || (currentAlbumId && String(alb.id) === String(currentAlbumId))) continue;
       seen.add(norm);
+
+      const yearResolved = getKnownAlbumYear(alb.title, albArtist) || (alb.release_date ? alb.release_date.slice(0, 4) : '2024');
+
       unique.push({
         id: `dz-alb-${alb.id}`,
         albumId: alb.id,
         title: alb.title,
-        artist: alb.artist?.name || artistName,
+        artist: albArtist,
         cover: alb.cover_xl || alb.cover_big || alb.cover_medium,
-        year: alb.release_date ? alb.release_date.slice(0, 4) : '2024',
+        year: yearResolved,
         recordType: alb.record_type || 'album'
       });
       if (unique.length >= 8) break;
@@ -994,17 +1160,22 @@ async function getRelatedAlbums(artistName, currentAlbumTitle, currentAlbumId) {
             .then(r => r.json())
             .catch(() => ({ data: [] }));
           for (const simAlb of (simRes.data || [])) {
-            if (isBootlegTrack(simAlb.title, simAlb.artist?.name)) continue;
+            const sArtist = simAlb.artist?.name || simArtist;
+            if (isBootlegTrack(simAlb.title, sArtist)) continue;
+            if (/instrumental/i.test(simAlb.title)) continue;
             const norm = cleanSimple(simAlb.title);
             if (seen.has(norm)) continue;
             seen.add(norm);
+
+            const simYearResolved = getKnownAlbumYear(simAlb.title, sArtist) || (simAlb.release_date ? simAlb.release_date.slice(0, 4) : '2024');
+
             unique.push({
               id: `dz-alb-${simAlb.id}`,
               albumId: simAlb.id,
               title: simAlb.title,
-              artist: simAlb.artist?.name || simArtist,
+              artist: sArtist,
               cover: simAlb.cover_xl || simAlb.cover_big || simAlb.cover_medium,
-              year: simAlb.release_date ? simAlb.release_date.slice(0, 4) : '2024',
+              year: simYearResolved,
               recordType: simAlb.record_type || 'album'
             });
             if (unique.length >= 8) break;
@@ -1058,7 +1229,7 @@ router.get('/album-tracks', async (req, res) => {
           cover: albCover,
           artistName: albItem?.artistName || artist || 'Artista',
           artistAvatar: '',
-          year: albItem?.releaseDate ? albItem.releaseDate.slice(0, 4) : '2024',
+          year: getKnownAlbumYear(albItem?.collectionName || title, albItem?.artistName || artist) || (albItem?.releaseDate ? albItem.releaseDate.slice(0, 4) : '2024'),
           nbTracks: trackItems.length,
           durationSec: totalSec,
           explicit: albItem?.collectionExplicitness === 'explicit',
@@ -1154,7 +1325,7 @@ router.get('/album-tracks', async (req, res) => {
           artistName: albumData.artist?.name || artist || 'Artista',
           artistAvatar: albumData.artist?.picture_small || albumData.artist?.picture_medium,
           artistId: albumData.artist?.id,
-          year: albumData.release_date ? albumData.release_date.slice(0, 4) : '2024',
+          year: getKnownAlbumYear(albumData.title, albumData.artist?.name || artist) || (albumData.release_date ? albumData.release_date.slice(0, 4) : '2024'),
           nbTracks: sortedTracks.length,
           durationSec: albumData.duration || sortedTracks.reduce((acc, t) => acc + (t.duration || 0), 0),
           explicit: albumData.explicit_lyrics || false,
@@ -1199,7 +1370,7 @@ router.get('/album-tracks', async (req, res) => {
           artistName: albumData?.artist?.name || bestDeezerAlbum.artist?.name || artist || 'Artista',
           artistAvatar: albumData?.artist?.picture_small || albumData?.artist?.picture_medium,
           artistId: albumData?.artist?.id || bestDeezerAlbum.artist?.id,
-          year: albumData?.release_date ? albumData.release_date.slice(0, 4) : '2024',
+          year: getKnownAlbumYear(albumData?.title || bestDeezerAlbum.title, albumData?.artist?.name || bestDeezerAlbum.artist?.name || artist) || (albumData?.release_date ? albumData.release_date.slice(0, 4) : '2024'),
           nbTracks: sortedTracks.length,
           durationSec: albumData?.duration || sortedTracks.reduce((acc, t) => acc + (t.duration || 0), 0),
           explicit: albumData?.explicit_lyrics || bestDeezerAlbum.explicit_lyrics || false,
@@ -1244,7 +1415,7 @@ router.get('/album-tracks', async (req, res) => {
           cover: albCover,
           artistName: bestItunesAlbum.artistName || artist || 'Artista',
           artistAvatar: '',
-          year: bestItunesAlbum.releaseDate ? bestItunesAlbum.releaseDate.slice(0, 4) : '2024',
+          year: getKnownAlbumYear(bestItunesAlbum.collectionName || title, bestItunesAlbum.artistName || artist) || (bestItunesAlbum.releaseDate ? bestItunesAlbum.releaseDate.slice(0, 4) : '2024'),
           nbTracks: trackItems.length,
           durationSec: totalSec,
           explicit: bestItunesAlbum.collectionExplicitness === 'explicit',
