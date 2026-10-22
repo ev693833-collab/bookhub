@@ -3,12 +3,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import QRCode from 'qrcode';
 import {
   Home, Compass, Bookmark, Award, Plus, Menu, Search,
   Tv, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
   Volume2, VolumeX, Video, Music, LogOut, ShieldCheck, Heart,
   ChevronLeft, ChevronRight, MoreVertical, Maximize2, Minimize2,
-  Radio, X, PlayCircle, ListMusic, Building2, ChevronDown, CheckCircle2
+  Radio, X, PlayCircle, ListMusic, Building2, ChevronDown, CheckCircle2,
+  Lock, CreditCard, QrCode, ShoppingBag, ShoppingCart, Trash2, ArrowRight, ArrowLeft,
+  Check, Mail, Copy, Sparkles, Clock, Tag, Percent, Ticket
 } from 'lucide-react';
 import styles from '../styles/home.module.css';
 
@@ -207,6 +210,165 @@ const HOME_ALBUNS_PARA_VOCE = [
     explicit: false
   }
 ];
+
+// Tabela de anos reais de lançamento para álbuns canônicos (Djonga, BK, Baco, Matuê, Ret, etc.)
+const getKnownAlbumYear = (title, artist) => {
+  if (!title) return null;
+  const clean = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  const t = clean(title);
+  const a = clean(artist);
+
+  // Djonga
+  if (a.includes('djonga') || t.includes('djonga') || t.includes('heresia') || t.includes('meninoquequeriaserdeus') || t.includes('historiasdaminhaarea') || t.includes('odonodolugar') || t.includes('quantomaiseucomo')) {
+    if (t.includes('heresia')) return '2017';
+    if (t.includes('meninoquequeriaserdeus')) return '2018';
+    if (t.includes('ladrao')) return '2019';
+    if (t.includes('historiasdaminhaarea')) return '2020';
+    if (t.includes('nu')) return '2021';
+    if (t.includes('odonodolugar')) return '2022';
+    if (t.includes('demotape') || t.includes('inocente')) return '2023';
+    if (t.includes('quantomaiseucomo')) return '2024';
+  }
+  // BK' / Abebe Bikila
+  if (a.includes('bk') || a.includes('abebe')) {
+    if (t.includes('castelos')) return '2016';
+    if (t.includes('gigantes')) return '2018';
+    if (t.includes('lideremmovimento')) return '2020';
+    if (t.includes('cidadedopecado')) return '2021';
+    if (t.includes('icarus')) return '2022';
+    if (t.includes('diamantes')) return '2025';
+    if (t.includes('produtodoambiente')) return '2024';
+  }
+  // Baco Exu do Blues
+  if (a.includes('baco')) {
+    if (t.includes('esu')) return '2017';
+    if (t.includes('bluesman')) return '2018';
+    if (t.includes('bacanal')) return '2020';
+    if (t.includes('qvvjfa') || t.includes('quantasvezes')) return '2022';
+    if (t.includes('fetiche')) return '2024';
+  }
+  // Matuê
+  if (a.includes('matue')) {
+    if (t.includes('maquinadotempo')) return '2020';
+    if (t.includes('333')) return '2024';
+  }
+  // Filipe Ret
+  if (a.includes('ret')) {
+    if (t.includes('vivaz')) return '2012';
+    if (t.includes('revel')) return '2015';
+    if (t.includes('audaz')) return '2018';
+    if (t.includes('imaterial')) return '2021';
+    if (t.includes('lume')) return '2022';
+    if (t.includes('frxv')) return '2023';
+  }
+  // Veigh
+  if (a.includes('veigh')) {
+    if (t.includes('dosprediosdeluxe')) return '2023';
+    if (t.includes('dospredios')) return '2022';
+  }
+  // KayBlack
+  if (a.includes('kayblack')) {
+    if (t.includes('contradicoes')) return '2023';
+  }
+  // Yago Oproprio
+  if (a.includes('yago')) {
+    if (t.includes('oproprio')) return '2024';
+  }
+  // L7NNON
+  if (a.includes('l7nnon') || a.includes('l7')) {
+    if (t.includes('podresdericos')) return '2019';
+    if (t.includes('hiphoprare')) return '2020';
+    if (t.includes('meespera')) return '2022';
+    if (t.includes('irrastreavel')) return '2024';
+  }
+  // Orochi
+  if (a.includes('orochi')) {
+    if (t.includes('celebridade')) return '2020';
+    if (t.includes('lobo')) return '2021';
+    if (t.includes('vidacara')) return '2023';
+  }
+  // MC Cabelinho
+  if (a.includes('cabelinho')) {
+    if (t.includes('ainda')) return '2020';
+    if (t.includes('littlehair')) return '2021';
+    if (t.includes('littlelove')) return '2022';
+  }
+  // Teto
+  if (a.includes('teto')) {
+    if (t.includes('previas')) return '2021';
+    if (t.includes('1010')) return '2024';
+  }
+  // Wiu
+  if (a.includes('wiu')) {
+    if (t.includes('manualdecomo')) return '2022';
+    if (t.includes('vagabundodeluxo')) return '2024';
+  }
+  // Racionais MC's
+  if (a.includes('racionais')) {
+    if (t.includes('holocausto')) return '1990';
+    if (t.includes('raioxbrasil')) return '1993';
+    if (t.includes('sobrevivendonoinferno')) return '1997';
+    if (t.includes('nadacomoum')) return '2002';
+    if (t.includes('coresevalores')) return '2014';
+  }
+  // Sabotage
+  if (a.includes('sabotage')) {
+    if (t.includes('orap')) return '2001';
+  }
+  // Emicida
+  if (a.includes('emicida')) {
+    if (t.includes('gloriosoretorno')) return '2013';
+    if (t.includes('sobrecriancas')) return '2015';
+    if (t.includes('amarelo')) return '2019';
+  }
+  // Criolo
+  if (a.includes('criolo')) {
+    if (t.includes('aindahatempo')) return '2006';
+    if (t.includes('nonaorelha')) return '2011';
+    if (t.includes('convoqueseubuda')) return '2014';
+    if (t.includes('espiral')) return '2017';
+    if (t.includes('sobreviver')) return '2022';
+  }
+  // Justin Bieber
+  if (a.includes('bieber')) {
+    if (t.includes('myworld2')) return '2010';
+    if (t.includes('myworld')) return '2009';
+    if (t.includes('under') && t.includes('mistletoe')) return '2011';
+    if (t.includes('believe')) return '2012';
+    if (t.includes('journals')) return '2013';
+    if (t.includes('purpose')) return '2015';
+    if (t.includes('changes')) return '2020';
+    if (t.includes('justice')) return '2021';
+    if (t.includes('swag')) return '2025';
+  }
+  // Travis Scott
+  if (a.includes('travis') && a.includes('scott')) {
+    if (t.includes('rodeo')) return '2015';
+    if (t.includes('birdsinthe')) return '2016';
+    if (t.includes('astroworld')) return '2018';
+    if (t.includes('utopia')) return '2023';
+  }
+  // Kendrick Lamar
+  if (a.includes('kendrick')) {
+    if (t.includes('section80')) return '2011';
+    if (t.includes('goodkid')) return '2012';
+    if (t.includes('butterfly')) return '2015';
+    if (t.includes('damn')) return '2017';
+    if (t.includes('mrmorale')) return '2022';
+    if (t.includes('gnx')) return '2024';
+  }
+  return null;
+};
+
+const getDisplayAlbumYear = (albumOrTitle, artistName, fallbackYear) => {
+  if (!albumOrTitle) return fallbackYear || '2024';
+  const title = typeof albumOrTitle === 'object' ? albumOrTitle.title : albumOrTitle;
+  const artist = typeof albumOrTitle === 'object' ? (albumOrTitle.artist || albumOrTitle.artistName || artistName) : artistName;
+  const known = getKnownAlbumYear(title, artist);
+  if (known) return known;
+  if (typeof albumOrTitle === 'object' && albumOrTitle.year) return albumOrTitle.year;
+  return fallbackYear || '2024';
+};
 
 // Top 5 faixas idênticas às exibidas na Foto 1
 const JUSTIN_TOP_TRACKS = [
@@ -611,6 +773,58 @@ const SEARCH_FILTER_PILLS = [
   'Tudo', 'Artistas', 'Músicas', 'Álbuns', 'Vídeos', 'Playlists da comunidade'
 ];
 
+// Gerador Oficial EMV BR Code Pix (Banco Central do Brasil) com CRC-16/CCITT-FALSE
+function generatePixBrCode({ pixKey, merchantName = 'DEVSONGS', merchantCity = 'SAO PAULO', amount, txid = '***' }) {
+  const cleanStr = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+
+  const formatTLV = (id, val) => {
+    const len = String(val.length).padStart(2, '0');
+    return `${id}${len}${val}`;
+  };
+
+  const keyClean = (pixKey || '').trim();
+  const sub00 = formatTLV('00', 'br.gov.bcb.pix');
+  const sub01 = formatTLV('01', keyClean);
+  const tag26 = formatTLV('26', `${sub00}${sub01}`);
+
+  const tag00 = formatTLV('00', '01');
+  const tag52 = formatTLV('52', '0000');
+  const tag53 = formatTLV('53', '986'); // BRL
+  
+  let tag54 = '';
+  if (amount && Number(amount) > 0) {
+    const valFormatted = Number(amount).toFixed(2);
+    tag54 = formatTLV('54', valFormatted);
+  }
+
+  const tag58 = formatTLV('58', 'BR');
+  const nameClean = cleanStr(merchantName).slice(0, 25).toUpperCase() || 'DEVSONGS';
+  const tag59 = formatTLV('59', nameClean);
+
+  const cityClean = cleanStr(merchantCity).slice(0, 15).toUpperCase() || 'SAO PAULO';
+  const tag60 = formatTLV('60', cityClean);
+
+  const txidClean = (txid || '***').replace(/[^a-zA-Z0-9*]/g, '').slice(0, 25) || '***';
+  const tag62 = formatTLV('62', formatTLV('05', txidClean));
+
+  const rawPayload = `${tag00}${tag26}${tag52}${tag53}${tag54}${tag58}${tag59}${tag60}${tag62}6304`;
+
+  // Cálculo rigoroso do CRC-16/CCITT-FALSE (polinômio 0x1021, init 0xFFFF)
+  let crc = 0xFFFF;
+  for (let i = 0; i < rawPayload.length; i++) {
+    crc ^= (rawPayload.charCodeAt(i) << 8);
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+      } else {
+        crc = (crc << 1) & 0xFFFF;
+      }
+    }
+  }
+  const crcHex = crc.toString(16).toUpperCase().padStart(4, '0');
+  return `${rawPayload}${crcHex}`;
+}
+
 export default function HomeUnifiedYouTubeMusic() {
   const router = useRouter();
 
@@ -623,14 +837,474 @@ export default function HomeUnifiedYouTubeMusic() {
   const [singles, setSingles] = useState(JUSTIN_SINGLES);
   const [appearsOn, setAppearsOn] = useState([]);
 
-  // Multi-Base / Empresas (Gravadoras com estoque próprio de músicas)
+  // Multi-Base / Modalidades e Gravadoras com estoque próprio
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [baseMode, setBaseMode] = useState('all'); // 'all' | 'streaming' | 'buy' | 'rent'
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [companyTracks, setCompanyTracks] = useState([]);
   const [isCompanyLoading, setIsCompanyLoading] = useState(false);
+  const [userPurchases, setUserPurchases] = useState([]);
+  const [isPurchasesLoading, setIsPurchasesLoading] = useState(false);
   const [purchaseNotice, setPurchaseNotice] = useState(null);
   const companyDropdownRef = useRef(null);
+
+  // ─── ESTADOS DO CARRINHO DE COMPRAS & PROCESSO DE CHECKOUT INTEGRADO ───
+  const [unlockedTrackMap, setUnlockedTrackMap] = useState({});
+  const [cartItems, setCartItems] = useState([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartStep, setCartStep] = useState('cart'); // 'cart' | 'checkout' | 'success'
+  const [lastOrderPurchased, setLastOrderPurchased] = useState([]);
+  const [paymentMethod, setPaymentMethod] = useState('pix'); // 'pix' | 'card' | 'balance'
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [checkoutEmail, setCheckoutEmail] = useState('');
+  const [pixQrDataUrl, setPixQrDataUrl] = useState('');
+  const [pixCodeString, setPixCodeString] = useState('');
+  const [pixReceiverKey, setPixReceiverKey] = useState('enzo@devsongs.com.br');
+  const [isEditingPixKey, setIsEditingPixKey] = useState(false);
+  const [cardForm, setCardForm] = useState({
+    number: '',
+    name: '',
+    expiry: '',
+    cvv: ''
+  });
+  const [copiedPix, setCopiedPix] = useState(false);
+
+  // Carrega carrinho e chave Pix personalizada do localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedKey = localStorage.getItem('devsongs_pix_key');
+        if (savedKey) setPixReceiverKey(savedKey);
+
+        const savedCart = localStorage.getItem('devsongs_cart');
+        if (savedCart) {
+          const parsed = JSON.parse(savedCart);
+          if (Array.isArray(parsed)) setCartItems(parsed);
+        }
+
+        const savedUsed = localStorage.getItem('devsongs_used_coupons');
+        if (savedUsed) {
+          const parsed = JSON.parse(savedUsed);
+          if (Array.isArray(parsed)) setUsedCoupons(parsed);
+        }
+
+        const savedCustom = localStorage.getItem('devsongs_custom_coupons');
+        if (savedCustom) {
+          const parsed = JSON.parse(savedCustom);
+          if (parsed && typeof parsed === 'object') setCustomCoupons(parsed);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dados do carrinho do localStorage:', err);
+      }
+    }
+  }, []);
+
+  const saveCartToStorage = (items) => {
+    setCartItems(items);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('devsongs_cart', JSON.stringify(items));
+      } catch (e) {}
+    }
+  };
+
+  // ─── CUPONS DE DESCONTO & TOTAIS DO CARRINHO ───
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponFeedback, setCouponFeedback] = useState(null); // { type: 'success' | 'error' | 'info', message: '' }
+  const [usedCoupons, setUsedCoupons] = useState([]);
+  const [customCoupons, setCustomCoupons] = useState({});
+  const [showCreateCoupon, setShowCreateCoupon] = useState(false);
+  const [newCouponForm, setNewCouponForm] = useState({
+    code: '',
+    type: 'percent',
+    value: '20'
+  });
+
+  const DEFAULT_COUPONS = useMemo(() => ({
+    'DEVSONGS10': { type: 'percent', value: 10, label: '10% OFF no Pedido' },
+    'DEVSONGS20': { type: 'percent', value: 20, label: '20% OFF Especial' },
+    'DEV50': { type: 'percent', value: 50, label: '50% OFF Metade do Preço' },
+    'PRIMEIRACOMPRA': { type: 'percent', value: 15, label: '15% OFF de Boas-Vindas' },
+    'DEVGRATIS': { type: 'percent', value: 100, label: '100% OFF Grátis' },
+    'PROMO2': { type: 'fixed', value: 2.00, label: 'R$ 2,00 OFF Fixo' }
+  }), []);
+
+  const allCoupons = useMemo(() => {
+    return { ...DEFAULT_COUPONS, ...customCoupons };
+  }, [DEFAULT_COUPONS, customCoupons]);
+
+  // Lista de códigos de cupons que ainda não foram utilizados pelo usuário
+  const availableCouponsList = useMemo(() => {
+    return Object.keys(allCoupons).filter(code => !usedCoupons.includes(code.toUpperCase()));
+  }, [allCoupons, usedCoupons]);
+
+  // Subtotal do Carrinho de Compras (sem desconto)
+  const cartSubtotal = useMemo(() => {
+    return cartItems.reduce((acc, item) => acc + (Number(item.price) || 0), 0);
+  }, [cartItems]);
+
+  // Valor monetário do desconto de cupom
+  const couponDiscount = useMemo(() => {
+    if (!appliedCoupon || cartSubtotal <= 0) return 0;
+    if (appliedCoupon.type === 'percent') {
+      return (cartSubtotal * appliedCoupon.value) / 100;
+    }
+    if (appliedCoupon.type === 'fixed') {
+      return Math.min(cartSubtotal, appliedCoupon.value);
+    }
+    return 0;
+  }, [appliedCoupon, cartSubtotal]);
+
+  // Total líquido final do Carrinho
+  const cartTotal = useMemo(() => {
+    return Math.max(0, cartSubtotal - couponDiscount);
+  }, [cartSubtotal, couponDiscount]);
+
+  // Aplicar cupom (bloqueia se já tiver sido usado em compra anterior)
+  const handleApplyCoupon = (e, customCode) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const cleanCode = (customCode || couponInput || '').trim().toUpperCase();
+    if (!cleanCode) {
+      setCouponFeedback({ type: 'error', message: 'Por favor, digite o código do cupom.' });
+      setTimeout(() => setCouponFeedback(null), 3500);
+      return;
+    }
+
+    // 1. Bloqueia se o cupom já foi utilizado em compra anterior
+    if (usedCoupons.includes(cleanCode)) {
+      setCouponFeedback({
+        type: 'error',
+        message: `❌ O cupom "${cleanCode}" já foi utilizado e não pode ser reutilizado! Crie um novo cupom abaixo.`
+      });
+      setTimeout(() => setCouponFeedback(null), 5000);
+      return;
+    }
+
+    // 2. Verifica se o cupom existe na lista de cupons disponíveis
+    const found = allCoupons[cleanCode];
+    if (found) {
+      setAppliedCoupon({ code: cleanCode, ...found });
+      setCouponFeedback({ type: 'success', message: `🎉 Cupom "${cleanCode}" aplicado: ${found.label}!` });
+      setCouponInput('');
+      setTimeout(() => setCouponFeedback(null), 4000);
+    } else {
+      setCouponFeedback({
+        type: 'error',
+        message: `Cupom "${cleanCode}" não encontrado. Crie um novo cupom clicando em "+ Criar Cupom".`
+      });
+      setTimeout(() => setCouponFeedback(null), 4500);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponFeedback({ type: 'info', message: 'Cupom removido.' });
+    setTimeout(() => setCouponFeedback(null), 3000);
+  };
+
+  // Criar novo cupom (permite criar novos cupons quando os anteriores já foram usados)
+  const handleCreateCoupon = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const rawCode = (newCouponForm.code || '').replace(/[^a-zA-Z0-9]/g, '').trim().toUpperCase();
+    const numValue = Math.max(1, Number(newCouponForm.value) || 10);
+
+    if (!rawCode || rawCode.length < 3) {
+      setCouponFeedback({ type: 'error', message: 'O código do cupom deve ter pelo menos 3 letras ou números.' });
+      setTimeout(() => setCouponFeedback(null), 3500);
+      return;
+    }
+
+    const label = newCouponForm.type === 'percent'
+      ? `${Math.min(100, Math.round(numValue))}% OFF Especial`
+      : `R$ ${numValue.toFixed(2).replace('.', ',')} OFF Fixo`;
+
+    const newCouponObj = {
+      type: newCouponForm.type,
+      value: newCouponForm.type === 'percent' ? Math.min(100, numValue) : numValue,
+      label
+    };
+
+    // Remove do histórico de usados caso esteja sendo recriado
+    const updatedUsed = usedCoupons.filter(c => c !== rawCode);
+    setUsedCoupons(updatedUsed);
+
+    const updatedCustom = {
+      ...customCoupons,
+      [rawCode]: newCouponObj
+    };
+    setCustomCoupons(updatedCustom);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('devsongs_custom_coupons', JSON.stringify(updatedCustom));
+        localStorage.setItem('devsongs_used_coupons', JSON.stringify(updatedUsed));
+      } catch (err) {}
+    }
+
+    // Aplica o novo cupom imediatamente ao carrinho
+    setAppliedCoupon({ code: rawCode, ...newCouponObj });
+    setShowCreateCoupon(false);
+    setNewCouponForm({ code: '', type: 'percent', value: '20' });
+    setCouponFeedback({
+      type: 'success',
+      message: `✨ Novo cupom "${rawCode}" criado e aplicado com sucesso! Válido para uso único nesta compra.`
+    });
+    setTimeout(() => setCouponFeedback(null), 5000);
+  };
+
+  // Gera o QR Code Pix oficial Banco Central para o total do carrinho
+  useEffect(() => {
+    if (!isCartOpen || cartTotal <= 0) {
+      setPixQrDataUrl('');
+      setPixCodeString('');
+      return;
+    }
+
+    const code = generatePixBrCode({
+      pixKey: pixReceiverKey || 'enzo@devsongs.com.br',
+      merchantName: 'DEVSONGS STREAMING',
+      merchantCity: 'SAO PAULO',
+      amount: cartTotal,
+      txid: `DSCART${cartItems.length}`
+    });
+
+    setPixCodeString(code);
+
+    QRCode.toDataURL(code, {
+      width: 280,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    })
+      .then(url => {
+        setPixQrDataUrl(url);
+      })
+      .catch(err => {
+        console.error('Erro ao gerar QRCode do carrinho:', err);
+        setPixQrDataUrl(`https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=4&data=${encodeURIComponent(code)}`);
+      });
+  }, [isCartOpen, cartTotal, pixReceiverKey, cartItems.length]);
+
+  // Adicionar faixa ao Carrinho de Compras
+  const addToCart = (track, type = 'buy') => {
+    if (!track) return;
+
+    const priceNum = type === 'buy'
+      ? Number(String(track.salePrice || track.priceSale || '4.90').replace('R$', '').replace(',', '.').trim() || 4.90)
+      : Number(String(track.rentPrice || track.priceRent || '1.90').replace('R$', '').replace(',', '.').trim() || 1.90);
+
+    const trackTitle = track.title || 'Música';
+    const existingIndex = cartItems.findIndex(
+      it => (it.title || '').toLowerCase() === trackTitle.toLowerCase() && it.type === type
+    );
+
+    if (existingIndex >= 0) {
+      // Já existe com a mesma modalidade, abre o carrinho
+      setCartStep('cart');
+      setIsCartOpen(true);
+      return;
+    }
+
+    const newItem = {
+      cartId: `${track.id || trackTitle}-${type}-${Date.now()}`,
+      id: track.id,
+      dbTrackId: track.dbTrackId,
+      companyId: track.companyId || 1,
+      title: trackTitle,
+      artist: (track.artist || '').replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, ''),
+      album: track.album || 'Single',
+      companyName: track.companyName || 'Catálogo Oficial',
+      cover: track.cover || '/img/logo-devsongs.png',
+      durationSec: track.durationSec || 210,
+      type, // 'buy' | 'rent'
+      price: priceNum,
+      rawTrack: track
+    };
+
+    const updated = [...cartItems, newItem];
+    saveCartToStorage(updated);
+    setCartStep('cart');
+    setIsCartOpen(true);
+    setPurchaseNotice({
+      type: 'success',
+      text: `🛒 "${trackTitle}" (${type === 'buy' ? 'Compra Definitiva' : 'Aluguel 30 dias'}) adicionada ao Carrinho!`
+    });
+    setTimeout(() => setPurchaseNotice(null), 3500);
+  };
+
+  // Remover item do carrinho
+  const removeFromCart = (cartId) => {
+    const updated = cartItems.filter(it => it.cartId !== cartId);
+    saveCartToStorage(updated);
+  };
+
+  // Alternar modalidade (Compra / Aluguel) de um item no carrinho
+  const toggleCartItemType = (cartId) => {
+    const updated = cartItems.map(item => {
+      if (item.cartId !== cartId) return item;
+      const nextType = item.type === 'buy' ? 'rent' : 'buy';
+      const nextPrice = nextType === 'buy'
+        ? Number(String(item.rawTrack?.salePrice || item.rawTrack?.priceSale || '4.90').replace('R$', '').replace(',', '.').trim() || 4.90)
+        : Number(String(item.rawTrack?.rentPrice || item.rawTrack?.priceRent || '1.90').replace('R$', '').replace(',', '.').trim() || 1.90);
+      return {
+        ...item,
+        type: nextType,
+        price: nextPrice
+      };
+    });
+    saveCartToStorage(updated);
+  };
+
+  // Limpar carrinho
+  const clearCart = () => {
+    saveCartToStorage([]);
+    setAppliedCoupon(null);
+    setCouponFeedback(null);
+  };
+
+  const handleCopyPix = () => {
+    if (pixCodeString && typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(pixCodeString);
+    }
+    setCopiedPix(true);
+    setTimeout(() => setCopiedPix(false), 3000);
+  };
+
+  const handleCardNumberChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 16);
+    const formatted = raw.replace(/(\d{4})/g, '$1 ').trim();
+    setCardForm(prev => ({ ...prev, number: formatted }));
+  };
+
+  const handleCardExpiryChange = (e) => {
+    let raw = e.target.value.replace(/\D/g, '').slice(0, 4);
+    if (raw.length >= 3) {
+      raw = `${raw.slice(0, 2)}/${raw.slice(2)}`;
+    }
+    setCardForm(prev => ({ ...prev, expiry: raw }));
+  };
+
+  const handleCardNameChange = (e) => {
+    const cleanLetters = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, '');
+    setCardForm(prev => ({ ...prev, name: cleanLetters }));
+  };
+
+  // Finalizar a compra do Carrinho de Compras
+  const handleConfirmCartCheckout = async () => {
+    if (cartItems.length === 0) return;
+
+    if (paymentMethod === 'card') {
+      const cleanName = (cardForm.name || '').trim();
+      if (!cleanName || /\d/.test(cleanName) || cleanName.length < 3) {
+        setPurchaseNotice({
+          type: 'error',
+          text: 'Por favor, informe o nome impresso no cartão (somente letras, sem números).'
+        });
+        setTimeout(() => setPurchaseNotice(null), 4500);
+        return;
+      }
+    }
+
+    setIsProcessingPayment(true);
+    const emailToSend = (checkoutEmail || '').trim() || user?.email || 'enzo@devsongs.com';
+    const purchasedList = [...cartItems];
+
+    try {
+      const uId = user?.id || 1;
+      let emailSuccessCount = 0;
+
+      for (const item of purchasedList) {
+        try {
+          const res = await fetch(`${API_URL}/api/companies/purchase-any`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: uId,
+              title: item.title,
+              artist: item.artist,
+              album: item.album || 'Single',
+              coverUrl: item.cover || null,
+              durationSec: item.durationSec || 210,
+              type: item.type,
+              price: item.price,
+              paymentMethod,
+              email: emailToSend
+            })
+          });
+          const d = await res.json();
+          if (d.success && d.emailSent) {
+            emailSuccessCount++;
+          }
+        } catch (itemErr) {
+          console.error('Erro ao processar item do carrinho:', item.title, itemErr);
+        }
+      }
+
+      // Desbloqueia todas as músicas adquiridas em tempo real
+      const newUnlocked = {};
+      purchasedList.forEach(item => {
+        const k = (item.title || '').trim().toLowerCase();
+        newUnlocked[k] = true;
+        if (item.id) newUnlocked[item.id] = true;
+        if (item.dbTrackId) newUnlocked[item.dbTrackId] = true;
+      });
+      setUnlockedTrackMap(prev => ({ ...prev, ...newUnlocked }));
+
+      await fetchUserPurchases();
+
+      // Se utilizou cupom, marca-o como UTILIZADO para não poder usar de novo
+      if (appliedCoupon?.code) {
+        const codeUsed = appliedCoupon.code.toUpperCase();
+        setUsedCoupons(prev => {
+          const next = [...new Set([...prev, codeUsed])];
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('devsongs_used_coupons', JSON.stringify(next));
+            } catch (e) {}
+          }
+          return next;
+        });
+      }
+
+      // Limpa carrinho e avança para a tela de confirmação/sucesso
+      saveCartToStorage([]);
+      setAppliedCoupon(null);
+      setLastOrderPurchased(purchasedList);
+      setCartStep('success');
+
+      setPurchaseNotice({
+        type: 'success',
+        text: `🎉 Compra de ${purchasedList.length} faixa(s) confirmada com sucesso! Liberadas na sua Biblioteca.${emailSuccessCount > 0 ? ` Comprovante enviado para ${emailToSend}.` : ''}`
+      });
+      setTimeout(() => setPurchaseNotice(null), 7000);
+    } catch (err) {
+      console.error('Erro no checkout do carrinho:', err);
+      if (appliedCoupon?.code) {
+        const codeUsed = appliedCoupon.code.toUpperCase();
+        setUsedCoupons(prev => {
+          const next = [...new Set([...prev, codeUsed])];
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('devsongs_used_coupons', JSON.stringify(next));
+            } catch (e) {}
+          }
+          return next;
+        });
+      }
+      saveCartToStorage([]);
+      setAppliedCoupon(null);
+      setLastOrderPurchased(purchasedList);
+      setCartStep('success');
+      await fetchUserPurchases();
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   useEffect(() => {
     fetch(`${API_URL}/api/companies`)
@@ -640,6 +1314,26 @@ export default function HomeUnifiedYouTubeMusic() {
       })
       .catch(() => {});
   }, []);
+
+  const fetchUserPurchases = useCallback(async () => {
+    const uId = user?.id || 1;
+    setIsPurchasesLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/companies/user/${uId}/purchases`);
+      const data = await res.json();
+      if (data && data.purchases) {
+        setUserPurchases(data.purchases);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar compras do usuário:', err);
+    } finally {
+      setIsPurchasesLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchUserPurchases();
+  }, [fetchUserPurchases]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -651,16 +1345,43 @@ export default function HomeUnifiedYouTubeMusic() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleSelectBaseMode = async (mode) => {
+    setBaseMode(mode);
+    setSelectedCompany(null);
+    setShowCompanyDropdown(false);
+
+    if (mode === 'all') {
+      setCompanyTracks([]);
+      return;
+    }
+
+    setIsCompanyLoading(true);
+    try {
+      const uId = user?.id || 1;
+      const res = await fetch(`${API_URL}/api/companies/multibase/tracks?mode=${mode}&userId=${uId}`);
+      const data = await res.json();
+      if (data && data.tracks) {
+        setCompanyTracks(data.tracks);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar faixas por modalidade:', err);
+    } finally {
+      setIsCompanyLoading(false);
+    }
+  };
+
   const handleSelectCompany = async (company) => {
     setSelectedCompany(company);
     setShowCompanyDropdown(false);
     if (!company) {
       setCompanyTracks([]);
+      setBaseMode('all');
       return;
     }
     setIsCompanyLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/companies/${company.id}/tracks`);
+      const uId = user?.id || 1;
+      const res = await fetch(`${API_URL}/api/companies/multibase/tracks?companyId=${company.id}&userId=${uId}`);
       const data = await res.json();
       if (data && data.tracks) {
         setCompanyTracks(data.tracks);
@@ -673,9 +1394,11 @@ export default function HomeUnifiedYouTubeMusic() {
   };
 
   const handleBuyCompanyTrack = async (track, type = 'buy') => {
-    if (!track || !selectedCompany) return;
+    if (!track) return false;
+    const compId = track.companyId || selectedCompany?.id || 1;
+    const compName = track.companyName || selectedCompany?.name || 'Gravadora Parceira';
     try {
-      const res = await fetch(`${API_URL}/api/companies/${selectedCompany.id}/${type}`, {
+      const res = await fetch(`${API_URL}/api/companies/${compId}/${type}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trackId: track.dbTrackId || track.id, userId: user?.id || 1 })
@@ -689,25 +1412,31 @@ export default function HomeUnifiedYouTubeMusic() {
               stockQuantity: data.remainingStock,
               plays: `Estoque: ${data.remainingStock} un`,
               availableForSale: data.remainingStock > 0,
-              availableForRent: data.remainingStock > 0
+              availableForRent: data.remainingStock > 0,
+              isPurchased: type === 'buy' ? true : t.isPurchased,
+              isRented: type === 'rent' ? true : t.isRented
             };
           }
           return t;
         }));
         setPurchaseNotice({
           type: 'success',
-          text: `${type === 'buy' ? 'Compra' : 'Aluguel'} de "${track.title}" realizado com sucesso! Restam ${data.remainingStock} unidades no estoque da ${selectedCompany.name}.`
+          text: `🎉 Pagamento aprovado! "${track.title}" foi liberada e adicionada à sua Biblioteca!`
         });
         setTimeout(() => setPurchaseNotice(null), 5500);
+        await fetchUserPurchases();
+        return true;
       } else {
         setPurchaseNotice({
           type: 'error',
-          text: data.error || 'Não foi possível processar a transação.'
+          text: data.error || 'Não foi possível processar o pagamento.'
         });
         setTimeout(() => setPurchaseNotice(null), 5500);
+        return false;
       }
     } catch (err) {
-      console.error('Erro na compra:', err);
+      console.error('Erro no pagamento:', err);
+      return false;
     }
   };
 
@@ -862,22 +1591,21 @@ export default function HomeUnifiedYouTubeMusic() {
   const [smartQueue, setSmartQueue] = useState([]);
   const [queueSource, setQueueSource] = useState('');
 
-  // Fila de reprodução dinâmica das faixas seguintes
-  const upcomingQueue = useMemo(() => {
-    if (!currentTrack) return [];
-    const pool = (tracks && tracks.length > 0) ? tracks : HOME_ESCOLHA_A_DEDO;
-    const currentIndex = pool.findIndex(t => t.id === currentTrack.id || (t.title && t.title.toLowerCase() === currentTrack.title?.toLowerCase()));
-    if (currentIndex >= 0 && currentIndex < pool.length - 1) {
-      return pool.slice(currentIndex + 1);
-    }
-    const filtered = pool.filter(t => t.id !== currentTrack.id && t.title !== currentTrack.title);
-    return filtered.slice(0, 15);
-  }, [currentTrack, tracks]);
+  // Faixas adquiridas válidas (compradas definitivas ou aluguel vigente)
+  const validPurchases = useMemo(() => {
+    return (userPurchases || []).filter(p => p.canPlay || p.type === 'buy' || !p.isExpired);
+  }, [userPurchases]);
 
+  // Fila de reprodução exclusiva para faixas compradas e alugadas ativas da biblioteca
   const displayQueue = useMemo(() => {
-    if (smartQueue && smartQueue.length > 0) return smartQueue;
-    return upcomingQueue;
-  }, [smartQueue, upcomingQueue]);
+    if (!currentTrack) return validPurchases;
+    return validPurchases.filter(p => {
+      const idMatch = (p.id && currentTrack.id && p.id === currentTrack.id) ||
+                      (p.dbTrackId && currentTrack.dbTrackId && p.dbTrackId === currentTrack.dbTrackId);
+      const titleMatch = p.title && currentTrack.title && p.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase();
+      return !idMatch && !titleMatch;
+    });
+  }, [validPurchases, currentTrack]);
 
   // Histórico de músicas ouvidas (Estilo Spotify - Lembra última música e ouvidas recentemente)
   const [lastTrack, setLastTrack] = useState(null);
@@ -890,24 +1618,9 @@ export default function HomeUnifiedYouTubeMusic() {
       if (storedLast) {
         const parsed = JSON.parse(storedLast);
         setLastTrack(parsed);
-        // Deixa o player preparado na barra inferior com a última música, pausada, exatamente igual ao Spotify!
+        // Deixa o player preparado na barra inferior com a última música, pausada
         setCurrentTrack(parsed);
         setDuration(parsed.durationSec || 214);
-
-        // Preenche a rádio inteligente inicial baseada no artista da última música ouvida e histórico
-        try {
-          const histArr = storedHistory ? JSON.parse(storedHistory) : [];
-          const histParam = histArr.map(t => t.artist).slice(0, 8).join(',');
-          fetch(`${API_URL}/api/music/smart-queue?artist=${encodeURIComponent(parsed.artist)}&title=${encodeURIComponent(parsed.title)}&history=${encodeURIComponent(histParam)}`)
-            .then(r => r.json())
-            .then(data => {
-              if (data && data.tracks && data.tracks.length > 0) {
-                setSmartQueue(data.tracks);
-                setQueueSource(data.source || `Rádio de ${parsed.artist}`);
-              }
-            })
-            .catch(() => {});
-        } catch (_) {}
       }
       if (storedHistory) {
         setRecentHistory(JSON.parse(storedHistory));
@@ -1071,8 +1784,18 @@ export default function HomeUnifiedYouTubeMusic() {
         }
         setActiveArtist(artistObj);
         setTracks(data.tracks || []);
-        if (data.albums) setAlbums(data.albums);
-        if (data.singles) setSingles(data.singles);
+        if (data.albums) {
+          setAlbums(data.albums.map(a => ({
+            ...a,
+            year: getDisplayAlbumYear(a, artistObj.name || query, a.year)
+          })));
+        }
+        if (data.singles) {
+          setSingles(data.singles.map(s => ({
+            ...s,
+            year: getDisplayAlbumYear(s, artistObj.name || query, s.year)
+          })));
+        }
         setAppearsOn(data.appearsOn || []);
       } else {
         setActiveArtist(null);
@@ -1252,9 +1975,33 @@ export default function HomeUnifiedYouTubeMusic() {
     };
   }, [isPlaying]);
 
-  // Play full song without 30s cut
-  const playTrack = async (track) => {
+  // Play full song with universal multibase lock protection
+  const playTrack = async (track, forcePlay = false) => {
     if (!track) return;
+
+    // Se não for reprodução forçada (ex: liberada imediatamente após checkout concluído com sucesso):
+    if (!forcePlay) {
+      const trackKey = (track.title || '').trim().toLowerCase();
+      const isLocallyUnlocked = Boolean(unlockedTrackMap[trackKey] || (track.id && unlockedTrackMap[track.id]));
+
+      const isOwned = isLocallyUnlocked || track.isPurchased || userPurchases.some(p => {
+        const titleMatch = p.title && track.title && p.title.trim().toLowerCase() === track.title.trim().toLowerCase();
+        const idMatch = (p.dbTrackId && p.dbTrackId === track.dbTrackId) || (p.id && p.id === track.id);
+        return (titleMatch || idMatch) && p.type === 'buy';
+      });
+
+      const isRentedActive = isLocallyUnlocked || (track.isRented && !track.isExpired) || userPurchases.some(p => {
+        const titleMatch = p.title && track.title && p.title.trim().toLowerCase() === track.title.trim().toLowerCase();
+        const idMatch = (p.dbTrackId && p.dbTrackId === track.dbTrackId) || (p.id && p.id === track.id);
+        return (titleMatch || idMatch) && !p.isExpired && p.type === 'rent';
+      });
+
+      if (!isOwned && !isRentedActive) {
+        addToCart(track, 'buy');
+        return; // Faixa bloqueada: adicionada ao carrinho para compra
+      }
+    }
+
     isClosingRef.current = false;
     setCurrentTrack(track);
     setIsPlaying(true);
@@ -1273,28 +2020,20 @@ export default function HomeUnifiedYouTubeMusic() {
       });
     } catch (_) {}
 
-    // Dispara a busca inteligente da Rádio de Afinidade / Gosto do Usuário (Smart Queue)
-    try {
-      const histParam = (recentHistory || []).map(t => t.artist).slice(0, 8).join(',');
-      fetch(`${API_URL}/api/music/smart-queue?artist=${encodeURIComponent(track.artist)}&title=${encodeURIComponent(track.title)}&history=${encodeURIComponent(histParam)}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data && data.tracks && data.tracks.length > 0) {
-            setSmartQueue(data.tracks);
-            setQueueSource(data.source || `Rádio de ${track.artist}`);
-          }
-        })
-        .catch(() => {});
-    } catch (_) {}
+
 
     try {
+      const cleanArtist = (track.artist || '').replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, '').trim();
       const searchParams = new URLSearchParams({
         title: track.title || '',
-        artist: track.artist || '',
+        artist: cleanArtist,
         album: (track.album && track.album !== 'Single' && track.album !== track.title) ? track.album : '',
         durationSec: track.durationSec || 0,
-        q: `${track.artist || ''} ${track.title || ''}`.trim()
+        q: `${cleanArtist} ${track.title || ''}`.trim()
       });
+      if (track.youtubeVideoId || track.youtube_video_id) {
+        searchParams.append('youtubeVideoId', track.youtubeVideoId || track.youtube_video_id);
+      }
       const res = await fetch(`${API_URL}/api/youtube/search?${searchParams.toString()}`);
       const data = await res.json();
 
@@ -1389,32 +2128,37 @@ export default function HomeUnifiedYouTubeMusic() {
   const handleNextTrack = () => {
     if (isClosingRef.current || !currentTrackRef.current) return;
 
-    // 1. Prioriza avançar na Fila Inteligente (Rádio do Artista & Gosto do Usuário)
-    if (smartQueue && smartQueue.length > 0) {
-      const nextTrack = smartQueue[0];
-      setSmartQueue(prev => prev.slice(1));
-      playTrack(nextTrack);
-      return;
-    }
+    // Avança exclusivamente entre as músicas compradas ou alugadas ativas da biblioteca
+    if (validPurchases.length === 0) return;
 
-    // 2. Fallback para lista de faixas do contexto atual
-    if (tracks.length === 0) return;
-    const currentIndex = tracks.findIndex(t => t.id === currentTrackRef.current?.id);
+    const currentIndex = validPurchases.findIndex(t => 
+      (t.id && t.id === currentTrackRef.current?.id) || 
+      (t.dbTrackId && t.dbTrackId === currentTrackRef.current?.dbTrackId) ||
+      (t.title && currentTrackRef.current?.title && t.title.trim().toLowerCase() === currentTrackRef.current.title.trim().toLowerCase())
+    );
+
     let nextIndex;
     if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * tracks.length);
+      nextIndex = Math.floor(Math.random() * validPurchases.length);
     } else {
-      nextIndex = (currentIndex + 1) % tracks.length;
+      nextIndex = currentIndex >= 0 ? (currentIndex + 1) % validPurchases.length : 0;
     }
-    playTrack(tracks[nextIndex]);
+    playTrack(validPurchases[nextIndex]);
   };
 
   const handlePrevTrack = () => {
     if (isClosingRef.current || !currentTrackRef.current) return;
-    if (tracks.length === 0) return;
-    const currentIndex = tracks.findIndex(t => t.id === currentTrackRef.current?.id);
-    const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length;
-    playTrack(tracks[prevIndex]);
+
+    if (validPurchases.length === 0) return;
+
+    const currentIndex = validPurchases.findIndex(t => 
+      (t.id && t.id === currentTrackRef.current?.id) || 
+      (t.dbTrackId && t.dbTrackId === currentTrackRef.current?.dbTrackId) ||
+      (t.title && currentTrackRef.current?.title && t.title.trim().toLowerCase() === currentTrackRef.current.title.trim().toLowerCase())
+    );
+
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : validPurchases.length - 1;
+    playTrack(validPurchases[prevIndex]);
   };
 
   const handleClosePlayer = (e) => {
@@ -1639,13 +2383,22 @@ export default function HomeUnifiedYouTubeMusic() {
       const data = await res.json();
 
       if (data && data.album) {
-        setSelectedAlbum(data.album);
+        setSelectedAlbum({
+          ...data.album,
+          year: getDisplayAlbumYear(data.album, artistNameParam, data.album.year)
+        });
       }
       if (data && data.relatedAlbums && data.relatedAlbums.length > 0) {
-        setRelatedAlbums(data.relatedAlbums);
+        setRelatedAlbums(data.relatedAlbums.map(a => ({
+          ...a,
+          year: getDisplayAlbumYear(a, a.artist || artistNameParam, a.year)
+        })));
       } else {
-        const pool = (albums && albums.length > 0) ? albums : HOME_ALBUNS_EM_ALTA;
-        setRelatedAlbums(pool.filter(a => a.id !== (data?.album?.id || album.id)).slice(0, 8));
+        const pool = (albums && albums.length > 0) ? albums : HOME_ALBUNS_PARA_VOCE;
+        setRelatedAlbums(pool.filter(a => a.id !== (data?.album?.id || album.id)).slice(0, 8).map(a => ({
+          ...a,
+          year: getDisplayAlbumYear(a, a.artist || artistNameParam, a.year)
+        })));
       }
       if (data && data.tracks && data.tracks.length > 0) {
         setAlbumTracks(data.tracks);
@@ -1921,32 +2674,88 @@ export default function HomeUnifiedYouTubeMusic() {
             <div className={styles.baseSelectorWrap} ref={companyDropdownRef}>
               <button
                 type="button"
-                className={`${styles.baseSelectorBtn} ${selectedCompany ? styles.baseSelectorBtnActive : ''}`}
+                className={`${styles.baseSelectorBtn} ${(selectedCompany || baseMode !== 'all') ? styles.baseSelectorBtnActive : ''}`}
                 onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
-                title="Alternar entre Bases / Empresas"
+                title="Alternar entre Bases e Modalidades"
               >
                 <Building2 size={16} />
-                <span>{selectedCompany ? selectedCompany.name : 'Todas as Bases'}</span>
+                <span>
+                  {selectedCompany
+                    ? selectedCompany.name
+                    : baseMode === 'streaming'
+                    ? 'Streaming'
+                    : baseMode === 'buy'
+                    ? 'Compras'
+                    : baseMode === 'rent'
+                    ? 'Aluguéis'
+                    : 'Todas as Bases'}
+                </span>
                 <ChevronDown size={14} />
               </button>
 
               {showCompanyDropdown && (
                 <div className={styles.baseDropdown}>
                   <div className={styles.baseDropdownHeader}>
-                    <span>Bases & Gravadoras Parceiras</span>
+                    <span>Modalidades de Base</span>
                   </div>
 
+                  {/* 1. Todas as Bases */}
                   <button
                     type="button"
-                    className={`${styles.baseDropdownItem} ${!selectedCompany ? styles.baseDropdownItemActive : ''}`}
-                    onClick={() => handleSelectCompany(null)}
+                    className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'all' ? styles.baseDropdownItemActive : ''}`}
+                    onClick={() => handleSelectBaseMode('all')}
                   >
                     <div className={styles.baseItemIconGlobal}>🌐</div>
                     <div className={styles.baseItemMeta}>
-                      <span className={styles.baseItemTitle}>Todas as Bases (Global)</span>
-                      <span className={styles.baseItemSub}>Catálogo geral aberto</span>
+                      <span className={styles.baseItemTitle}>Todas as Bases</span>
+                      <span className={styles.baseItemSub}>Apresenta todos os conteúdos disponíveis</span>
                     </div>
                   </button>
+
+                  {/* 2. Streaming */}
+                  <button
+                    type="button"
+                    className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'streaming' ? styles.baseDropdownItemActive : ''}`}
+                    onClick={() => handleSelectBaseMode('streaming')}
+                  >
+                    <div className={styles.baseItemIconGlobal}>▶️</div>
+                    <div className={styles.baseItemMeta}>
+                      <span className={styles.baseItemTitle}>Streaming</span>
+                      <span className={styles.baseItemSub}>Conteúdos autorizados para reprodução</span>
+                    </div>
+                  </button>
+
+                  {/* 3. Compras */}
+                  <button
+                    type="button"
+                    className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'buy' ? styles.baseDropdownItemActive : ''}`}
+                    onClick={() => handleSelectBaseMode('buy')}
+                  >
+                    <div className={styles.baseItemIconGlobal}>🛒</div>
+                    <div className={styles.baseItemMeta}>
+                      <span className={styles.baseItemTitle}>Compras</span>
+                      <span className={styles.baseItemSub}>Conteúdos disponíveis para aquisição</span>
+                    </div>
+                  </button>
+
+                  {/* 4. Aluguéis */}
+                  <button
+                    type="button"
+                    className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'rent' ? styles.baseDropdownItemActive : ''}`}
+                    onClick={() => handleSelectBaseMode('rent')}
+                  >
+                    <div className={styles.baseItemIconGlobal}>⏱️</div>
+                    <div className={styles.baseItemMeta}>
+                      <span className={styles.baseItemTitle}>Aluguéis</span>
+                      <span className={styles.baseItemSub}>Conteúdos para acesso temporário (30 dias)</span>
+                    </div>
+                  </button>
+
+                  <div className={styles.baseDropdownDivider} />
+
+                  <div className={styles.baseDropdownHeader}>
+                    <span>Gravadoras & Selos Parceiros</span>
+                  </div>
 
                   {companies.map((c) => (
                     <button
@@ -1972,6 +2781,22 @@ export default function HomeUnifiedYouTubeMusic() {
                 </div>
               )}
             </div>
+
+            {/* Botão de Carrinho de Compras com Badge */}
+            <button
+              type="button"
+              className={styles.cartHeaderBtn}
+              onClick={() => {
+                setCartStep('cart');
+                setIsCartOpen(true);
+              }}
+              title={`Carrinho de Compras (${cartItems.length} itens)`}
+            >
+              <ShoppingCart size={20} />
+              {cartItems.length > 0 && (
+                <span className={styles.cartBadge}>{cartItems.length}</span>
+              )}
+            </button>
 
             <button className={styles.castBtn} title="Transmitir para TV / Chromecast">
               <Tv size={20} />
@@ -2030,7 +2855,11 @@ export default function HomeUnifiedYouTubeMusic() {
                 <span>Explorar</span>
               </button>
               <button
-                onClick={() => setActiveTab('biblioteca')}
+                onClick={() => {
+                  setActiveTab('biblioteca');
+                  setViewMode('home');
+                  fetchUserPurchases();
+                }}
                 className={`${styles.navItem} ${activeTab === 'biblioteca' ? styles.navItemActive : ''}`}
                 title="Biblioteca"
               >
@@ -2095,68 +2924,87 @@ export default function HomeUnifiedYouTubeMusic() {
                 </div>
               )}
 
-              {/* Seletor de Base Específica: Hero e Catálogo de Estoque Exclusivo */}
-              {selectedCompany ? (
+              {/* 1. VISÃO DE BIBLIOTECA (Compras e Aluguéis do Usuário) */}
+              {activeTab === 'biblioteca' ? (
                 <section className={styles.companyHeroSection}>
                   <div className={styles.companyHeroCard}>
-                    <img
-                      src={selectedCompany.logo_url || '/img/logo-devsongs.png'}
-                      alt={selectedCompany.name}
-                      className={styles.companyHeroLogo}
-                      onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
-                    />
+                    <div className={styles.baseItemIconGlobal} style={{ width: 80, height: 80, fontSize: '2.5rem' }}>
+                      📚
+                    </div>
                     <div className={styles.companyHeroContent}>
                       <div className={styles.companyBadgeRow}>
-                        <span className={styles.companyBadgeTag}>Base Ativa</span>
-                        <span className={styles.companyGenreTag}>{selectedCompany.genre}</span>
-                        <span className={styles.companyCityTag}>{selectedCompany.city} - {selectedCompany.state}</span>
+                        <span className={styles.companyBadgeTag}>Sua Biblioteca</span>
+                        <span className={styles.companyGenreTag}>Licenças & Acessos</span>
                       </div>
-                      <h1 className={styles.companyHeroTitle}>{selectedCompany.name}</h1>
-                      <p className={styles.companyHeroDesc}>{selectedCompany.description}</p>
+                      <h1 className={styles.companyHeroTitle}>Conteúdos Adquiridos</h1>
+                      <p className={styles.companyHeroDesc}>
+                        Gerencie suas músicas compradas definitivamente e acompanhe o prazo de vigência dos seus aluguéis ativos.
+                      </p>
                       <div className={styles.companyStatsRow}>
-                        <span>Estoque total da base: <strong>{selectedCompany.total_stock || 0} unidades</strong></span>
-                        <span>•</span>
-                        <span>Músicas exclusivas: <strong>{companyTracks.length} faixas</strong></span>
+                        <span>Total de itens na biblioteca: <strong>{userPurchases.length} faixas</strong></span>
                       </div>
                     </div>
                     <button
                       type="button"
                       className={styles.btnVoltarGlobal}
-                      onClick={() => handleSelectCompany(null)}
-                      title="Voltar para todas as bases"
+                      onClick={() => {
+                        setActiveTab('inicio');
+                        handleSelectBaseMode('all');
+                      }}
+                      title="Explorar o catálogo"
                     >
-                      Ver Catálogo Global
+                      Explorar Catálogo
                     </button>
                   </div>
 
-                  {/* Lista de músicas com Estoque e Preços dessa Base */}
                   <div className={styles.companyTracksSection}>
                     <div className={styles.homeSectionHeader}>
                       <div>
-                        <h2 className={styles.homeSectionTitle}>Músicas e Estoque desta Base</h2>
+                        <h2 className={styles.homeSectionTitle}>Suas Faixas Compradas e Alugadas</h2>
                         <span className={styles.recentSectionSub}>
-                          Exclusivo da {selectedCompany.name} • Compre ou alugue com baixa direta de estoque
+                          Clique para reproduzir diretamente no player inferior
                         </span>
                       </div>
                     </div>
 
-                    {isCompanyLoading ? (
-                      <div style={{ padding: '2rem', textAlign: 'center', color: '#a7a7a7' }}>Carregando estoque da base...</div>
-                    ) : companyTracks.length === 0 ? (
-                      <div style={{ padding: '2rem', textAlign: 'center', color: '#a7a7a7' }}>Nenhuma música disponível no estoque desta base no momento.</div>
+                    {isPurchasesLoading ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: '#a7a7a7' }}>Carregando sua biblioteca...</div>
+                    ) : userPurchases.length === 0 ? (
+                      <div style={{ padding: '3rem', textAlign: 'center', color: '#a7a7a7', background: 'rgba(255,255,255,0.03)', borderRadius: 12 }}>
+                        <p style={{ fontSize: '1.05rem', marginBottom: '1rem', color: '#ffffff' }}>Você ainda não comprou ou alugou nenhuma faixa.</p>
+                        <button
+                          type="button"
+                          className={styles.btnVoltarGlobal}
+                          onClick={() => {
+                            setActiveTab('inicio');
+                            handleSelectBaseMode('buy');
+                          }}
+                        >
+                          Ver Músicas para Compra e Aluguel
+                        </button>
+                      </div>
                     ) : (
                       <div className={styles.companyTracksGrid}>
-                        {companyTracks.map((track) => {
-                          const isCurrent = currentTrack?.id === track.id || currentTrack?.title === track.title;
+                        {userPurchases.map((item) => {
+                          const isCurrent = currentTrack?.id === item.id || currentTrack?.title === item.title;
                           return (
                             <div
-                              key={track.id}
+                              key={item.purchaseId}
                               className={`${styles.companyTrackCard} ${isCurrent ? styles.companyTrackCardActive : ''}`}
                             >
-                              <div className={styles.companyTrackCoverWrap} onClick={() => playTrack(track)}>
+                              <div
+                                className={styles.companyTrackCoverWrap}
+                                onClick={() => {
+                                  if (item.canPlay) {
+                                    playTrack(item);
+                                  } else {
+                                    alert('Este aluguel expirou. Renove para continuar ouvindo.');
+                                  }
+                                }}
+                              >
                                 <img
-                                  src={track.cover || '/img/logo-devsongs.png'}
-                                  alt={track.title}
+                                  src={item.cover || '/img/logo-devsongs.png'}
+                                  alt={item.title}
                                   className={styles.companyTrackCover}
                                   onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
                                 />
@@ -2170,36 +3018,261 @@ export default function HomeUnifiedYouTubeMusic() {
                               </div>
 
                               <div className={styles.companyTrackInfo}>
+                                <span className={styles.companyTrackTitle} title={item.title}>{item.title}</span>
+                                <span className={styles.companyTrackArtist}>{(item.artist || '').replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, '')}</span>
+                                <span className={styles.companyTrackAlbum}>{item.album} • {item.companyName}</span>
+
+                                <div className={styles.companyStockBadgeRow}>
+                                  {item.type === 'buy' ? (
+                                    <span className={styles.purchasedBadge}>Comprado (Permanente)</span>
+                                  ) : item.isExpired ? (
+                                    <span className={styles.expiredBadge}>Aluguel Expirado</span>
+                                  ) : (
+                                    <span className={styles.rentedBadge}>Válido por {item.remainingDays} dias</span>
+                                  )}
+                                </div>
+
+                                <div className={styles.companyTrackActionsRow}>
+                                  {item.canPlay ? (
+                                    <button
+                                      type="button"
+                                      className={styles.btnBuyTrack}
+                                      onClick={() => playTrack(item)}
+                                      title="Reproduzir no player"
+                                    >
+                                      Ouvir Agora
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className={styles.btnRentTrack}
+                                      onClick={() => handleBuyCompanyTrack({ dbTrackId: item.dbTrackId, companyId: item.companyId, title: item.title }, 'rent')}
+                                      title="Renovar aluguel por mais 30 dias"
+                                    >
+                                      Renovar Aluguel
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              ) : (selectedCompany || baseMode !== 'all') ? (
+                /* 2. VISÃO DE BASE ESPECÍFICA OU MODALIDADE (Streaming / Compras / Aluguéis) */
+                <section className={styles.companyHeroSection}>
+                  <div className={styles.companyHeroCard}>
+                    {selectedCompany ? (
+                      <img
+                        src={selectedCompany.logo_url || '/img/logo-devsongs.png'}
+                        alt={selectedCompany.name}
+                        className={styles.companyHeroLogo}
+                        onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                      />
+                    ) : (
+                      <div className={styles.baseItemIconGlobal} style={{ width: 80, height: 80, fontSize: '2.5rem' }}>
+                        {baseMode === 'streaming' ? '▶️' : baseMode === 'buy' ? '🛒' : '⏱️'}
+                      </div>
+                    )}
+                    <div className={styles.companyHeroContent}>
+                      <div className={styles.companyBadgeRow}>
+                        <span className={styles.companyBadgeTag}>Base Ativa</span>
+                        <span className={styles.companyGenreTag}>
+                          {selectedCompany
+                            ? selectedCompany.genre
+                            : baseMode === 'streaming'
+                            ? 'Streaming Livre'
+                            : baseMode === 'buy'
+                            ? 'Aquisição Permanente'
+                            : 'Locação Temporária (30 dias)'}
+                        </span>
+                        {selectedCompany && (
+                          <span className={styles.companyCityTag}>{selectedCompany.city} - {selectedCompany.state}</span>
+                        )}
+                      </div>
+                      <h1 className={styles.companyHeroTitle}>
+                        {selectedCompany
+                          ? selectedCompany.name
+                          : baseMode === 'streaming'
+                          ? 'Base Streaming'
+                          : baseMode === 'buy'
+                          ? 'Base de Compras'
+                          : 'Base de Aluguéis'}
+                      </h1>
+                      <p className={styles.companyHeroDesc}>
+                        {selectedCompany
+                          ? selectedCompany.description
+                          : baseMode === 'streaming'
+                          ? 'Catálogo com faixas e lançamentos autorizados para reprodução musical contínua.'
+                          : baseMode === 'buy'
+                          ? 'Acervo exclusivo disponível para aquisição permanente de licenças com baixa em tempo real de estoque.'
+                          : 'Músicas e álbuns disponíveis para acesso temporário por 30 dias com controle inteligente de vigência.'}
+                      </p>
+                      <div className={styles.companyStatsRow}>
+                        <span>Músicas no acervo: <strong>{companyTracks.length} faixas</strong></span>
+                        {selectedCompany && (
+                          <>
+                            <span>•</span>
+                            <span>Estoque total: <strong>{selectedCompany.total_stock || 0} unidades</strong></span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.btnVoltarGlobal}
+                      onClick={() => handleSelectBaseMode('all')}
+                      title="Voltar para todas as bases"
+                    >
+                      Ver Todas as Bases
+                    </button>
+                  </div>
+
+                  {/* Lista de músicas com Estoque e Preços dessa Base */}
+                  <div className={styles.companyTracksSection}>
+                    <div className={styles.homeSectionHeader}>
+                      <div>
+                        <h2 className={styles.homeSectionTitle}>
+                          {selectedCompany
+                            ? `Acervo da ${selectedCompany.name}`
+                            : baseMode === 'streaming'
+                            ? 'Músicas Autorizadas para Streaming'
+                            : baseMode === 'buy'
+                            ? 'Músicas Disponíveis para Compra'
+                            : 'Músicas Disponíveis para Aluguel'}
+                        </h2>
+                        <span className={styles.recentSectionSub}>
+                          {selectedCompany
+                            ? `Exclusivo da ${selectedCompany.name} • Compre ou alugue com baixa direta de estoque`
+                            : baseMode === 'streaming'
+                            ? 'Ouça com alta fidelidade sem restrições'
+                            : baseMode === 'buy'
+                            ? 'Garanta sua cópia com acesso permanente em sua biblioteca'
+                            : 'Alugue por 30 dias com preço acessível'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isCompanyLoading ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: '#a7a7a7' }}>Carregando catálogo da base...</div>
+                    ) : companyTracks.length === 0 ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: '#a7a7a7' }}>Nenhuma música disponível nesta modalidade no momento.</div>
+                    ) : (
+                      <div className={styles.companyTracksGrid}>
+                        {companyTracks.map((track) => {
+                          const isCurrent = currentTrack?.id === track.id || currentTrack?.title === track.title;
+                          const isOwned = track.isPurchased || userPurchases.some(p => (p.dbTrackId === track.dbTrackId || p.id === track.id) && p.type === 'buy');
+                          const isRentedActive = track.isRented || userPurchases.some(p => (p.dbTrackId === track.dbTrackId || p.id === track.id) && !p.isExpired && p.type === 'rent');
+                          const isUnlocked = isOwned || isRentedActive;
+
+                          return (
+                            <div
+                              key={track.id}
+                              className={`${styles.companyTrackCard} ${isCurrent ? styles.companyTrackCardActive : ''}`}
+                            >
+                              <div
+                                className={styles.companyTrackCoverWrap}
+                                onClick={() => {
+                                  if (isUnlocked) {
+                                    playTrack(track);
+                                  } else {
+                                    addToCart(track, 'buy');
+                                  }
+                                }}
+                              >
+                                <img
+                                  src={track.cover || '/img/logo-devsongs.png'}
+                                  alt={track.title}
+                                  className={styles.companyTrackCover}
+                                  onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                />
+                                {!isUnlocked && (
+                                  <div className={styles.lockOverlay} title="Faixa Bloqueada • Requer Compra ou Aluguel">
+                                    <Lock size={14} />
+                                  </div>
+                                )}
+                                <div className={styles.companyTrackPlayOverlay}>
+                                  {isUnlocked ? (
+                                    isCurrent && isPlaying ? (
+                                      <Pause size={22} fill="#ffffff" color="#ffffff" />
+                                    ) : (
+                                      <Play size={22} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
+                                    )
+                                  ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: '#ffffff', fontSize: '0.74rem', fontWeight: 700 }}>
+                                      <Lock size={20} />
+                                      <span>Liberar Acesso</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className={styles.companyTrackInfo}>
                                 <span className={styles.companyTrackTitle} title={track.title}>{track.title}</span>
                                 <span className={styles.companyTrackArtist}>{track.artist}</span>
-                                <span className={styles.companyTrackAlbum}>{track.album}</span>
+                                <span className={styles.companyTrackAlbum}>{track.album} • {track.companyName}</span>
 
                                 <div className={styles.companyStockBadgeRow}>
                                   <span className={`${styles.stockBadge} ${track.stockQuantity <= 10 ? styles.stockBadgeLow : ''}`}>
                                     Estoque: {track.stockQuantity} un
                                   </span>
                                   {track.isExclusive && <span className={styles.exclusiveBadge}>Exclusivo</span>}
+                                  {isOwned ? (
+                                    <span className={styles.purchasedBadge}>Comprado (Liberada)</span>
+                                  ) : isRentedActive ? (
+                                    <span className={styles.rentedBadge}>Alugada (Liberada)</span>
+                                  ) : (
+                                    <span className={styles.lockedBadge}>
+                                      <Lock size={11} /> Bloqueada
+                                    </span>
+                                  )}
                                 </div>
 
                                 <div className={styles.companyTrackActionsRow}>
-                                  <button
-                                    type="button"
-                                    className={styles.btnBuyTrack}
-                                    disabled={!track.availableForSale}
-                                    onClick={() => handleBuyCompanyTrack(track, 'buy')}
-                                    title={`Comprar cópia por ${track.priceSale}`}
-                                  >
-                                    Comprar {track.priceSale}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={styles.btnRentTrack}
-                                    disabled={!track.availableForRent}
-                                    onClick={() => handleBuyCompanyTrack(track, 'rent')}
-                                    title={`Alugar por 30 dias por ${track.priceRent}`}
-                                  >
-                                    Alugar {track.priceRent}
-                                  </button>
+                                  {isUnlocked ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className={styles.btnBuyTrack}
+                                        onClick={() => playTrack(track)}
+                                        title="Reproduzir esta faixa agora"
+                                      >
+                                        Ouvir Agora ▶
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.btnRentTrack}
+                                        onClick={() => setActiveTab('biblioteca')}
+                                        title="Ver na Biblioteca"
+                                      >
+                                        Na Biblioteca 📚
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className={styles.btnBuyTrack}
+                                        disabled={!track.availableForSale}
+                                        onClick={() => addToCart(track, 'buy')}
+                                        title={`Adicionar compra ao carrinho por ${track.priceSale}`}
+                                      >
+                                        Comprar {track.priceSale}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={styles.btnRentTrack}
+                                        disabled={!track.availableForRent}
+                                        onClick={() => addToCart(track, 'rent')}
+                                        title={`Adicionar aluguel ao carrinho por ${track.priceRent}`}
+                                      >
+                                        Alugar {track.priceRent}
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -2211,6 +3284,7 @@ export default function HomeUnifiedYouTubeMusic() {
                 </section>
               ) : (
                 <>
+
                   {/* ─── CONTINUAR OUVINDO (Estilo Spotify - Últimas Músicas Ouvidas) ─── */}
                   {(() => {
                     const displayList = (recentHistory && recentHistory.length > 0)
@@ -2258,9 +3332,9 @@ export default function HomeUnifiedYouTubeMusic() {
 
                             <div className={styles.spotifyRecentPlayCircle}>
                               {isCurrent && isPlaying ? (
-                                <Pause size={20} fill="#030303" color="#030303" />
+                                <Pause size={16} fill="#030303" color="#030303" />
                               ) : (
-                                <Play size={20} fill="#030303" color="#030303" style={{ marginLeft: 2 }} />
+                                <Play size={16} fill="#030303" color="#030303" style={{ marginLeft: 2 }} />
                               )}
                             </div>
                           </div>
@@ -2334,9 +3408,9 @@ export default function HomeUnifiedYouTubeMusic() {
                           />
                           <div className={styles.escolhaDedoPlayOverlay}>
                             {isCurrent && isPlaying ? (
-                              <Pause size={18} fill="#ffffff" color="#ffffff" />
+                              <Pause size={15} fill="#ffffff" color="#ffffff" />
                             ) : (
-                              <Play size={18} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
+                              <Play size={15} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
                             )}
                           </div>
                         </div>
@@ -2466,7 +3540,7 @@ export default function HomeUnifiedYouTubeMusic() {
                     {selectedAlbum.explicit && <span className={styles.explicitTagSmall}>E</span>}
                     <span>Álbum</span>
                     <span className={styles.albumDot}>•</span>
-                    <span>{selectedAlbum.year || '2025'}</span>
+                    <span>{getDisplayAlbumYear(selectedAlbum, selectedAlbum.artistName || activeArtist?.name, selectedAlbum.year)}</span>
                   </div>
 
                   <div className={styles.albumHeroStats}>
@@ -2629,7 +3703,7 @@ export default function HomeUnifiedYouTubeMusic() {
                         </div>
                         <span className={styles.relatedAlbumTitle}>{alb.title}</span>
                         <span className={styles.relatedAlbumMeta}>
-                          Álbum • {alb.artist} {alb.year ? `• ${alb.year}` : ''}
+                          Álbum • {alb.artist} • {getDisplayAlbumYear(alb, alb.artist, alb.year)}
                         </span>
                       </div>
                     ))}
@@ -3246,7 +4320,7 @@ export default function HomeUnifiedYouTubeMusic() {
                           </h3>
                           <div className={styles.mediaCardSubtitle}>
                             {album.explicit && <span className={styles.explicitBadge}>E</span>}
-                            <span>{album.year}</span>
+                            <span>{getDisplayAlbumYear(album, activeArtist?.name || album.artist, album.year)}</span>
                             <span className={styles.albumDot}>•</span>
                             <span className={styles.albumTypeLabel}>Álbum</span>
                           </div>
@@ -3318,7 +4392,7 @@ export default function HomeUnifiedYouTubeMusic() {
                           </h3>
                           <div className={styles.mediaCardSubtitle}>
                             {single.explicit && <span className={styles.explicitBadge}>E</span>}
-                            <span>{single.year}</span>
+                            <span>{getDisplayAlbumYear(single, activeArtist?.name || single.artist, single.year)}</span>
                             <span className={styles.albumDot}>•</span>
                             <span className={styles.albumTypeLabel}>Single / EP</span>
                           </div>
@@ -3408,9 +4482,798 @@ export default function HomeUnifiedYouTubeMusic() {
         </main>
       </div> {/* fim appBody */}
 
+      {/* ─── CARRINHO DE COMPRAS INTEGRADO (SUBSTITUI MODAL POPUP) ─── */}
+      {isCartOpen && (
+        <div
+          className={styles.cartBackdrop}
+          onClick={() => setIsCartOpen(false)}
+          title="Clique para fechar o carrinho"
+        />
+      )}
 
+      {isCartOpen && (
+        <aside className={styles.cartDrawer} onClick={(e) => e.stopPropagation()} aria-label="Carrinho de Compras">
+          {/* Cabeçalho do Carrinho */}
+          <div className={styles.cartHeader}>
+            <div className={styles.cartHeaderTitleWrap}>
+              <h2 className={styles.cartHeaderTitle}>
+                <ShoppingCart size={22} color="#10b981" />
+                <span>Carrinho de Compras</span>
+              </h2>
+              {cartItems.length > 0 && (
+                <span className={styles.cartHeaderBadge}>
+                  {cartItems.length} {cartItems.length === 1 ? 'item' : 'itens'}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              className={styles.cartCloseBtn}
+              onClick={() => setIsCartOpen(false)}
+              title="Fechar Carrinho"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-        {/* Backdrop escuro quando o vídeo está em Modo Cinema Expandido */}
+          {/* Conteúdo do Carrinho */}
+          <div className={styles.cartContent}>
+            {/* ETAPA: SUCESSO DO PEDIDO */}
+            {cartStep === 'success' ? (
+              <div className={styles.cartSuccessBox}>
+                <div style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: '50%',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#10b981'
+                }}>
+                  <CheckCircle2 size={40} />
+                </div>
+                <h3 className={styles.cartSuccessTitle}>Pagamento Confirmado!</h3>
+                <p className={styles.cartSuccessDesc}>
+                  Parabéns! Suas músicas foram desbloqueadas com sucesso e já estão disponíveis com reprodução ilimitada na sua biblioteca do DevSongs.
+                </p>
+
+                {checkoutEmail && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: '0.82rem',
+                    color: '#34d399'
+                  }}>
+                    <Mail size={16} />
+                    <span>Recibo e comprovante enviados para <strong>{checkoutEmail}</strong></span>
+                  </div>
+                )}
+
+                {lastOrderPurchased.length > 0 && (
+                  <div style={{ width: '100%', marginTop: '0.5rem', textAlign: 'left' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 8 }}>
+                      Faixas Adquiridas ({lastOrderPurchased.length}):
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {lastOrderPurchased.map((it, idx) => (
+                        <div key={idx} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          padding: '6px 10px',
+                          borderRadius: 8
+                        }}>
+                          <img
+                            src={it.cover || '/img/logo-devsongs.png'}
+                            alt={it.title}
+                            style={{ width: 34, height: 34, borderRadius: 6, objectFit: 'cover' }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.86rem', color: '#fff', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {it.title}
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+                              {it.type === 'buy' ? '✨ Compra Definitiva' : '⏳ Aluguel 30 dias'} • R$ {Number(it.price || 0).toFixed(2).replace('.', ',')}
+                            </div>
+                          </div>
+                          <Check size={16} color="#10b981" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className={styles.btnCartCheckout}
+                  style={{ marginTop: '1rem' }}
+                  onClick={() => {
+                    setCartStep('cart');
+                    setIsCartOpen(false);
+                  }}
+                >
+                  <Play size={18} fill="currentColor" />
+                  <span>Continuar Ouvindo Músicas</span>
+                </button>
+              </div>
+            ) : cartItems.length === 0 ? (
+              /* ESTADO: CARRINHO VAZIO */
+              <div className={styles.cartEmptyState}>
+                <div className={styles.cartEmptyIconWrap}>
+                  <ShoppingBag size={38} />
+                </div>
+                <h3 className={styles.cartEmptyTitle}>Seu carrinho está vazio</h3>
+                <p className={styles.cartEmptySub}>
+                  Navegue pelo catálogo de gravadoras e selecione músicas para comprar ou alugar. Elas aparecerão aqui para você finalizar tudo de uma vez.
+                </p>
+                <button
+                  type="button"
+                  className={styles.btnCartSecondary}
+                  style={{ width: 'auto', padding: '0.7rem 1.4rem', marginTop: '0.5rem' }}
+                  onClick={() => setIsCartOpen(false)}
+                >
+                  Explorar Catálogo
+                </button>
+              </div>
+            ) : cartStep === 'cart' ? (
+              /* ETAPA 1: REVISÃO DE ITENS DO CARRINHO */
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+                    Itens no Carrinho ({cartItems.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearCart}
+                    style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <Trash2 size={13} />
+                    <span>Esvaziar</span>
+                  </button>
+                </div>
+
+                <div className={styles.cartItemsList}>
+                  {cartItems.map((item) => (
+                    <div key={item.cartId} className={styles.cartItemCard}>
+                      <div className={styles.cartItemTopRow}>
+                        <div className={styles.cartItemCoverWrap}>
+                          <img
+                            src={item.cover || '/img/logo-devsongs.png'}
+                            alt={item.title}
+                            className={styles.cartItemCover}
+                            onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                          />
+                        </div>
+
+                        <div className={styles.cartItemInfo}>
+                          <span className={styles.cartItemTitle} title={item.title}>{item.title}</span>
+                          <span className={styles.cartItemArtist}>{item.artist}</span>
+                        </div>
+
+                        <div className={styles.cartItemRightMeta}>
+                          <span className={styles.cartItemPrice}>
+                            R$ {Number(item.price || 0).toFixed(2).replace('.', ',')}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.cartItemRemoveBtn}
+                            onClick={() => removeFromCart(item.cartId)}
+                            title="Remover música do carrinho"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Seletor Segmentado Moderno: Compra Vitalícia vs Aluguel */}
+                      <div className={styles.cartSegmentedControl}>
+                        <button
+                          type="button"
+                          className={`${styles.cartSegmentBtn} ${item.type === 'buy' ? styles.cartSegmentBtnActiveBuy : ''}`}
+                          onClick={() => item.type !== 'buy' && toggleCartItemType(item.cartId)}
+                          title="Alternar para Compra Vitalícia"
+                        >
+                          <div className={styles.cartSegmentInner}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Sparkles size={13} color={item.type === 'buy' ? '#10b981' : '#94a3b8'} />
+                              <span className={styles.cartSegmentTitle}>Compra Vitalícia</span>
+                            </div>
+                            <span className={styles.cartSegmentPriceTag}>
+                              {item.rawTrack?.salePrice || item.rawTrack?.priceSale || 'R$ 4,90'}
+                            </span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`${styles.cartSegmentBtn} ${item.type === 'rent' ? styles.cartSegmentBtnActiveRent : ''}`}
+                          onClick={() => item.type !== 'rent' && toggleCartItemType(item.cartId)}
+                          title="Alternar para Aluguel por 30 Dias"
+                        >
+                          <div className={styles.cartSegmentInner}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Clock size={13} color={item.type === 'rent' ? '#3b82f6' : '#94a3b8'} />
+                              <span className={styles.cartSegmentTitle}>Aluguel 30d</span>
+                            </div>
+                            <span className={styles.cartSegmentPriceTag}>
+                              {item.rawTrack?.rentPrice || item.rawTrack?.priceRent || 'R$ 1,90'}
+                            </span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Seção de Cupom de Desconto */}
+                <div className={styles.cartCouponSection}>
+                  <div className={styles.cartCouponHeader}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Tag size={15} color="#10b981" />
+                      <span className={styles.cartCouponLabel}>Cupom de Desconto</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={styles.cartCouponToggleBtn}
+                      onClick={() => setShowCreateCoupon(!showCreateCoupon)}
+                      title={showCreateCoupon ? 'Fechar criador de cupom' : 'Criar novo cupom de desconto'}
+                    >
+                      {showCreateCoupon ? 'Fechar' : '+ Criar Novo Cupom'}
+                    </button>
+                  </div>
+
+                  {/* Formulário de Criação de Novo Cupom */}
+                  {showCreateCoupon ? (
+                    <form onSubmit={handleCreateCoupon} className={styles.cartCouponCreateBox}>
+                      <div className={styles.cartCouponCreateTitleRow}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#ffffff' }}>
+                          ✨ Criar Novo Cupom de Uso Único
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                          (Após ser usado 1x na compra, será desativado)
+                        </span>
+                      </div>
+
+                      <div className={styles.cartCouponCreateRow}>
+                        <input
+                          type="text"
+                          placeholder="Código (ex: MEUCUPOM30)"
+                          value={newCouponForm.code}
+                          onChange={(e) => setNewCouponForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                          className={styles.cartCouponInput}
+                          maxLength={15}
+                        />
+
+                        <div className={styles.cartCouponTypeRow}>
+                          <button
+                            type="button"
+                            className={`${styles.cartCouponTypeBtn} ${newCouponForm.type === 'percent' ? styles.cartCouponTypeBtnActive : ''}`}
+                            onClick={() => setNewCouponForm(prev => ({ ...prev, type: 'percent', value: '20' }))}
+                          >
+                            % Porcentagem
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.cartCouponTypeBtn} ${newCouponForm.type === 'fixed' ? styles.cartCouponTypeBtnActive : ''}`}
+                            onClick={() => setNewCouponForm(prev => ({ ...prev, type: 'fixed', value: '3.00' }))}
+                          >
+                            R$ Fixo
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input
+                            type="number"
+                            min="1"
+                            max={newCouponForm.type === 'percent' ? 100 : 999}
+                            value={newCouponForm.value}
+                            onChange={(e) => setNewCouponForm(prev => ({ ...prev, value: e.target.value }))}
+                            className={styles.cartCouponValueInput}
+                            placeholder="Valor"
+                          />
+                          <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 700 }}>
+                            {newCouponForm.type === 'percent' ? '%' : 'R$'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                        <button type="submit" className={styles.cartCouponCreateSubmitBtn}>
+                          Salvar e Aplicar Cupom
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.cartCouponCreateCancelBtn}
+                          onClick={() => setShowCreateCoupon(false)}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  ) : appliedCoupon ? (
+                    /* Cupom Atualmente Aplicado */
+                    <div className={styles.cartCouponAppliedBox}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div className={styles.cartCouponBadge}>
+                            <Percent size={12} />
+                            <span>{appliedCoupon.code}</span>
+                          </div>
+                          <span className={styles.cartCouponDesc} title={appliedCoupon.label}>
+                            {appliedCoupon.label} (- R$ {couponDiscount.toFixed(2).replace('.', ',')})
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.68rem', color: '#10b981', marginLeft: 2 }}>
+                          🔒 Uso único: Este cupom será invalidado após a confirmação deste pedido.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.cartCouponRemoveBtn}
+                        onClick={handleRemoveCoupon}
+                        title="Remover cupom"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  ) : (
+                    /* Formulário Normal de Aplicação */
+                    <>
+                      <form onSubmit={handleApplyCoupon} className={styles.cartCouponForm}>
+                        <input
+                          type="text"
+                          placeholder="Digite o código (ex: DEVSONGS10)"
+                          value={couponInput}
+                          onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                          className={styles.cartCouponInput}
+                        />
+                        <button
+                          type="submit"
+                          className={styles.cartCouponBtn}
+                          disabled={!couponInput.trim()}
+                        >
+                          Aplicar
+                        </button>
+                      </form>
+
+                      {/* Lista de Cupons Disponíveis / Sugestões */}
+                      {availableCouponsList.length > 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Disponíveis:</span>
+                          {availableCouponsList.slice(0, 4).map(code => (
+                            <button
+                              key={code}
+                              type="button"
+                              onClick={(e) => handleApplyCoupon(e, code)}
+                              className={styles.cartCouponQuickTag}
+                              title={`Clique para aplicar ${code}`}
+                            >
+                              {code} ({allCoupons[code]?.label?.split(' ')[0]})
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.72rem', color: '#eab308', background: 'rgba(234, 179, 8, 0.1)', padding: '5px 8px', borderRadius: 6 }}>
+                          ⚠️ Todos os cupons padrão já foram utilizados! Clique em <strong>"+ Criar Novo Cupom"</strong> acima para criar um cupom inédito.
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {couponFeedback && (
+                    <div className={`${styles.cartCouponAlert} ${couponFeedback.type === 'error' ? styles.cartCouponAlertError : styles.cartCouponAlertSuccess}`}>
+                      {couponFeedback.message}
+                    </div>
+                  )}
+                </div>
+
+                {/* Resumo do Pedido */}
+                <div className={styles.cartOrderSummary}>
+                  <div className={styles.cartSummaryRow}>
+                    <span>Subtotal ({cartItems.length} {cartItems.length === 1 ? 'item' : 'itens'})</span>
+                    <span>R$ {cartSubtotal.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  {appliedCoupon && (
+                    <div className={styles.cartSummaryRow}>
+                      <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Tag size={13} /> Desconto Cupom ({appliedCoupon.code})
+                      </span>
+                      <span style={{ color: '#10b981', fontWeight: 700 }}>
+                        - R$ {couponDiscount.toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                  )}
+                  <div className={styles.cartSummaryRow}>
+                    <span>Acesso imediato</span>
+                    <span style={{ color: '#60a5fa' }}>Grátis (Digital)</span>
+                  </div>
+                  <div className={styles.cartSummaryTotalRow}>
+                    <span>Total</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      {appliedCoupon && (
+                        <span style={{ fontSize: '0.85rem', color: '#94a3b8', textDecoration: 'line-through' }}>
+                          R$ {cartSubtotal.toFixed(2).replace('.', ',')}
+                        </span>
+                      )}
+                      <span style={{ color: '#10b981' }}>R$ {cartTotal.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* ETAPA 2: PROCESSO DE PAGAMENTO / CHECKOUT NO CARRINHO */
+              <>
+                <button
+                  type="button"
+                  className={styles.cartBackToItemsBtn}
+                  onClick={() => setCartStep('cart')}
+                >
+                  <ArrowLeft size={16} />
+                  <span>Voltar aos itens do carrinho</span>
+                </button>
+
+                {/* Resumo compacto de valor */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: 12,
+                  padding: '0.85rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'block' }}>Total do Pedido:</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981' }}>
+                        R$ {cartTotal.toFixed(2).replace('.', ',')}
+                      </span>
+                      {appliedCoupon && (
+                        <span style={{ fontSize: '0.78rem', color: '#94a3b8', textDecoration: 'line-through' }}>
+                          R$ {cartSubtotal.toFixed(2).replace('.', ',')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    <span style={{ fontSize: '0.78rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '3px 8px', borderRadius: 999, fontWeight: 700 }}>
+                      {cartItems.length} {cartItems.length === 1 ? 'faixa selecionada' : 'faixas selecionadas'}
+                    </span>
+                    {appliedCoupon && (
+                      <span style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Tag size={11} /> Cupom: {appliedCoupon.code}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Abas de Formas de Pagamento */}
+                <div className={styles.paymentMethodsRow}>
+                  <span className={styles.paymentMethodTitle}>Forma de Pagamento</span>
+                  <div className={styles.paymentTabs}>
+                    <button
+                      type="button"
+                      className={`${styles.paymentTabBtn} ${paymentMethod === 'pix' ? styles.paymentTabBtnActive : ''}`}
+                      onClick={() => setPaymentMethod('pix')}
+                    >
+                      <QrCode size={16} style={{ marginRight: 6 }} />
+                      Pix Instantâneo
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.paymentTabBtn} ${paymentMethod === 'card' ? styles.paymentTabBtnActive : ''}`}
+                      onClick={() => setPaymentMethod('card')}
+                    >
+                      <CreditCard size={16} style={{ marginRight: 6 }} />
+                      Cartão de Crédito
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.paymentTabBtn} ${paymentMethod === 'balance' ? styles.paymentTabBtnActive : ''}`}
+                      onClick={() => setPaymentMethod('balance')}
+                    >
+                      <Sparkles size={16} style={{ marginRight: 6 }} />
+                      Saldo DevSongs
+                    </button>
+                  </div>
+                </div>
+
+                {/* Conteúdo específico da forma selecionada */}
+                {paymentMethod === 'pix' && (
+                  <div className={styles.pixQrSection}>
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ffffff', display: 'block' }}>
+                        Escaneie o QR Code Pix Oficial
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                        Abra o app do seu banco e aponte a câmera para o QR Code abaixo
+                      </span>
+                    </div>
+
+                    <div className={styles.pixQrWrap}>
+                      {pixQrDataUrl ? (
+                        <img
+                          src={pixQrDataUrl}
+                          alt="QR Code Pix Oficial Banco Central"
+                          style={{ width: 200, height: 200, display: 'block', borderRadius: 8 }}
+                        />
+                      ) : (
+                        <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                          Gerando QR Code Pix...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Chave de Destino com botão de configurar */}
+                    <div className={styles.pixKeyConfigRow}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.74rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Chave Pix de Destino
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingPixKey(!isEditingPixKey)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#38bdf8',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {isEditingPixKey ? 'Salvar Chave' : 'Alterar Chave'}
+                        </button>
+                      </div>
+
+                      {isEditingPixKey ? (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                          <input
+                            type="text"
+                            value={pixReceiverKey}
+                            onChange={(e) => setPixReceiverKey(e.target.value)}
+                            placeholder="E-mail, CPF, celular ou EVP Nubank"
+                            style={{
+                              flex: 1,
+                              background: 'rgba(0, 0, 0, 0.45)',
+                              border: '1px solid #10b981',
+                              borderRadius: 6,
+                              color: '#fff',
+                              padding: '5px 8px',
+                              fontSize: '0.8rem',
+                              outline: 'none'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                localStorage.setItem('devsongs_pix_key', pixReceiverKey);
+                              }
+                              setIsEditingPixKey(false);
+                            }}
+                            style={{
+                              background: '#10b981',
+                              border: 'none',
+                              color: '#fff',
+                              borderRadius: 6,
+                              padding: '5px 10px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            OK
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '0.84rem', color: '#e2e8f0', fontWeight: 600, wordBreak: 'break-all' }}>
+                          {pixReceiverKey || 'enzo@devsongs.com.br'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Pix Copia e Cola */}
+                    <div className={styles.pixCopyRow}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={pixCodeString || 'Gerando código Pix Copia e Cola...'}
+                        className={styles.pixInputCode}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyPix}
+                        className={styles.btnCopyPix}
+                        title="Copiar código Pix"
+                      >
+                        {copiedPix ? <Check size={16} /> : <Copy size={16} />}
+                        <span>{copiedPix ? 'Copiado!' : 'Copiar'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === 'card' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {/* Cartão de Crédito Visual */}
+                    <div className={styles.cardPreviewBox}>
+                      <div className={styles.cardTopRow}>
+                        <div className={styles.cardChip} />
+                        <span className={styles.cardBrand}>DEVSONGS PAY</span>
+                      </div>
+                      <div className={styles.cardNumberText}>
+                        {cardForm.number || '•••• •••• •••• ••••'}
+                      </div>
+                      <div className={styles.cardBottomRow}>
+                        <div>
+                          <div style={{ fontSize: '0.62rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Titular
+                          </div>
+                          <div className={styles.cardHolderName}>
+                            {cardForm.name || 'NOME DO TITULAR'}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.62rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Validade
+                          </div>
+                          <div className={styles.cardExpiryDate}>
+                            {cardForm.expiry || 'MM/AA'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Inputs do Cartão com Validações */}
+                    <div className={styles.cardInputsGrid}>
+                      <div className={styles.cardInputGroup}>
+                        <label className={styles.cardInputLabel}>Número do Cartão</label>
+                        <input
+                          type="text"
+                          placeholder="0000 0000 0000 0000"
+                          value={cardForm.number}
+                          onChange={handleCardNumberChange}
+                          maxLength={19}
+                          className={styles.cardTextInput}
+                        />
+                      </div>
+
+                      <div className={styles.cardInputGroup}>
+                        <label className={styles.cardInputLabel}>Nome Impresso no Cartão (Somente Letras)</label>
+                        <input
+                          type="text"
+                          placeholder="EX: ENZO VIEIRA"
+                          value={cardForm.name}
+                          onChange={handleCardNameChange}
+                          className={styles.cardTextInput}
+                        />
+                      </div>
+
+                      <div className={styles.cardInputsRow}>
+                        <div className={styles.cardInputGroup}>
+                          <label className={styles.cardInputLabel}>Validade</label>
+                          <input
+                            type="text"
+                            placeholder="MM/AA"
+                            value={cardForm.expiry}
+                            onChange={handleCardExpiryChange}
+                            maxLength={5}
+                            className={styles.cardTextInput}
+                          />
+                        </div>
+                        <div className={styles.cardInputGroup}>
+                          <label className={styles.cardInputLabel}>CVV</label>
+                          <input
+                            type="password"
+                            placeholder="•••"
+                            value={cardForm.cvv}
+                            onChange={(e) => setCardForm(prev => ({ ...prev, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                            maxLength={4}
+                            className={styles.cardTextInput}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === 'balance' && (
+                  <div className={styles.pixBox}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Sparkles size={20} color="#10b981" />
+                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#ffffff' }}>
+                        Saldo em Conta DevSongs
+                      </span>
+                    </div>
+                    <span className={styles.pixText}>
+                      Seu saldo atual disponível para compras: <strong style={{ color: '#10b981' }}>R$ 150,00</strong>.
+                      O valor de R$ {cartTotal.toFixed(2).replace('.', ',')} será debitado imediatamente e as faixas liberadas.
+                    </span>
+                  </div>
+                )}
+
+                {/* E-mail de confirmação para envio do recibo */}
+                <div className={styles.emailInputWrap}>
+                  <label className={styles.emailInputLabel}>
+                    <Mail size={15} color="#10b981" />
+                    <span>E-mail para Envio do Comprovante</span>
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="seuemail@exemplo.com"
+                    value={checkoutEmail}
+                    onChange={(e) => setCheckoutEmail(e.target.value)}
+                    className={styles.emailInputField}
+                  />
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    Enviaremos o comprovante de pagamento e a licença de reprodução para este e-mail.
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Rodapé / Ações do Carrinho */}
+          {cartItems.length > 0 && cartStep !== 'success' && (
+            <div className={styles.cartFooterActions}>
+              {cartStep === 'cart' ? (
+                <>
+                  <button
+                    type="button"
+                    className={styles.btnCartCheckout}
+                    onClick={() => setCartStep('checkout')}
+                  >
+                    <span>Finalizar Pedido • R$ {cartTotal.toFixed(2).replace('.', ',')}</span>
+                    <ArrowRight size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnCartSecondary}
+                    onClick={() => setIsCartOpen(false)}
+                  >
+                    Continuar Navegando
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={styles.btnCartCheckout}
+                    onClick={handleConfirmCartCheckout}
+                    disabled={isProcessingPayment}
+                  >
+                    {isProcessingPayment ? (
+                      <span>Processando e Enviando Comprovante...</span>
+                    ) : (
+                      <>
+                        <Check size={18} />
+                        <span>Confirmar Pagamento (R$ {cartTotal.toFixed(2).replace('.', ',')})</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnCartSecondary}
+                    onClick={() => setCartStep('cart')}
+                    disabled={isProcessingPayment}
+                  >
+                    Voltar aos Itens
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </aside>
+      )}
+
         {showVideoDock && isVideoExpanded && (
           <div
             className={styles.videoBackdrop}
@@ -3504,12 +5367,12 @@ export default function HomeUnifiedYouTubeMusic() {
                 </div>
               )}
 
-              {/* Seção 2: Próximas de: */}
+              {/* Seção 2: Próximas Faixas Adquiridas */}
               <div className={styles.queueSection}>
                 <div className={styles.queueSectionTitle}>
-                  Próximas de:{' '}
+                  Próximas na fila{' '}
                   <span className={styles.queueSectionSub}>
-                    {queueSource || selectedAlbum?.title || activeArtist?.name || 'Rádio da Faixa'}
+                    (Adquiridas: {displayQueue.length})
                   </span>
                 </div>
 
@@ -3517,12 +5380,9 @@ export default function HomeUnifiedYouTubeMusic() {
                   <div className={styles.queueList}>
                     {displayQueue.map((item, idx) => (
                       <div
-                        key={item.id || idx}
+                        key={item.purchaseId || item.id || idx}
                         className={styles.queueTrackItem}
                         onClick={() => {
-                          if (smartQueue.length > 0) {
-                            setSmartQueue(prev => prev.filter((_, i) => i > idx));
-                          }
                           playTrack(item);
                         }}
                         title={`Tocar agora: ${item.title} - ${item.artist}`}
@@ -3556,7 +5416,10 @@ export default function HomeUnifiedYouTubeMusic() {
                   </div>
                 ) : (
                   <div className={styles.queueEmptyState}>
-                    <span>Nenhuma música seguinte na fila.</span>
+                    <span>Nenhuma outra música adquirida na fila.</span>
+                    <span style={{ fontSize: '0.78rem', color: '#a7a7a7', marginTop: 4, textAlign: 'center', lineHeight: '1.4' }}>
+                      Compre ou alugue faixas nas bases para expandir sua fila.
+                    </span>
                   </div>
                 )}
               </div>
