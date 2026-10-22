@@ -238,20 +238,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 62px;
-  min-height: 62px;
-  padding: 0.6rem 0.2rem 0.5rem;
-  gap: 0.35rem;
+  width: 66px;
+  min-height: 64px;
+  padding: 0.65rem 0.2rem 0.55rem;
+  gap: 0.4rem;
   border-radius: 10px;
-  margin: 0 auto;
+  margin: 0 auto 0.35rem auto;
   text-align: center;
   color: #aaaaaa;
 }
 
 .sidebarCollapsed .navItem span {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  line-height: 1.1;
+  line-height: 1.15;
   letter-spacing: 0.01em;
   color: inherit;
 }
@@ -536,7 +536,7 @@
 
 .searchField {
   width: 100%;
-  height: 40px;
+  height: 44px;
   padding: 0 2.5rem 0 2.75rem;
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(10px);
@@ -544,7 +544,7 @@
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   color: #ffffff;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   font-weight: 400;
   outline: none;
   transition: all 0.2s ease;
@@ -1431,27 +1431,28 @@
 }
 
 .pillBtn {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  padding: 0.58rem 1.25rem;
-  border-radius: 999px;
-  font-size: 0.94rem;
-  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.48rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 .pillBtn:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .pillBtnActive {
   background: #ffffff !important;
-  color: #000000 !important;
+  color: #030303 !important;
   border-color: #ffffff !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
 }
 
 /* ─── CINEMATIC ARTIST HERO BANNER (YouTube Music Transition Effect) ── */
@@ -3021,49 +3022,71 @@
 
 /* ─── TELA DE INÍCIO YOUTUBE MUSIC (Foto 1 - Escolha a Dedo e Álbuns) ─── */
 .homeViewContainer {
-  padding: 0 2rem 4rem 2rem;
-  max-width: 1440px;
+  padding: 1rem 3rem 6.5rem 3rem;
+  max-width: 1720px;
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.homePillsWrapper {
+  display: flex;
+  align-items: center;
+  margin-top: 0.85rem;
+  margin-bottom: 2.25rem;
   width: 100%;
 }
 
 /* ─── CONTINUAR OUVINDO (Estilo Spotify - Cards de Últimas Músicas Ouvidas) ─── */
 .spotifyRecentSection {
-  margin-top: 1.25rem;
-  margin-bottom: 2.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 2.5rem;
 }
 
 .recentSectionSub {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   color: #a7a7a7;
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
   display: block;
   font-weight: 500;
 }
 
 .spotifyRecentGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 1280px) {
+  .spotifyRecentGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .spotifyRecentGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .spotifyRecentCard {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   user-select: none;
+  height: 68px;
 }
 
 .spotifyRecentCard:hover {
   background: rgba(255, 255, 255, 0.14);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
   border-color: rgba(255, 255, 255, 0.12);
 }
 
@@ -3087,30 +3110,33 @@
 }
 
 .spotifyRecentInfo {
-  padding: 0.65rem 1rem;
+  padding: 0.45rem 0.95rem;
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  justify-content: center;
+  gap: 3px;
 }
 
 .spotifyRecentTitleRow {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .recentBadge {
-  font-size: 0.65rem;
+  font-size: 0.64rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   background: #3ea6ff;
   color: #030303;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 4px;
   flex-shrink: 0;
+  line-height: 1.2;
 }
 
 .spotifyRecentTitle {
@@ -3120,27 +3146,29 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
 }
 
 .spotifyRecentArtist {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: #a7a7a7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.25;
 }
 
 .spotifyRecentPlayCircle {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: #3ea6ff;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 14px;
-  box-shadow: 0 6px 16px rgba(62, 166, 255, 0.45);
+  margin-right: 12px;
+  box-shadow: 0 4px 10px rgba(62, 166, 255, 0.4);
   opacity: 0;
   transform: scale(0.85);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -3158,8 +3186,8 @@
 }
 
 .homeSection {
-  margin-top: 2rem;
-  margin-bottom: 2.75rem;
+  margin-top: 2.5rem;
+  margin-bottom: 3rem;
 }
 
 .homeSectionHeader {
@@ -3170,10 +3198,11 @@
 }
 
 .homeSectionTitle {
-  font-size: 1.85rem;
+  font-size: 2.15rem;
   font-weight: 700;
   color: #ffffff;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
   margin: 0;
 }
 
@@ -3188,8 +3217,8 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   color: #ffffff;
-  padding: 0.4rem 0.95rem;
-  font-size: 0.84rem;
+  padding: 0.4rem 1.05rem;
+  font-size: 0.86rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -3205,8 +3234,8 @@
 }
 
 .roundNavBtn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: transparent;
@@ -3226,13 +3255,13 @@
 /* ─── Grid 3 colunas x 4 linhas ("Escolha a dedo") ─── */
 .escolhaDedoGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem 1.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem 2rem;
 }
 
 @media (max-width: 1200px) {
   .escolhaDedoGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -3245,12 +3274,14 @@
 .escolhaDedoCard {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.6rem 0.85rem;
+  gap: 0.95rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease;
   position: relative;
+  height: 66px;
+  box-sizing: border-box;
 }
 
 .escolhaDedoCard:hover {
@@ -3262,14 +3293,14 @@
 }
 
 .escolhaDedoThumbWrap {
-  width: 58px;
-  height: 58px;
+  width: 54px;
+  height: 54px;
   border-radius: 6px;
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
   background: #282828;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
 }
 
 .escolhaDedoThumb {
@@ -3297,25 +3328,26 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   flex: 1;
+  justify-content: center;
 }
 
 .escolhaDedoTitle {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   font-weight: 600;
   color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.25;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .escolhaDedoSub {
   font-size: 0.88rem;
-  color: #909090;
+  color: #a7a7a7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3346,7 +3378,7 @@
   overflow-x: auto;
   scroll-behavior: smooth;
   scrollbar-width: none;
-  padding: 0.25rem 0.25rem 1rem 0.25rem;
+  padding: 0.35rem 0.25rem 1.25rem 0.25rem;
 }
 
 .albunsCarousel::-webkit-scrollbar {
@@ -3354,9 +3386,9 @@
 }
 
 .albumCard {
-  flex: 0 0 calc((100% - 7.5rem) / 6);
-  min-width: 165px;
-  max-width: 210px;
+  flex: 0 0 calc((100% - 6rem) / 5.2);
+  min-width: 195px;
+  max-width: 245px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -3370,10 +3402,10 @@
 .albumCardCoverWrap {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
   background: #282828;
 }
 
@@ -3419,18 +3451,18 @@
 }
 
 .albumCardTitle {
-  font-size: 0.94rem;
+  font-size: 0.98rem;
   font-weight: 600;
   color: #ffffff;
-  margin-top: 0.7rem;
+  margin-top: 0.75rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .albumCardArtist {
-  font-size: 0.79rem;
-  color: #909090;
+  font-size: 0.84rem;
+  color: #a7a7a7;
   margin-top: 3px;
   white-space: nowrap;
   overflow: hidden;
@@ -3817,6 +3849,23 @@
   margin-top: 2px;
 }
 
+.baseDropdownDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0.35rem 0;
+}
+
+.baseDropdownBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  margin-left: auto;
+}
+
 /* Toast de Compra / Aluguel */
 .purchaseToast {
   display: flex;
@@ -4098,6 +4147,36 @@
   border-radius: 4px;
 }
 
+.purchasedBadge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.rentedBadge {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.expiredBadge {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .companyTrackActionsRow {
   display: flex;
   gap: 0.5rem;
@@ -4150,5 +4229,1387 @@
   border-color: #444444;
   color: #777777;
 }
+
+/* Modal de Checkout / Pagamento */
+.checkoutOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeInBase 0.2s ease-out;
+}
+
+.checkoutModal {
+  background: linear-gradient(180deg, #161720 0%, #0e0f14 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 580px;
+  max-height: 92vh;
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scaleUpModal {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.checkoutHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.checkoutHeaderTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  letter-spacing: -0.01em;
+}
+
+.checkoutCloseBtn {
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: #a7a7a7;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.checkoutCloseBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.checkoutBody {
+  padding: 1.35rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  overflow-y: auto;
+  max-height: calc(92vh - 150px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.checkoutBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.checkoutBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.checkoutBody::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.checkoutBody::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.checkoutTrackSummary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 0.95rem 1.15rem;
+  border-radius: 14px;
+}
+
+.checkoutTrackCover {
+  width: 62px;
+  height: 62px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #222;
+  flex-shrink: 0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.checkoutTrackMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.checkoutTrackTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.checkoutTrackArtist {
+  font-size: 0.84rem;
+  color: #94a3b8;
+}
+
+.checkoutTrackCompany {
+  font-size: 0.74rem;
+  color: #60a5fa;
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+.checkoutOptionGroup {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.checkoutOptionCard {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.checkoutOptionCard:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.checkoutOptionCardActive {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.03)) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.18);
+}
+
+.checkoutOptionCardActiveBlue {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.03)) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.18);
+}
+
+.checkoutOptionLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+}
+
+.checkoutOptionPrice {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.checkoutOptionSub {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.paymentMethodsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.paymentMethodTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+.paymentTabs {
+  display: flex;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.paymentTabBtn {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paymentTabBtn:hover {
+  color: #ffffff;
+}
+
+.paymentTabBtnActive {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.pixBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px dashed rgba(16, 185, 129, 0.3);
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+}
+
+.pixText {
+  font-size: 0.8rem;
+  color: #34d399;
+  line-height: 1.45;
+}
+
+.checkoutFooter {
+  padding: 1.25rem 1.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  gap: 0.85rem;
+}
+
+.btnConfirmCheckout {
+  flex: 1;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  padding: 0.85rem 1.75rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+  letter-spacing: 0.01em;
+}
+
+.btnConfirmCheckout:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 26px rgba(16, 185, 129, 0.45);
+}
+
+.btnCancelCheckout {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  padding: 0.85rem 1.5rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnCancelCheckout:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Badge de Faixa Bloqueada */
+.lockedBadge {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lockOverlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f87171;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.pixKeyConfigRow {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-sizing: border-box;
+}
+
+/* Pix QR Code & E-mail de confirmação */
+.pixQrSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.35rem 1.4rem;
+}
+
+.pixQrWrap {
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+}
+
+.pixCopyRow {
+  display: flex;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.pixInputCode {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-family: monospace;
+  padding: 0.7rem 0.85rem;
+}
+
+.btnCopyPix {
+  background: #10b981;
+  border: none;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
+.btnCopyPix:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.emailInputWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.emailInputLabel {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.emailInputField {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.emailInputField:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Cartão de Crédito Visual & Formulário */
+.cardPreviewBox {
+  width: 100%;
+  aspect-ratio: 1.8/1;
+  max-height: 180px;
+  background: linear-gradient(135deg, #1e293b, #0f172a, #020617);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+  position: relative;
+  overflow: hidden;
+}
+
+.cardPreviewBox::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardChip {
+  width: 36px;
+  height: 26px;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.cardBrand {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  font-style: italic;
+}
+
+.cardNumberText {
+  font-size: 1.15rem;
+  font-family: monospace;
+  letter-spacing: 0.15em;
+  color: #ffffff;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.cardBottomRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.cardHolderName {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #e2e8f0;
+  letter-spacing: 0.05em;
+}
+
+.cardExpiryDate {
+  font-size: 0.82rem;
+  font-family: monospace;
+  color: #cbd5e1;
+}
+
+.cardInputsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.cardInputsRow {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cardInputGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.cardInputLabel {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.cardTextInput {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.86rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.cardTextInput:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* ─── CARRINHO DE COMPRAS (DRAWER LATERAL INTEGRADO) ─── */
+.cartBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 999;
+  animation: fadeInBase 0.2s ease-out;
+}
+
+.cartDrawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  height: 100dvh;
+  width: 500px;
+  max-width: 95vw;
+  background: linear-gradient(180deg, #15161f 0%, #0d0e14 100%);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  box-shadow: -16px 0 50px rgba(0, 0, 0, 0.85);
+  animation: slideInCart 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes slideInCart {
+  from {
+    transform: translateX(100%);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.cartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cartHeaderTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cartHeaderTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  letter-spacing: -0.01em;
+}
+
+.cartHeaderBadge {
+  background: #10b981;
+  color: #030303;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cartCloseBtn {
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: #a7a7a7;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.cartCloseBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.cartHeaderBtn {
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  margin-right: 2px;
+}
+
+.cartHeaderBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(16, 185, 129, 0.5);
+  transform: scale(1.04);
+}
+
+.cartBadge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  background: #10b981;
+  color: #030303;
+  font-size: 0.7rem;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  border: 2px solid #030303;
+}
+
+.cartContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.25rem 1.4rem 2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.cartContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cartContent::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.cartEmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  gap: 1rem;
+}
+
+.cartEmptyIconWrap {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+.cartEmptyTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.cartEmptySub {
+  font-size: 0.86rem;
+  color: #94a3b8;
+  max-width: 290px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.cartItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.cartItemCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.cartItemCard:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.cartItemTopRow {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.cartItemCoverWrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #202025;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.cartItemCover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cartItemInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cartItemTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cartItemArtist {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cartItemRightMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.cartItemPrice {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.cartItemRemoveBtn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #64748b;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.cartItemRemoveBtn:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+  transform: scale(1.05);
+}
+
+/* Seletor Segmentado Moderno para Compra vs Aluguel */
+.cartSegmentedControl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.cartSegmentBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.cartSegmentBtn:hover:not(.cartSegmentBtnActiveBuy):not(.cartSegmentBtnActiveRent) {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+}
+
+.cartSegmentInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 6px;
+}
+
+.cartSegmentTitle {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cartSegmentPriceTag {
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  letter-spacing: 0.01em;
+}
+
+.cartSegmentBtnActiveBuy {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #34d399 !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.22);
+}
+
+.cartSegmentBtnActiveBuy .cartSegmentPriceTag {
+  background: rgba(16, 185, 129, 0.25);
+  color: #ffffff;
+}
+
+.cartSegmentBtnActiveRent {
+  background: rgba(59, 130, 246, 0.16) !important;
+  border-color: rgba(59, 130, 246, 0.45) !important;
+  color: #60a5fa !important;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.22);
+}
+
+.cartSegmentBtnActiveRent .cartSegmentPriceTag {
+  background: rgba(59, 130, 246, 0.25);
+  color: #ffffff;
+}
+
+.cartOrderSummary {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cartSummaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.86rem;
+  color: #94a3b8;
+}
+
+.cartSummaryTotalRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cartFooterActions {
+  padding: 1.1rem 1.4rem 1.4rem 1.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 14, 20, 0.98);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  flex-shrink: 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.btnCartCheckout {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  padding: 0.95rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+  letter-spacing: 0.01em;
+}
+
+.btnCartCheckout:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 26px rgba(16, 185, 129, 0.45);
+}
+
+.btnCartCheckout:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btnCartSecondary {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  padding: 0.8rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.btnCartSecondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.cartBackToItemsBtn {
+  background: transparent;
+  border: none;
+  color: #38bdf8;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.cartBackToItemsBtn:hover {
+  text-decoration: underline;
+}
+
+.cartSuccessBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  background: rgba(16, 185, 129, 0.04);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 16px;
+}
+
+.cartSuccessTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.cartSuccessDesc {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ─── SEÇÃO DE CUPOM DE DESCONTO ─── */
+.cartCouponSection {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: all 0.2s ease;
+}
+
+.cartCouponSection:hover {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.cartCouponHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cartCouponLabel {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: -0.01em;
+}
+
+.cartCouponForm {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cartCouponInput {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.82rem;
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.cartCouponInput::placeholder {
+  text-transform: none;
+  letter-spacing: normal;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.cartCouponInput:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.cartCouponBtn {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.6rem 1.15rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.cartCouponBtn:hover:not(:disabled) {
+  background: #10b981;
+  color: #030303;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.cartCouponBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cartCouponAppliedBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  gap: 0.5rem;
+}
+
+.cartCouponBadge {
+  background: #10b981;
+  color: #030303;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.cartCouponDesc {
+  font-size: 0.8rem;
+  color: #e2e8f0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cartCouponRemoveBtn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cartCouponRemoveBtn:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+}
+
+.cartCouponAlert {
+  font-size: 0.76rem;
+  padding: 5px 8px;
+  border-radius: 6px;
+  line-height: 1.35;
+}
+
+.cartCouponAlertSuccess {
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.cartCouponAlertError {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.cartCouponToggleBtn {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cartCouponToggleBtn:hover {
+  background: rgba(16, 185, 129, 0.25);
+  color: #ffffff;
+}
+
+.cartCouponCreateBox {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  animation: fadeInBase 0.2s ease-out;
+}
+
+.cartCouponCreateTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cartCouponCreateRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cartCouponTypeRow {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cartCouponTypeBtn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cartCouponTypeBtnActive {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+.cartCouponValueInput {
+  width: 65px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 7px;
+  color: #fff;
+  padding: 5px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.cartCouponValueInput:focus {
+  border-color: #10b981;
+}
+
+.cartCouponCreateSubmitBtn {
+  flex: 1;
+  background: #10b981;
+  color: #030303;
+  border: none;
+  padding: 0.55rem 0.85rem;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cartCouponCreateSubmitBtn:hover {
+  background: #34d399;
+}
+
+.cartCouponCreateCancelBtn {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.55rem 0.85rem;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cartCouponCreateCancelBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.cartCouponQuickTag {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cartCouponQuickTag:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
 
 

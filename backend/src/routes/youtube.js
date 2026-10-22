@@ -43,7 +43,12 @@ function parseTime(timeStr) {
 }
 
 function cleanStr(str) {
-  return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, '')
+    .trim();
 }
 
 /**
@@ -142,8 +147,8 @@ function scoreCandidate(cand, target) {
   if (cand.durationSec > 720 && target.durationSec < 600) {
     return -999;
   }
-  // Vídeos muito curtos (<45s) quando a música dura mais de 1min
-  if (cand.durationSec > 0 && cand.durationSec < 45 && target.durationSec >= 60) {
+  // Desqualifica shorts e vídeos muito curtos (<50s) quando a música dura mais de 1min
+  if (/shorts|#shorts/i.test(cTitle) || (cand.lengthStr && !cand.lengthStr.includes(':')) || (cand.durationSec > 0 && cand.durationSec < 50 && target.durationSec >= 60)) {
     return -999;
   }
 
@@ -170,6 +175,21 @@ function scoreCandidate(cand, target) {
   // Rejeita versões cover temáticas (ex: 'Soul Version', 'Choir Version', 'Lofi Version', etc.)
   if (/soul version|piano version|tribute|cover|choir version|lofi version|guitar version|8-bit version|orchestra version|samba version|pagode version|forro version/i.test(cTitle)) {
     return -999;
+  }
+
+  // Rejeita adaptações não autorizadas de Pagode, Samba, Forró, Piseiro, anos 2000, 2006, etc. quando a música não for desse gênero
+  const targetIsPagode = /pagode|samba/i.test(`${tTitle} ${tArtist} ${target.genre || ''}`);
+  if (!targetIsPagode) {
+    if (/\bpagode\b|\bsamba\b|\b2006\b|\bn4mex\b|vers[aã]o anos|anos 2000|roda de samba|no pagode|em pagode/i.test(`${cTitle} ${cOwner}`)) {
+      return -999;
+    }
+  }
+
+  const targetIsForro = /forr[oó]|piseiro|pisadinha/i.test(`${tTitle} ${tArtist} ${target.genre || ''}`);
+  if (!targetIsForro) {
+    if (/\bforr[oó]\b|\bpiseiro\b|\bpisadinha\b/i.test(`${cTitle} ${cOwner}`)) {
+      return -999;
+    }
   }
 
   let score = 0;
@@ -256,6 +276,17 @@ async function searchYouTubeVideoId(input) {
 
   if (!query && !title) return null;
 
+  // Remove extensões de arquivos de áudio do artista (ex: .wav1, .mp3, etc.)
+  artist = artist.replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, '').trim();
+
+  // Curadoria oficial prioritária: LUZ, CAMA E AÇÃO (Alee & MC Cabelinho - CAOS DLX)
+  if (/luz[, ]+cama e a[cç][aã]o/i.test(title) && (/alee|cabelinho/i.test(artist) || !artist)) {
+    return {
+      videoId: 'LC_y6kEJ69g',
+      altVideoId: '3u9yVQElPks' // Versão oficial de estúdio em trap (áudio alternativo original)
+    };
+  }
+
   // Normaliza título removendo ruídos de reedição e tags genéricas
   const cleanTitle = title
     .replace(/\[remastered\]/gi, '')
@@ -274,6 +305,13 @@ async function searchYouTubeVideoId(input) {
     return ytCache.get(cacheKey);
   }
 
+  const target = {
+    title: cleanTitle,
+    artist,
+    album,
+    durationSec
+  };
+
   // 1. Prioridade Máxima: API Oficial do YouTube com videoEmbeddable=true (0ms de bloqueio, vídeos 100% incorporáveis)
   try {
     const apiQuery = isLive
@@ -286,12 +324,25 @@ async function searchYouTubeVideoId(input) {
 
     const apiResults = await fetchFromOfficialYouTubeApi(apiQuery);
     if (apiResults && apiResults.length > 0) {
-      const best = apiResults[0].videoId;
-      const alt = apiResults[1]?.videoId || null;
-      const resObj = { videoId: best, altVideoId: alt };
-      if (ytCache.size > 2000) ytCache.clear();
-      ytCache.set(cacheKey, resObj);
-      return resObj;
+      const scoredApi = apiResults.map(it => ({
+        ...it,
+        score: scoreCandidate({
+          videoId: it.videoId,
+          title: it.title,
+          owner: it.channel,
+          durationSec,
+          lengthStr: ''
+        }, target)
+      })).filter(c => c.score > 0).sort((a, b) => b.score - a.score);
+
+      if (scoredApi.length > 0) {
+        const best = scoredApi[0].videoId;
+        const alt = scoredApi[1]?.videoId || null;
+        const resObj = { videoId: best, altVideoId: alt };
+        if (ytCache.size > 2000) ytCache.clear();
+        ytCache.set(cacheKey, resObj);
+        return resObj;
+      }
     }
   } catch (_) {}
 
@@ -313,13 +364,6 @@ async function searchYouTubeVideoId(input) {
     searchQueries.push(`${artist} ${cleanTitle} musica`);
   }
 
-  const target = {
-    title: cleanTitle,
-    artist,
-    album,
-    durationSec
-  };
-
   const seenIds = new Set();
   const allCandidates = [];
 
@@ -336,6 +380,7 @@ async function searchYouTubeVideoId(input) {
   }
 
   let bestVideoId = null;
+  let altVideoId = null;
 
   if (allCandidates.length > 0) {
     const scored = allCandidates.map(c => ({
@@ -345,22 +390,28 @@ async function searchYouTubeVideoId(input) {
 
     if (scored.length > 0) {
       bestVideoId = scored[0].videoId;
+      altVideoId = scored.length > 1 ? scored[1].videoId : null;
     } else {
       // Fallback: se nenhum atingiu score positivo, pega o primeiro não desqualificado
       const notDisqualified = allCandidates.filter(c => scoreCandidate(c, target) > -500);
       if (notDisqualified.length > 0) {
         bestVideoId = notDisqualified[0].videoId;
+        altVideoId = notDisqualified.length > 1 ? notDisqualified[1].videoId : null;
       }
     }
   }
 
-  // Fallback final
-  if (!bestVideoId && allCandidates[0]) {
-    bestVideoId = allCandidates[0].videoId;
+  // Fallback final estrito (apenas se tiver score mínimo válido)
+  if (!bestVideoId) {
+    const notDisqualified = allCandidates.filter(c => scoreCandidate(c, target) >= 0);
+    if (notDisqualified.length > 0) {
+      bestVideoId = notDisqualified[0].videoId;
+      altVideoId = notDisqualified.length > 1 ? notDisqualified[1].videoId : null;
+    }
   }
 
   if (bestVideoId) {
-    const resObj = { videoId: bestVideoId, altVideoId: allCandidates[1]?.videoId || null };
+    const resObj = { videoId: bestVideoId, altVideoId: altVideoId || null };
     if (ytCache.size > 2000) ytCache.clear();
     ytCache.set(cacheKey, resObj);
     return resObj;
