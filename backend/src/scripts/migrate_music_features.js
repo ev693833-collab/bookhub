@@ -1,4 +1,4 @@
-const db = require('./src/config/database');
+const db = require('../config/database');
 
 async function migrate() {
   console.log('🚀 Iniciando migração das novas estruturas do DevSongs...');

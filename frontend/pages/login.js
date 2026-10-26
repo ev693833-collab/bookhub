@@ -6,11 +6,13 @@ import { useRouter } from 'next/router';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import styles from '../styles/auth.module.css';
 import BackgroundVideo from '../components/BackgroundVideo';
+import { useToast } from '../context/ToastContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function Login() {
   const router = useRouter();
+  const { showLoginToast, showErrorToast, closeToast } = useToast();
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -32,15 +34,19 @@ export default function Login() {
   const handleChange = (e) => {
     setError('');
     setSuccessMessage('');
+    closeToast();
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    closeToast();
 
     if (!form.email.trim() || !form.password) {
-      setError('Preencha todos os campos.');
+      const msg = 'Preencha todos os campos.';
+      setError(msg);
+      showErrorToast(msg);
       return;
     }
 
@@ -55,7 +61,10 @@ export default function Login() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'E-mail ou senha inválidos.');
+        const errorMsg = data.error || 'E-mail ou senha inválidos.';
+        setError(errorMsg);
+        showErrorToast(errorMsg);
+        setLoading(false);
         return;
       }
 
@@ -63,11 +72,20 @@ export default function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('userData', JSON.stringify(data.user));
 
-      // Redireciona para o início
-      router.push('/home');
+      // Dispara toast personalizado com o nome dinâmico na tela de login (2 segundos)
+      const userName = data.user?.full_name || data.user?.name || '';
+      const displayDuration = 2000;
+      showLoginToast(userName, displayDuration);
+
+      // Aguarda 2 segundos na tela de login para que o usuário veja a confirmação com calma
+      setTimeout(() => {
+        closeToast();
+        router.push('/home');
+      }, displayDuration);
     } catch (err) {
-      setError('Erro de conexão. Verifique se o servidor está ativo.');
-    } finally {
+      const connMsg = 'Erro de conexão. Verifique se o servidor está ativo.';
+      setError(connMsg);
+      showErrorToast(connMsg);
       setLoading(false);
     }
   };
@@ -77,7 +95,7 @@ export default function Login() {
       <Head>
         <title>Entrar — DevSongs</title>
         <meta name="description" content="Entre na sua conta DevSongs e aproveite músicas curadas para desenvolvedores." />
-        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="icon" href="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025191/bookhub/favicon.png" type="image/png" />
       </Head>
 
       <div className={styles.authPage}>
@@ -95,7 +113,7 @@ export default function Login() {
           {/* Brand */}
           <Link href="/" className={styles.brand}>
             <Image
-              src="/img/logo-devsongs.png"
+              src="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png"
               alt="DevSongs"
               width={36}
               height={36}
@@ -203,7 +221,10 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => {
-                    setForm({ email: 'admin@bookhub.com', password: 'admin123' });
+                    setError('');
+                    closeToast();
+                    const savedAdminPass = typeof window !== 'undefined' ? localStorage.getItem('last_admin_pass') : null;
+                    setForm({ email: 'admin@bookhub.com', password: savedAdminPass || 'admin123' });
                   }}
                   style={{
                     width: '100%',

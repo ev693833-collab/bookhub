@@ -49,7 +49,7 @@
     display: none;
   }
   .videoContainer {
-    background-image: url('/video/bg-poster.png');
+    background-image: url('https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025351/bookhub/video/bg-poster.png');
     background-size: cover;
     background-position: center;
     opacity: 0.5;

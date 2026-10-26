@@ -112,7 +112,7 @@ export default function Register() {
       <Head>
         <title>Criar conta — DevSongs</title>
         <meta name="description" content="Crie sua conta gratuita no DevSongs e descubra músicas para desenvolvedores." />
-        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="icon" href="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025191/bookhub/favicon.png" type="image/png" />
       </Head>
 
       <div className={styles.authPage}>
@@ -130,7 +130,7 @@ export default function Register() {
           {/* Brand */}
           <Link href="/" className={styles.brand}>
             <Image
-              src="/img/logo-devsongs.png"
+              src="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png"
               alt="DevSongs"
               width={36}
               height={36}

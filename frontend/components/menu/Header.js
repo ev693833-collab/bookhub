@@ -251,7 +251,13 @@ export default function Header({ auth }) {
                   />
                 ) : (
                   <div className={styles.avatarPlaceholder}>
-                    {user.nome ? user.nome.charAt(0).toUpperCase() : 'U'}
+                    {user.nome
+                      ? user.nome.charAt(0).toUpperCase()
+                      : user.full_name
+                      ? user.full_name.charAt(0).toUpperCase()
+                      : user.name
+                      ? user.name.charAt(0).toUpperCase()
+                      : 'U'}
                   </div>
                 )}
                 <div className={styles.userDetails}>

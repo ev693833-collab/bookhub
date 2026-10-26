@@ -265,10 +265,10 @@ function getArtistPhoto(artist, queryName) {
   const qClean = cleanSimple(queryName || (artist && artist.name));
   // Imagens oficiais HD com prioridade para artistas icônicos
   if (qClean === 'bk') {
-    return '/img/bk_avatar.png';
+    return 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png';
   }
   if (qClean === 'justinbieber') {
-    return '/img/justin_my_world.jpg';
+    return 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025319/bookhub/img/justin_my_world.jpg';
   }
   if (artist) {
     const pic = artist.picture_xl || artist.picture_big || artist.picture_medium || artist.picture_small;
@@ -424,7 +424,7 @@ router.get('/artist', async (req, res) => {
         id: `dz-artist-${bestArtist.id}`,
         name: isBk ? 'BK' : bestArtist.name,
         avatarImg: avatarPhoto,
-        bannerImg: isBk ? '/img/bk_banner.jpg' : avatarPhoto,
+        bannerImg: isBk ? 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png' : avatarPhoto,
         bannerPosition: getArtistBannerPosition(bestArtist.name),
         listeners: listenersStr,
         subscribers: subsStr,
@@ -754,8 +754,8 @@ router.get('/artist', async (req, res) => {
         name: q,
         listeners: '0 ouvintes',
         bio: `Nenhum resultado encontrado para "${q}".`,
-        bannerImg: '/img/artist_banner_justin.jpg',
-        avatarImg: '/img/artist_banner_justin.jpg',
+        bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025309/bookhub/img/artist_banner_justin.jpg',
+        avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025309/bookhub/img/artist_banner_justin.jpg',
         subscribers: '0'
       },
       tracks: [],
@@ -818,7 +818,7 @@ router.get('/search', async (req, res) => {
           name: isBk ? 'BK' : bestCandidate.name,
           fansCount: fans,
           avatarImg: avatarPhoto,
-          bannerImg: isBk ? '/img/bk_banner.jpg' : avatarPhoto,
+          bannerImg: isBk ? 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png' : avatarPhoto,
           bannerPosition: getArtistBannerPosition(bestCandidate.name),
           listeners: listenersStr,
           subscribers: subsStr,

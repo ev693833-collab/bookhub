@@ -11,7 +11,8 @@ import {
   ChevronLeft, ChevronRight, MoreVertical, Maximize2, Minimize2,
   Radio, X, PlayCircle, ListMusic, Building2, ChevronDown, CheckCircle2,
   Lock, CreditCard, QrCode, ShoppingBag, ShoppingCart, Trash2, ArrowRight, ArrowLeft,
-  Check, Mail, Copy, Sparkles, Clock, Tag, Percent, Ticket
+  Check, Mail, Copy, Sparkles, Clock, Tag, Percent, Ticket,
+  User, Shield
 } from 'lucide-react';
 import styles from '../styles/home.module.css';
 
@@ -377,7 +378,7 @@ const JUSTIN_TOP_TRACKS = [
     title: 'Baby (part. Ludacris)',
     artist: 'Justin Bieber',
     album: 'My World 2.0',
-    cover: '/img/justin_my_world.jpg',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025319/bookhub/img/justin_my_world.jpg',
     plays: 'Tocou 4,8 bi vezes',
     durationSec: 214,
     duration: '3:34',
@@ -435,28 +436,28 @@ const JUSTIN_ALBUMS = [
     id: 'alb-coachella-2',
     title: 'SWAG LIVE FROM COACHELLA (Weekend II)',
     year: '2026',
-    cover: '/img/coachella_w2.jpg',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025318/bookhub/img/coachella_w2.jpg',
     explicit: true
   },
   {
     id: 'alb-coachella-1',
     title: 'SWAG LIVE FROM COACHELLA (Weekend I)',
     year: '2026',
-    cover: '/img/coachella_w1.jpg',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025317/bookhub/img/coachella_w1.jpg',
     explicit: true
   },
   {
     id: 'alb-swag-2',
     title: 'SWAG II',
     year: '2025',
-    cover: '/img/swag_two.jpg',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025326/bookhub/img/swag_two.jpg',
     explicit: true
   },
   {
     id: 'alb-swag',
     title: 'SWAG',
     year: '2025',
-    cover: '/img/swag.jpg',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025324/bookhub/img/swag.jpg',
     explicit: true
   },
   {
@@ -491,7 +492,7 @@ const JUSTIN_ALBUMS = [
     id: 'alb-myworld',
     title: 'My World 2.0',
     year: '2010',
-    cover: '/img/justin_my_world.jpg',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025319/bookhub/img/justin_my_world.jpg',
     explicit: false
   }
 ];
@@ -840,7 +841,7 @@ export default function HomeUnifiedYouTubeMusic() {
   // Multi-Base / Modalidades e Gravadoras com estoque próprio
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
-  const [baseMode, setBaseMode] = useState('all'); // 'all' | 'streaming' | 'buy' | 'rent'
+  const [baseMode, setBaseMode] = useState('home'); // 'home' | 'all' | 'streaming' | 'buy' | 'rent' | 'company'
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [companyTracks, setCompanyTracks] = useState([]);
   const [isCompanyLoading, setIsCompanyLoading] = useState(false);
@@ -848,6 +849,9 @@ export default function HomeUnifiedYouTubeMusic() {
   const [isPurchasesLoading, setIsPurchasesLoading] = useState(false);
   const [purchaseNotice, setPurchaseNotice] = useState(null);
   const companyDropdownRef = useRef(null);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const avatarMenuRef = useRef(null);
+  const avatarBtnRef = useRef(null);
 
   // ─── ESTADOS DO CARRINHO DE COMPRAS & PROCESSO DE CHECKOUT INTEGRADO ───
   const [unlockedTrackMap, setUnlockedTrackMap] = useState({});
@@ -1119,7 +1123,7 @@ export default function HomeUnifiedYouTubeMusic() {
       artist: (track.artist || '').replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, ''),
       album: track.album || 'Single',
       companyName: track.companyName || 'Catálogo Oficial',
-      cover: track.cover || '/img/logo-devsongs.png',
+      cover: track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
       durationSec: track.durationSec || 210,
       type, // 'buy' | 'rent'
       price: priceNum,
@@ -1220,14 +1224,19 @@ export default function HomeUnifiedYouTubeMusic() {
 
       for (const item of purchasedList) {
         try {
+          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
           const res = await fetch(`${API_URL}/api/companies/purchase-any`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
             body: JSON.stringify({
-              userId: uId,
               title: item.title,
               artist: item.artist,
               album: item.album || 'Single',
+              genre: item.genre || 'Variado',
+              companyId: item.companyId || undefined,
               coverUrl: item.cover || null,
               durationSec: item.durationSec || 210,
               type: item.type,
@@ -1316,10 +1325,13 @@ export default function HomeUnifiedYouTubeMusic() {
   }, []);
 
   const fetchUserPurchases = useCallback(async () => {
-    const uId = user?.id || 1;
     setIsPurchasesLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/companies/user/${uId}/purchases`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) return;
+      const res = await fetch(`${API_URL}/api/companies/my-purchases`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = await res.json();
       if (data && data.purchases) {
         setUserPurchases(data.purchases);
@@ -1329,7 +1341,7 @@ export default function HomeUnifiedYouTubeMusic() {
     } finally {
       setIsPurchasesLoading(false);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     fetchUserPurchases();
@@ -1350,15 +1362,17 @@ export default function HomeUnifiedYouTubeMusic() {
     setSelectedCompany(null);
     setShowCompanyDropdown(false);
 
-    if (mode === 'all') {
+    if (mode === 'home') {
       setCompanyTracks([]);
       return;
     }
 
     setIsCompanyLoading(true);
     try {
-      const uId = user?.id || 1;
-      const res = await fetch(`${API_URL}/api/companies/multibase/tracks?mode=${mode}&userId=${uId}`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${API_URL}/api/companies/multibase/tracks?mode=${mode}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       const data = await res.json();
       if (data && data.tracks) {
         setCompanyTracks(data.tracks);
@@ -1375,13 +1389,16 @@ export default function HomeUnifiedYouTubeMusic() {
     setShowCompanyDropdown(false);
     if (!company) {
       setCompanyTracks([]);
-      setBaseMode('all');
+      setBaseMode('home');
       return;
     }
+    setBaseMode('company');
     setIsCompanyLoading(true);
     try {
-      const uId = user?.id || 1;
-      const res = await fetch(`${API_URL}/api/companies/multibase/tracks?companyId=${company.id}&userId=${uId}`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${API_URL}/api/companies/multibase/tracks?companyId=${company.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       const data = await res.json();
       if (data && data.tracks) {
         setCompanyTracks(data.tracks);
@@ -1398,10 +1415,14 @@ export default function HomeUnifiedYouTubeMusic() {
     const compId = track.companyId || selectedCompany?.id || 1;
     const compName = track.companyName || selectedCompany?.name || 'Gravadora Parceira';
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const res = await fetch(`${API_URL}/api/companies/${compId}/${type}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackId: track.dbTrackId || track.id, userId: user?.id || 1 })
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ trackId: track.dbTrackId || track.id })
       });
       const data = await res.json();
       if (data.success) {
@@ -1530,11 +1551,11 @@ export default function HomeUnifiedYouTubeMusic() {
             if (cleanA === 'bk' || qTrim === 'bk' || qTrim === "bk'") {
               artistName = 'BK';
               if (!artistCover || artistCover.includes('default') || artistCover.includes('/images/artist//')) {
-                artistCover = '/img/bk_avatar.png';
+                artistCover = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png';
               }
             } else if (cleanA === 'justinbieber') {
               if (!artistCover || artistCover.includes('default') || artistCover.includes('/images/artist//')) {
-                artistCover = '/img/justin_my_world.jpg';
+                artistCover = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025319/bookhub/img/justin_my_world.jpg';
               }
             }
             const listenersStr = d.artist.listeners && !d.artist.listeners.startsWith('0 mil')
@@ -1712,10 +1733,52 @@ export default function HomeUnifiedYouTubeMusic() {
         return;
       }
       setUser(JSON.parse(stored));
+
+      // Buscar dados mais recentes da API caso o perfil tenha sido atualizado
+      fetch(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.user) {
+            setUser(data.user);
+            localStorage.setItem('userData', JSON.stringify(data.user));
+          }
+        })
+        .catch(() => {});
     } catch (_) {
       router.push('/login');
     }
   }, [router]);
+
+  // Fechamento do menu do avatar ao clicar fora ou pressionar ESC
+  useEffect(() => {
+    if (!showAvatarMenu) return;
+
+    const handleClickOutsideAvatar = (e) => {
+      if (
+        avatarMenuRef.current &&
+        !avatarMenuRef.current.contains(e.target) &&
+        avatarBtnRef.current &&
+        !avatarBtnRef.current.contains(e.target)
+      ) {
+        setShowAvatarMenu(false);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowAvatarMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutsideAvatar);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideAvatar);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAvatarMenu]);
 
   // Plays count generator realista para a tabela do YouTube Music
   const generatePlaysCount = (idx) => {
@@ -1754,8 +1817,8 @@ export default function HomeUnifiedYouTubeMusic() {
           artistObj = {
             ...artistObj,
             name: 'BK',
-            bannerImg: '/img/bk_banner.jpg',
-            avatarImg: '/img/bk_avatar.png',
+            bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png',
+            avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png',
             bannerPosition: 'center top',
             bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes..."
           };
@@ -1767,8 +1830,8 @@ export default function HomeUnifiedYouTubeMusic() {
         } else if (qLower === 'justin bieber') {
           artistObj = {
             ...artistObj,
-            bannerImg: '/img/artist_banner_justin.jpg',
-            avatarImg: '/img/justin_my_world.jpg',
+            bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025309/bookhub/img/artist_banner_justin.jpg',
+            avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025319/bookhub/img/justin_my_world.jpg',
             bannerPosition: 'center 30%'
           };
         } else if (qLower.includes('baco')) {
@@ -2297,8 +2360,8 @@ export default function HomeUnifiedYouTubeMusic() {
         name: 'Justin Bieber',
         listeners: '523 mi ouvintes mensais',
         bio: 'Justin Drew Bieber é um cantor, compositor e ator canadense. Considerado um ícone pop, ele é conhecido por suas performances musicais multigênero. Ele foi descoberto por Scooter Braun em...',
-        bannerImg: '/img/artist_banner_justin.jpg',
-        avatarImg: '/img/justin_my_world.jpg',
+        bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025309/bookhub/img/artist_banner_justin.jpg',
+        avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025319/bookhub/img/justin_my_world.jpg',
         bannerPosition: 'center 30%',
         subscribers: '78,6 mi'
       });
@@ -2309,8 +2372,8 @@ export default function HomeUnifiedYouTubeMusic() {
         name: 'BK',
         listeners: '9,31 mi ouvintes mensais',
         bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes...",
-        bannerImg: '/img/bk_banner.jpg',
-        avatarImg: '/img/bk_avatar.png',
+        bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png',
+        avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png',
         bannerPosition: 'center top',
         subscribers: '1,25 mi'
       });
@@ -2339,7 +2402,7 @@ export default function HomeUnifiedYouTubeMusic() {
       if (data && data.artist) {
         let art = data.artist;
         if (qLower === 'bk' || qLower === "bk'") {
-          art = { ...art, name: 'BK', bannerImg: '/img/bk_banner.jpg', avatarImg: '/img/bk_avatar.png', bannerPosition: 'center top' };
+          art = { ...art, name: 'BK', bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png', avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png', bannerPosition: 'center top' };
         } else if (qLower.includes('baco')) {
           art = { ...art, bannerPosition: 'center 16%' };
         }
@@ -2482,7 +2545,7 @@ export default function HomeUnifiedYouTubeMusic() {
         <title>DevSongs — Streaming de Músicas</title>
         <meta name="description" content="Streaming oficial DevSongs inspirado no YouTube Music e Spotify com músicas 100% completas." />
         <meta name="referrer" content="no-referrer" />
-        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="icon" href="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025191/bookhub/favicon.png" type="image/png" />
       </Head>
 
       <audio
@@ -2536,12 +2599,15 @@ export default function HomeUnifiedYouTubeMusic() {
                 setActiveTab('inicio');
                 setViewMode('home');
                 setSelectedAlbum(null);
+                setSelectedCompany(null);
+                setBaseMode('home');
+                setCompanyTracks([]);
               }}
               style={{ cursor: 'pointer' }}
               title="Ir para página inicial DevSongs"
             >
               <Image
-                src="/img/logo-devsongs.png"
+                src="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png"
                 alt="DevSongs"
                 width={26}
                 height={26}
@@ -2646,11 +2712,11 @@ export default function HomeUnifiedYouTubeMusic() {
                       }}
                     >
                       <img
-                        src={entity.cover || '/img/logo-devsongs.png'}
+                        src={entity.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                         alt={entity.title}
                         className={`${styles.searchEntityThumb} ${entity.type === 'artist' ? styles.searchEntityThumbArtist : ''}`}
                         referrerPolicy="no-referrer"
-                        onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                        onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                       />
                       <div className={styles.searchEntityContent}>
                         <span className={styles.searchEntityTitle}>{entity.title}</span>
@@ -2674,14 +2740,16 @@ export default function HomeUnifiedYouTubeMusic() {
             <div className={styles.baseSelectorWrap} ref={companyDropdownRef}>
               <button
                 type="button"
-                className={`${styles.baseSelectorBtn} ${(selectedCompany || baseMode !== 'all') ? styles.baseSelectorBtnActive : ''}`}
+                className={`${styles.baseSelectorBtn} ${(selectedCompany || baseMode !== 'home') ? styles.baseSelectorBtnActive : ''}`}
                 onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
-                title="Alternar entre Bases e Modalidades"
+                title="Alternar entre Bases e Gravadoras"
               >
                 <Building2 size={16} />
                 <span>
                   {selectedCompany
                     ? selectedCompany.name
+                    : baseMode === 'all'
+                    ? 'Todas as Bases'
                     : baseMode === 'streaming'
                     ? 'Streaming'
                     : baseMode === 'buy'
@@ -2699,7 +2767,20 @@ export default function HomeUnifiedYouTubeMusic() {
                     <span>Modalidades de Base</span>
                   </div>
 
-                  {/* 1. Todas as Bases */}
+                  {/* 1. Início Streaming Livre */}
+                  <button
+                    type="button"
+                    className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'home' ? styles.baseDropdownItemActive : ''}`}
+                    onClick={() => handleSelectBaseMode('home')}
+                  >
+                    <div className={styles.baseItemIconGlobal}>🎧</div>
+                    <div className={styles.baseItemMeta}>
+                      <span className={styles.baseItemTitle}>Início • Streaming Livre</span>
+                      <span className={styles.baseItemSub}>Tela inicial com reprodução contínua e playlists</span>
+                    </div>
+                  </button>
+
+                  {/* 2. Todas as Bases */}
                   <button
                     type="button"
                     className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'all' ? styles.baseDropdownItemActive : ''}`}
@@ -2707,12 +2788,12 @@ export default function HomeUnifiedYouTubeMusic() {
                   >
                     <div className={styles.baseItemIconGlobal}>🌐</div>
                     <div className={styles.baseItemMeta}>
-                      <span className={styles.baseItemTitle}>Todas as Bases</span>
-                      <span className={styles.baseItemSub}>Apresenta todos os conteúdos disponíveis</span>
+                      <span className={styles.baseItemTitle}>Todas as Bases (Comercial)</span>
+                      <span className={styles.baseItemSub}>Catálogo completo unificado de todas as gravadoras</span>
                     </div>
                   </button>
 
-                  {/* 2. Streaming */}
+                  {/* 3. Streaming Comercial */}
                   <button
                     type="button"
                     className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'streaming' ? styles.baseDropdownItemActive : ''}`}
@@ -2720,12 +2801,12 @@ export default function HomeUnifiedYouTubeMusic() {
                   >
                     <div className={styles.baseItemIconGlobal}>▶️</div>
                     <div className={styles.baseItemMeta}>
-                      <span className={styles.baseItemTitle}>Streaming</span>
-                      <span className={styles.baseItemSub}>Conteúdos autorizados para reprodução</span>
+                      <span className={styles.baseItemTitle}>Streaming Comercial</span>
+                      <span className={styles.baseItemSub}>Faixas de gravadoras autorizadas para streaming</span>
                     </div>
                   </button>
 
-                  {/* 3. Compras */}
+                  {/* 4. Compras */}
                   <button
                     type="button"
                     className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'buy' ? styles.baseDropdownItemActive : ''}`}
@@ -2733,12 +2814,12 @@ export default function HomeUnifiedYouTubeMusic() {
                   >
                     <div className={styles.baseItemIconGlobal}>🛒</div>
                     <div className={styles.baseItemMeta}>
-                      <span className={styles.baseItemTitle}>Compras</span>
-                      <span className={styles.baseItemSub}>Conteúdos disponíveis para aquisição</span>
+                      <span className={styles.baseItemTitle}>Compras de Licenças</span>
+                      <span className={styles.baseItemSub}>Faixas comerciais disponíveis para aquisição</span>
                     </div>
                   </button>
 
-                  {/* 4. Aluguéis */}
+                  {/* 5. Aluguéis */}
                   <button
                     type="button"
                     className={`${styles.baseDropdownItem} ${!selectedCompany && baseMode === 'rent' ? styles.baseDropdownItemActive : ''}`}
@@ -2746,8 +2827,8 @@ export default function HomeUnifiedYouTubeMusic() {
                   >
                     <div className={styles.baseItemIconGlobal}>⏱️</div>
                     <div className={styles.baseItemMeta}>
-                      <span className={styles.baseItemTitle}>Aluguéis</span>
-                      <span className={styles.baseItemSub}>Conteúdos para acesso temporário (30 dias)</span>
+                      <span className={styles.baseItemTitle}>Aluguéis de Licenças</span>
+                      <span className={styles.baseItemSub}>Acesso temporário (30 dias) com estoque ativo</span>
                     </div>
                   </button>
 
@@ -2765,10 +2846,10 @@ export default function HomeUnifiedYouTubeMusic() {
                       onClick={() => handleSelectCompany(c)}
                     >
                       <img
-                        src={c.logo_url || '/img/logo-devsongs.png'}
+                        src={c.logo_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                         alt={c.name}
                         className={styles.baseItemThumb}
-                        onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                        onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                       />
                       <div className={styles.baseItemMeta}>
                         <span className={styles.baseItemTitle}>{c.name}</span>
@@ -2798,10 +2879,6 @@ export default function HomeUnifiedYouTubeMusic() {
               )}
             </button>
 
-            <button className={styles.castBtn} title="Transmitir para TV / Chromecast">
-              <Tv size={20} />
-            </button>
-
             {isSuperAdmin && (
               <div className={styles.adminPill}>
                 <ShieldCheck size={14} />
@@ -2809,14 +2886,102 @@ export default function HomeUnifiedYouTubeMusic() {
               </div>
             )}
 
-            {/* Profile Avatar Circle with letter E (Foto 1 & 2) */}
-            <div className={styles.userBtn} title={user?.full_name || 'Enzo'}>
-              {user?.full_name?.charAt(0) || 'E'}
-            </div>
+            {/* Profile Avatar Circle with Dropdown Menu */}
+            <div className={styles.avatarWrapper}>
+              <button
+                ref={avatarBtnRef}
+                onClick={() => setShowAvatarMenu(prev => !prev)}
+                className={styles.userBtn}
+                title={user?.full_name || 'Meu Perfil'}
+                aria-label="Menu do Usuário"
+                aria-expanded={showAvatarMenu}
+              >
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user?.full_name || 'Avatar'} className={styles.userBtnImg} />
+                ) : (
+                  user?.full_name?.charAt(0)?.toUpperCase() || 'E'
+                )}
+              </button>
 
-            <button onClick={handleLogout} className={styles.logoutBtn} title="Sair da Conta">
-              <LogOut size={18} />
-            </button>
+              {showAvatarMenu && (
+                <div ref={avatarMenuRef} className={styles.avatarMenu}>
+                  <div className={styles.avatarMenuHeader}>
+                    <div className={styles.avatarMenuPicContainer}>
+                      {user?.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt={user?.full_name || 'Avatar'}
+                          className={styles.avatarMenuPic}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className={styles.avatarMenuPicPlaceholder}>
+                          {(user?.full_name?.trim()?.charAt(0) || user?.email?.trim()?.charAt(0) || 'U').toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={styles.avatarMenuUserDetails}>
+                      <span className={styles.avatarMenuUserName}>
+                        {user?.full_name || 'Usuário DevSongs'}
+                      </span>
+                      <span className={styles.avatarMenuUserEmail}>
+                        {user?.email || ''}
+                      </span>
+                      {isSuperAdmin && (
+                        <span className={styles.avatarMenuAdminBadge}>
+                          <ShieldCheck size={12} />
+                          Superadmin
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 1. Meu Perfil */}
+                  <button
+                    onClick={() => {
+                      setShowAvatarMenu(false);
+                      router.push('/profile');
+                    }}
+                    className={styles.avatarMenuItem}
+                  >
+                    <User size={16} />
+                    <span>Meu Perfil</span>
+                  </button>
+
+                  {/* 2. Painel de Controle (Superadmin apenas) */}
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => {
+                        setShowAvatarMenu(false);
+                        router.push('/admin');
+                      }}
+                      className={styles.avatarMenuItem}
+                    >
+                      <Shield size={16} />
+                      <span>Painel de Controle</span>
+                      <span className={styles.avatarMenuBadgePill}>Admin</span>
+                    </button>
+                  )}
+
+                  <div className={styles.avatarMenuDivider} />
+
+                  {/* 3. Sair da Conta */}
+                  <button
+                    onClick={() => {
+                      setShowAvatarMenu(false);
+                      handleLogout();
+                    }}
+                    className={`${styles.avatarMenuItem} ${styles.avatarMenuItemLogout}`}
+                  >
+                    <LogOut size={16} />
+                    <span>Sair da Conta</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -2837,8 +3002,11 @@ export default function HomeUnifiedYouTubeMusic() {
                   setActiveTab('inicio');
                   setViewMode('home');
                   setSelectedAlbum(null);
+                  setSelectedCompany(null);
+                  setBaseMode('home');
+                  setCompanyTracks([]);
                 }}
-                className={`${styles.navItem} ${viewMode === 'home' ? styles.navItemActive : ''}`}
+                className={`${styles.navItem} ${viewMode === 'home' && !selectedCompany && baseMode === 'home' ? styles.navItemActive : ''}`}
                 title="Início"
               >
                 <Home size={22} />
@@ -3003,10 +3171,10 @@ export default function HomeUnifiedYouTubeMusic() {
                                 }}
                               >
                                 <img
-                                  src={item.cover || '/img/logo-devsongs.png'}
+                                  src={item.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                                   alt={item.title}
                                   className={styles.companyTrackCover}
-                                  onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                  onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                                 />
                                 <div className={styles.companyTrackPlayOverlay}>
                                   {isCurrent && isPlaying ? (
@@ -3061,20 +3229,20 @@ export default function HomeUnifiedYouTubeMusic() {
                     )}
                   </div>
                 </section>
-              ) : (selectedCompany || baseMode !== 'all') ? (
-                /* 2. VISÃO DE BASE ESPECÍFICA OU MODALIDADE (Streaming / Compras / Aluguéis) */
+              ) : (selectedCompany || baseMode !== 'home') ? (
+                /* 2. VISÃO DE BASE ESPECÍFICA OU MODALIDADE (Todas as Bases / Streaming / Compras / Aluguéis) */
                 <section className={styles.companyHeroSection}>
                   <div className={styles.companyHeroCard}>
                     {selectedCompany ? (
                       <img
-                        src={selectedCompany.logo_url || '/img/logo-devsongs.png'}
+                        src={selectedCompany.logo_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                         alt={selectedCompany.name}
                         className={styles.companyHeroLogo}
-                        onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                        onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                       />
                     ) : (
                       <div className={styles.baseItemIconGlobal} style={{ width: 80, height: 80, fontSize: '2.5rem' }}>
-                        {baseMode === 'streaming' ? '▶️' : baseMode === 'buy' ? '🛒' : '⏱️'}
+                        {baseMode === 'all' ? '🌐' : baseMode === 'streaming' ? '▶️' : baseMode === 'buy' ? '🛒' : '⏱️'}
                       </div>
                     )}
                     <div className={styles.companyHeroContent}>
@@ -3083,10 +3251,12 @@ export default function HomeUnifiedYouTubeMusic() {
                         <span className={styles.companyGenreTag}>
                           {selectedCompany
                             ? selectedCompany.genre
+                            : baseMode === 'all'
+                            ? 'Todas as Gravadoras Integradas'
                             : baseMode === 'streaming'
-                            ? 'Streaming Livre'
+                            ? 'Streaming Comercial'
                             : baseMode === 'buy'
-                            ? 'Aquisição Permanente'
+                            ? 'Aquisição Permanente de Licenças'
                             : 'Locação Temporária (30 dias)'}
                         </span>
                         {selectedCompany && (
@@ -3096,39 +3266,61 @@ export default function HomeUnifiedYouTubeMusic() {
                       <h1 className={styles.companyHeroTitle}>
                         {selectedCompany
                           ? selectedCompany.name
+                          : baseMode === 'all'
+                          ? 'Todas as Bases Musicais'
                           : baseMode === 'streaming'
-                          ? 'Base Streaming'
+                          ? 'Base Streaming Comercial'
                           : baseMode === 'buy'
-                          ? 'Base de Compras'
-                          : 'Base de Aluguéis'}
+                          ? 'Base de Compras de Licenças'
+                          : 'Base de Aluguéis de Licenças'}
                       </h1>
                       <p className={styles.companyHeroDesc}>
                         {selectedCompany
                           ? selectedCompany.description
+                          : baseMode === 'all'
+                          ? 'Catálogo unificado com acervos comerciais de todas as gravadoras e selos parceiros da DevSongs.'
                           : baseMode === 'streaming'
-                          ? 'Catálogo com faixas e lançamentos autorizados para reprodução musical contínua.'
+                          ? 'Catálogo com faixas comerciais autorizadas para reprodução contínua.'
                           : baseMode === 'buy'
                           ? 'Acervo exclusivo disponível para aquisição permanente de licenças com baixa em tempo real de estoque.'
                           : 'Músicas e álbuns disponíveis para acesso temporário por 30 dias com controle inteligente de vigência.'}
                       </p>
                       <div className={styles.companyStatsRow}>
                         <span>Músicas no acervo: <strong>{companyTracks.length} faixas</strong></span>
-                        {selectedCompany && (
+                        {selectedCompany ? (
                           <>
                             <span>•</span>
                             <span>Estoque total: <strong>{selectedCompany.total_stock || 0} unidades</strong></span>
                           </>
+                        ) : (
+                          <>
+                            <span>•</span>
+                            <span>Gravadoras parceiras: <strong>{companies.length} bases ativas</strong></span>
+                          </>
                         )}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className={styles.btnVoltarGlobal}
-                      onClick={() => handleSelectBaseMode('all')}
-                      title="Voltar para todas as bases"
-                    >
-                      Ver Todas as Bases
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {selectedCompany && (
+                        <button
+                          type="button"
+                          className={styles.btnVoltarGlobal}
+                          onClick={() => handleSelectBaseMode('all')}
+                          title="Ver todas as gravadoras e bases"
+                          style={{ background: 'rgba(255, 255, 255, 0.1)' }}
+                        >
+                          🌐 Ver Todas as Bases
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.btnVoltarGlobal}
+                        onClick={() => handleSelectBaseMode('home')}
+                        title="Voltar para início streaming livre"
+                      >
+                        Voltar ao Início
+                      </button>
+                    </div>
                   </div>
 
                   {/* Lista de músicas com Estoque e Preços dessa Base */}
@@ -3138,6 +3330,8 @@ export default function HomeUnifiedYouTubeMusic() {
                         <h2 className={styles.homeSectionTitle}>
                           {selectedCompany
                             ? `Acervo da ${selectedCompany.name}`
+                            : baseMode === 'all'
+                            ? 'Catálogo Completo Multibase'
                             : baseMode === 'streaming'
                             ? 'Músicas Autorizadas para Streaming'
                             : baseMode === 'buy'
@@ -3147,6 +3341,8 @@ export default function HomeUnifiedYouTubeMusic() {
                         <span className={styles.recentSectionSub}>
                           {selectedCompany
                             ? `Exclusivo da ${selectedCompany.name} • Compre ou alugue com baixa direta de estoque`
+                            : baseMode === 'all'
+                            ? 'Músicas comerciais organizadas por gravadora com estoque e licenças em tempo real'
                             : baseMode === 'streaming'
                             ? 'Ouça com alta fidelidade sem restrições'
                             : baseMode === 'buy'
@@ -3184,10 +3380,10 @@ export default function HomeUnifiedYouTubeMusic() {
                                 }}
                               >
                                 <img
-                                  src={track.cover || '/img/logo-devsongs.png'}
+                                  src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                                   alt={track.title}
                                   className={styles.companyTrackCover}
-                                  onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                  onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                                 />
                                 {!isUnlocked && (
                                   <div className={styles.lockOverlay} title="Faixa Bloqueada • Requer Compra ou Aluguel">
@@ -3213,12 +3409,20 @@ export default function HomeUnifiedYouTubeMusic() {
                               <div className={styles.companyTrackInfo}>
                                 <span className={styles.companyTrackTitle} title={track.title}>{track.title}</span>
                                 <span className={styles.companyTrackArtist}>{track.artist}</span>
-                                <span className={styles.companyTrackAlbum}>{track.album} • {track.companyName}</span>
+                                <span className={styles.companyTrackAlbum}>{track.album}</span>
 
-                                <div className={styles.companyStockBadgeRow}>
+                                <div className={styles.companyStockBadgeRow} style={{ flexWrap: 'wrap' }}>
+                                  <span className={styles.companyLabelBadge} title={`Gravadora: ${track.companyName}`}>
+                                    🏢 {track.companyName}
+                                  </span>
                                   <span className={`${styles.stockBadge} ${track.stockQuantity <= 10 ? styles.stockBadgeLow : ''}`}>
                                     Estoque: {track.stockQuantity} un
                                   </span>
+                                  {track.genre && (
+                                    <span className={styles.exclusiveBadge} style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#facc15', borderColor: 'rgba(234, 179, 8, 0.3)' }}>
+                                      {track.genre}
+                                    </span>
+                                  )}
                                   {track.isExclusive && <span className={styles.exclusiveBadge}>Exclusivo</span>}
                                   {isOwned ? (
                                     <span className={styles.purchasedBadge}>Comprado (Liberada)</span>
@@ -3314,11 +3518,11 @@ export default function HomeUnifiedYouTubeMusic() {
                           >
                             <div className={styles.spotifyRecentCoverWrap}>
                               <img
-                                src={track.cover || '/img/logo-devsongs.png'}
+                                src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                                 alt={track.title}
                                 className={styles.spotifyRecentCover}
                                 referrerPolicy="no-referrer"
-                                onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                               />
                             </div>
 
@@ -3404,7 +3608,7 @@ export default function HomeUnifiedYouTubeMusic() {
                             alt={item.title}
                             className={styles.escolhaDedoThumb}
                             referrerPolicy="no-referrer"
-                            onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                           />
                           <div className={styles.escolhaDedoPlayOverlay}>
                             {isCurrent && isPlaying ? (
@@ -3470,7 +3674,7 @@ export default function HomeUnifiedYouTubeMusic() {
                           alt={album.title}
                           className={styles.albumCardCover}
                           referrerPolicy="no-referrer"
-                          onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                          onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                         />
                         <button
                           type="button"
@@ -3501,7 +3705,7 @@ export default function HomeUnifiedYouTubeMusic() {
               <div className={styles.albumAmbientBackdrop} aria-hidden="true">
                 <div
                   className={styles.albumAmbientGlow}
-                  style={{ backgroundImage: `url('${selectedAlbum.cover || '/img/logo-devsongs.png'}')` }}
+                  style={{ backgroundImage: `url('${selectedAlbum.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}')` }}
                 />
                 <div className={styles.albumAmbientGradientOverlay} />
               </div>
@@ -3515,22 +3719,22 @@ export default function HomeUnifiedYouTubeMusic() {
                     title={`Voltar ao perfil de ${selectedAlbum.artistName || activeArtist?.name}`}
                   >
                     <img
-                      src={selectedAlbum.artistAvatar || activeArtist?.avatarImg || '/img/logo-devsongs.png'}
+                      src={selectedAlbum.artistAvatar || activeArtist?.avatarImg || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                       alt={selectedAlbum.artistName || activeArtist?.name}
                       className={styles.albumArtistMiniAvatar}
                       referrerPolicy="no-referrer"
-                      onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                      onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                     />
                     <span>{selectedAlbum.artistName || activeArtist?.name}</span>
                   </div>
 
                   <div className={styles.albumHeroCoverWrap}>
                     <img
-                      src={selectedAlbum.cover || '/img/logo-devsongs.png'}
+                      src={selectedAlbum.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                       alt={selectedAlbum.title}
                       className={styles.albumHeroCover}
                       referrerPolicy="no-referrer"
-                      onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                      onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                     />
                   </div>
 
@@ -3691,11 +3895,11 @@ export default function HomeUnifiedYouTubeMusic() {
                       >
                         <div className={styles.relatedAlbumCoverWrap}>
                           <img
-                            src={alb.cover || '/img/logo-devsongs.png'}
+                            src={alb.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                             alt={alb.title}
                             className={styles.relatedAlbumCover}
                             referrerPolicy="no-referrer"
-                            onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                           />
                           <div className={styles.relatedAlbumPlayHover}>
                             <Play size={20} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
@@ -3790,11 +3994,11 @@ export default function HomeUnifiedYouTubeMusic() {
                       title={`Abrir perfil de ${art.name}`}
                     >
                       <img
-                        src={art.avatarImg || art.bannerImg || '/img/logo-devsongs.png'}
+                        src={art.avatarImg || art.bannerImg || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                         alt={art.name}
                         className={styles.searchArtistCardAvatar}
                         referrerPolicy="no-referrer"
-                        onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                        onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                       />
                       <span className={styles.searchArtistCardName}>{art.name}</span>
                       <span className={styles.searchArtistCardSub}>Artista • {art.listeners || 'Vários ouvintes'}</span>
@@ -3814,11 +4018,11 @@ export default function HomeUnifiedYouTubeMusic() {
                             >
                               <div className={styles.resultTrackThumbWrap}>
                                 <img
-                                  src={track.cover || '/img/logo-devsongs.png'}
+                                  src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                                   alt={track.title}
                                   className={styles.resultTrackThumb}
                                   referrerPolicy="no-referrer"
-                                  onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                  onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                                 />
                                 <div className={styles.resultTrackPlayHover}>
                                   {isCurrent && isPlaying ? (
@@ -3856,11 +4060,11 @@ export default function HomeUnifiedYouTubeMusic() {
                       >
                         <div className={styles.resultTrackThumbWrap}>
                           <img
-                            src={track.cover || '/img/logo-devsongs.png'}
+                            src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                             alt={track.title}
                             className={styles.resultTrackThumb}
                             referrerPolicy="no-referrer"
-                            onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                           />
                           <div className={styles.resultTrackPlayHover}>
                             {isCurrent && isPlaying ? (
@@ -3895,11 +4099,11 @@ export default function HomeUnifiedYouTubeMusic() {
                       >
                         <div className={styles.coverWrapper}>
                           <img
-                            src={album.cover || '/img/logo-devsongs.png'}
+                            src={album.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                             alt={album.title}
                             className={styles.coverImage}
                             referrerPolicy="no-referrer"
-                            onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                           />
                           <div className={styles.playOverlay}>
                             <Play size={20} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
@@ -3939,11 +4143,11 @@ export default function HomeUnifiedYouTubeMusic() {
                           >
                             <ChevronRight size={18} className={styles.artistCardChevronIcon} />
                             <img
-                              src={activeArtist.avatarImg || '/img/logo-devsongs.png'}
+                              src={activeArtist.avatarImg || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                               alt={activeArtist.name}
                               className={styles.artistAvatarImage}
                               referrerPolicy="no-referrer"
-                              onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                              onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                             />
                             <h2 className={styles.artistHighlightTitle}>{activeArtist.name}</h2>
                             <p className={styles.artistHighlightSub}>
@@ -3984,11 +4188,11 @@ export default function HomeUnifiedYouTubeMusic() {
                                 >
                                   <div className={styles.heroTrackThumbWrap}>
                                     <img
-                                      src={track.cover || '/img/logo-devsongs.png'}
+                                      src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                                       alt={track.title}
                                       className={styles.heroTrackThumb}
                                       referrerPolicy="no-referrer"
-                                      onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                      onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                                     />
                                     <div className={styles.heroTrackPlayHover}>
                                       {isCurrent && isPlaying ? (
@@ -4023,11 +4227,11 @@ export default function HomeUnifiedYouTubeMusic() {
                             <span className={styles.topResultTag}>Melhor resultado</span>
                             <div className={styles.songCardCoverWrap}>
                               <img
-                                src={tracks[0].cover || '/img/logo-devsongs.png'}
+                                src={tracks[0].cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                                 alt={tracks[0].title}
                                 className={styles.songCardCover}
                                 referrerPolicy="no-referrer"
-                                onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                               />
                               <div className={styles.songCardPlayBtn}>
                                 <div className={styles.songCardPlayCircle}>
@@ -4056,11 +4260,11 @@ export default function HomeUnifiedYouTubeMusic() {
                                 >
                                   <div className={styles.heroTrackThumbWrap}>
                                     <img
-                                      src={track.cover || '/img/logo-devsongs.png'}
+                                      src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                                       alt={track.title}
                                       className={styles.heroTrackThumb}
                                       referrerPolicy="no-referrer"
-                                      onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                      onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                                     />
                                     <div className={styles.heroTrackPlayHover}>
                                       {isCurrent && isPlaying ? (
@@ -4098,11 +4302,11 @@ export default function HomeUnifiedYouTubeMusic() {
                         >
                           <div className={styles.resultTrackThumbWrap}>
                             <img
-                              src={track.cover || '/img/logo-devsongs.png'}
+                              src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                               alt={track.title}
                               className={styles.resultTrackThumb}
                               referrerPolicy="no-referrer"
-                              onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                              onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                             />
                             <div className={styles.resultTrackPlayHover}>
                               {isCurrent && isPlaying ? (
@@ -4139,7 +4343,7 @@ export default function HomeUnifiedYouTubeMusic() {
               <section
                 className={styles.artistBannerContainer}
                 style={{
-                  backgroundImage: `url('${activeArtist?.bannerImg || '/img/artist_banner_justin.jpg'}')`,
+                  backgroundImage: `url('${activeArtist?.bannerImg || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025309/bookhub/img/artist_banner_justin.jpg'}')`,
                   backgroundPosition: activeArtist?.bannerPosition || 'center 18%'
                 }}
               >
@@ -4223,11 +4427,11 @@ export default function HomeUnifiedYouTubeMusic() {
                                   )}
                                 </div>
                                 <img
-                                  src={track.cover || '/img/logo-devsongs.png'}
+                                  src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                                   alt={track.title}
                                   className={styles.topMusicasThumb}
                                   referrerPolicy="no-referrer"
-                                  onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                                  onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                                 />
                                 <span className={`${styles.topMusicasTrackName} ${isCurrent ? styles.topMusicasTrackNamePlaying : ''}`}>
                                   {track.title}
@@ -4305,11 +4509,11 @@ export default function HomeUnifiedYouTubeMusic() {
                         >
                           <div className={styles.mediaCoverWrap}>
                             <img
-                              src={album.cover || '/img/logo-devsongs.png'}
+                              src={album.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                               alt={album.title}
                               className={styles.mediaCover}
                               referrerPolicy="no-referrer"
-                              onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                              onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                             />
                             <div className={styles.cardPlayOverlay}>
                               <Play size={24} fill="#ffffff" color="#ffffff" />
@@ -4377,11 +4581,11 @@ export default function HomeUnifiedYouTubeMusic() {
                         >
                           <div className={styles.mediaCoverWrap}>
                             <img
-                              src={single.cover || '/img/logo-devsongs.png'}
+                              src={single.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                               alt={single.title}
                               className={styles.mediaCover}
                               referrerPolicy="no-referrer"
-                              onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                              onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                             />
                             <div className={styles.cardPlayOverlay}>
                               <Play size={24} fill="#ffffff" color="#ffffff" />
@@ -4447,11 +4651,11 @@ export default function HomeUnifiedYouTubeMusic() {
                         >
                           <div className={styles.mediaCoverWrap}>
                             <img
-                              src={feat.cover || '/img/logo-devsongs.png'}
+                              src={feat.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                               alt={feat.title}
                               className={styles.mediaCover}
                               referrerPolicy="no-referrer"
-                              onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                              onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                             />
                             <div className={styles.cardPlayOverlay}>
                               <Play size={24} fill="#ffffff" color="#ffffff" />
@@ -4570,7 +4774,7 @@ export default function HomeUnifiedYouTubeMusic() {
                           borderRadius: 8
                         }}>
                           <img
-                            src={it.cover || '/img/logo-devsongs.png'}
+                            src={it.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                             alt={it.title}
                             style={{ width: 34, height: 34, borderRadius: 6, objectFit: 'cover' }}
                           />
@@ -4644,10 +4848,10 @@ export default function HomeUnifiedYouTubeMusic() {
                       <div className={styles.cartItemTopRow}>
                         <div className={styles.cartItemCoverWrap}>
                           <img
-                            src={item.cover || '/img/logo-devsongs.png'}
+                            src={item.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                             alt={item.title}
                             className={styles.cartItemCover}
-                            onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                           />
                         </div>
 
@@ -5353,11 +5557,11 @@ export default function HomeUnifiedYouTubeMusic() {
                   <div className={styles.queueSectionTitle}>Tocando agora</div>
                   <div className={styles.queueCurrentCard}>
                     <img
-                      src={currentTrack.cover || '/img/logo-devsongs.png'}
+                      src={currentTrack.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                       alt={currentTrack.title}
                       className={styles.queueCurrentCover}
                       referrerPolicy="no-referrer"
-                      onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                      onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                     />
                     <div className={styles.queueCurrentMeta}>
                       <span className={styles.queueCurrentTitle}>{currentTrack.title}</span>
@@ -5389,11 +5593,11 @@ export default function HomeUnifiedYouTubeMusic() {
                       >
                         <div className={styles.queueTrackCoverWrap}>
                           <img
-                            src={item.cover || '/img/logo-devsongs.png'}
+                            src={item.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
                             alt={item.title}
                             className={styles.queueTrackCover}
                             referrerPolicy="no-referrer"
-                            onError={(e) => { e.currentTarget.src = '/img/logo-devsongs.png'; }}
+                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                           />
                           <div className={styles.queueTrackPlayHover}>
                             <Play size={16} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />

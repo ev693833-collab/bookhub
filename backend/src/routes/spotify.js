@@ -10,7 +10,7 @@ const REAL_AUDIO_FALLBACKS = [
     artist: 'Neon Cyber Sound',
     album: 'Retro Future',
     genre: 'Synthwave',
-    cover: '/img/album1.png',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025285/bookhub/img/album1.jpg',
     previewUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
     duration: '3:20',
     plays: '1.4M'
@@ -21,7 +21,7 @@ const REAL_AUDIO_FALLBACKS = [
     artist: 'Chill Beats Studio',
     album: 'Pastel Horizon',
     genre: 'Lo-Fi',
-    cover: '/img/album2.png',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025287/bookhub/img/album2.jpg',
     previewUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3',
     duration: '2:45',
     plays: '950K'
@@ -32,7 +32,7 @@ const REAL_AUDIO_FALLBACKS = [
     artist: 'Hyperion Audio',
     album: 'Deep Waves',
     genre: 'Eletrônica',
-    cover: '/img/album3.png',
+    cover: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025291/bookhub/img/album3.jpg',
     previewUrl: 'https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f792cb.mp3',
     duration: '4:05',
     plays: '2.1M'

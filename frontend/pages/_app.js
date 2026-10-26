@@ -3,6 +3,8 @@ import { useAuth } from '../utils/auth'
 import setupAxiosInterceptors from '../utils/axiosInterceptor'
 import Head from 'next/head';
 import { useEffect } from 'react'
+import { ToastProvider } from '../context/ToastContext'
+import LoginToast from '../components/Toast/LoginToast'
 
 export default function App({ Component, pageProps }) {
   const auth = useAuth()
@@ -13,12 +15,14 @@ export default function App({ Component, pageProps }) {
   }, []);
 
   return (
-    <div>
+    <ToastProvider>
       <Head>
         <title>DevSongs — O Player de Música para Devs</title>
-        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="icon" href="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025191/bookhub/favicon.png" type="image/png" />
       </Head>
+      <LoginToast />
       <Component {...pageProps} auth={auth} />
-    </div>
+    </ToastProvider>
   )
 }
+
