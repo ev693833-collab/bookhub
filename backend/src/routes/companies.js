@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const mailService = require('../services/mailService');
+const verifyToken = require('../middlewares/auth');
 
 /**
  * GET /api/companies
@@ -46,16 +47,16 @@ function mapTrackRecord(t, userPurchasesMap = new Map()) {
     artist: t.artist,
     album: t.album || 'Single',
     genre: t.genre || 'Variado',
-    cover: t.cover_url || '/img/logo-devsongs.png',
+    cover: t.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
     preview: t.preview_url,
     durationSec: t.duration_sec || 210,
     duration: `${min}:${String(sec).padStart(2, '0')}`,
     plays: `Estoque: ${t.stock_quantity} un`,
     stockQuantity: t.stock_quantity,
-    salePrice: Number(t.sale_price || 4.90).toFixed(2),
-    rentPrice: Number(t.rent_price || 1.90).toFixed(2),
-    priceSale: `R$ ${Number(t.sale_price || 4.90).toFixed(2).replace('.', ',')}`,
-    priceRent: `R$ ${Number(t.rent_price || 1.90).toFixed(2).replace('.', ',')}`,
+    salePrice: Number(t.sale_price || 1.90).toFixed(2),
+    rentPrice: Number(t.rent_price || 0.50).toFixed(2),
+    priceSale: `R$ ${Number(t.sale_price || 1.90).toFixed(2).replace('.', ',')}`,
+    priceRent: `R$ ${Number(t.rent_price || 0.50).toFixed(2).replace('.', ',')}`,
     availableForSale: t.stock_quantity > 0,
     availableForRent: t.stock_quantity > 0,
     availableForStream: Boolean(t.available_for_stream),
@@ -70,15 +71,96 @@ function mapTrackRecord(t, userPurchasesMap = new Map()) {
 }
 
 /**
- * GET /api/companies/multibase/tracks
- * Lista acervo multibase com suporte a filtros por modalidade:
- * - 'all': Todas as bases e faixas
- * - 'streaming': Somente autorizadas para reprodução contínua
- * - 'buy': Somente faixas com estoque disponível para compra
- * - 'rent': Somente faixas com estoque disponível para aluguel temporário
+ * Helper: Carrega e formata a lista de compras/aluguéis de um usuário
  */
-router.get('/multibase/tracks', async (req, res) => {
-  const { mode = 'all', companyId, userId } = req.query;
+async function getUserPurchasesList(targetUserId) {
+  const [rows] = await db.query(`
+    SELECT 
+      cp.id AS purchase_id,
+      cp.type,
+      cp.price,
+      cp.expires_at,
+      cp.created_at,
+      ct.id AS db_track_id,
+      ct.title,
+      ct.artist,
+      ct.album,
+      ct.genre,
+      ct.cover_url,
+      ct.preview_url,
+      ct.duration_sec,
+      ct.youtube_video_id,
+      c.id AS company_id,
+      c.name AS company_name,
+      c.logo_url AS company_logo
+    FROM company_purchases cp
+    JOIN company_tracks ct ON cp.track_id = ct.id
+    JOIN companies c ON cp.company_id = c.id
+    WHERE cp.user_id = ?
+    ORDER BY cp.created_at DESC
+  `, [targetUserId]);
+
+  const now = new Date();
+  return rows.map(r => {
+    const min = Math.floor((r.duration_sec || 210) / 60);
+    const sec = (r.duration_sec || 210) % 60;
+    const isRent = r.type === 'rent';
+    const isExpired = isRent ? (new Date(r.expires_at) < now) : false;
+    const remainingDays = isRent && !isExpired
+      ? Math.max(0, Math.ceil((new Date(r.expires_at) - now) / (1000 * 60 * 60 * 24)))
+      : null;
+
+    return {
+      purchaseId: r.purchase_id,
+      type: r.type,
+      price: r.price,
+      purchasedAt: r.created_at,
+      expiresAt: r.expires_at,
+      isExpired,
+      remainingDays,
+      canPlay: !isExpired,
+      id: `ct-${r.db_track_id}`,
+      dbTrackId: r.db_track_id,
+      title: r.title,
+      artist: r.artist,
+      album: r.album || 'Single',
+      genre: r.genre,
+      cover: r.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      preview: r.preview_url,
+      youtubeVideoId: r.youtube_video_id || null,
+      durationSec: r.duration_sec || 210,
+      duration: `${min}:${String(sec).padStart(2, '0')}`,
+      plays: isRent
+        ? (isExpired ? 'Aluguel Expirado' : `Aluguel válido: ${remainingDays} dias`)
+        : 'Comprado (Permanente)',
+      companyId: r.company_id,
+      companyName: r.company_name
+    };
+  });
+}
+
+/**
+ * Helper: Verifica se o usuário autenticado possui role 'admin' no banco
+ */
+async function checkIsAdmin(userId) {
+  try {
+    const [rows] = await db.query('SELECT role FROM users WHERE id = ? LIMIT 1', [userId]);
+    return rows.length > 0 && rows[0].role === 'admin';
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * GET /api/companies/multibase/tracks
+ * Lista acervo multibase com suporte a filtros por modalidade.
+ * O catálogo público é mantido aberto. O status de compra/aluguel de faixas
+ * só é personalizado caso haja um token JWT válido e autenticado (req.user).
+ * Não confia em userId vindo de query string.
+ */
+router.get('/multibase/tracks', verifyToken.optional, async (req, res) => {
+  const { mode = 'all', companyId } = req.query;
+  const authenticatedUserId = req.user?.id || null;
 
   try {
     let sql = `
@@ -110,15 +192,15 @@ router.get('/multibase/tracks', async (req, res) => {
 
     const [tracks] = await db.query(sql, params);
 
-    // Mapear compras do usuário se fornecido
+    // Mapeia compras EXCLUSIVAMENTE se houver usuário autenticado comprovado pelo JWT
     const userPurchasesMap = new Map();
-    if (userId) {
+    if (authenticatedUserId) {
       const [purchases] = await db.query(`
         SELECT track_id, type, expires_at 
         FROM company_purchases 
         WHERE user_id = ?
         ORDER BY id DESC
-      `, [userId]);
+      `, [authenticatedUserId]);
 
       for (const p of purchases) {
         if (!userPurchasesMap.has(p.track_id)) {
@@ -142,76 +224,47 @@ router.get('/multibase/tracks', async (req, res) => {
 });
 
 /**
- * GET /api/companies/user/:userId/purchases
- * Lista faixas compradas e alugadas do usuário com verificação de vigência
+ * GET /api/companies/my-purchases
+ * Rota canônica protegida: retorna as compras do usuário autenticado no JWT
  */
-router.get('/user/:userId/purchases', async (req, res) => {
+router.get('/my-purchases', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const mapped = await getUserPurchasesList(userId);
+
+    res.json({
+      success: true,
+      userId: Number(userId),
+      total: mapped.length,
+      purchases: mapped
+    });
+  } catch (err) {
+    console.error('Erro ao buscar biblioteca do usuário autenticado:', err);
+    res.status(500).json({ error: 'Erro ao carregar faixas adquiridas do usuário' });
+  }
+});
+
+/**
+ * GET /api/companies/user/:userId/purchases
+ * Rota protegida com verificação estrita de autorização IDOR:
+ * O usuário autenticado só pode consultar as suas próprias compras,
+ * a menos que possua permissão administrativa explícita verificada no backend.
+ */
+router.get('/user/:userId/purchases', verifyToken, async (req, res) => {
   const { userId } = req.params;
+  const authUserId = req.user.id;
 
   try {
-    const [rows] = await db.query(`
-      SELECT 
-        cp.id AS purchase_id,
-        cp.type,
-        cp.price,
-        cp.expires_at,
-        cp.created_at,
-        ct.id AS db_track_id,
-        ct.title,
-        ct.artist,
-        ct.album,
-        ct.genre,
-        ct.cover_url,
-        ct.preview_url,
-        ct.duration_sec,
-        ct.youtube_video_id,
-        c.id AS company_id,
-        c.name AS company_name,
-        c.logo_url AS company_logo
-      FROM company_purchases cp
-      JOIN company_tracks ct ON cp.track_id = ct.id
-      JOIN companies c ON cp.company_id = c.id
-      WHERE cp.user_id = ?
-      ORDER BY cp.created_at DESC
-    `, [userId]);
+    if (Number(authUserId) !== Number(userId)) {
+      const isAdmin = await checkIsAdmin(authUserId);
+      if (!isAdmin) {
+        return res.status(403).json({
+          error: 'Acesso negado. Você só tem permissão para visualizar as suas próprias compras.'
+        });
+      }
+    }
 
-    const now = new Date();
-    const mapped = rows.map(r => {
-      const min = Math.floor((r.duration_sec || 210) / 60);
-      const sec = (r.duration_sec || 210) % 60;
-      const isRent = r.type === 'rent';
-      const isExpired = isRent ? (new Date(r.expires_at) < now) : false;
-      const remainingDays = isRent && !isExpired
-        ? Math.max(0, Math.ceil((new Date(r.expires_at) - now) / (1000 * 60 * 60 * 24)))
-        : null;
-
-      return {
-        purchaseId: r.purchase_id,
-        type: r.type,
-        price: r.price,
-        purchasedAt: r.created_at,
-        expiresAt: r.expires_at,
-        isExpired,
-        remainingDays,
-        canPlay: !isExpired,
-        id: `ct-${r.db_track_id}`,
-        dbTrackId: r.db_track_id,
-        title: r.title,
-        artist: r.artist,
-        album: r.album || 'Single',
-        genre: r.genre,
-        cover: r.cover_url || '/img/logo-devsongs.png',
-        preview: r.preview_url,
-        youtubeVideoId: r.youtube_video_id || null,
-        durationSec: r.duration_sec || 210,
-        duration: `${min}:${String(sec).padStart(2, '0')}`,
-        plays: isRent
-          ? (isExpired ? 'Aluguel Expirado' : `Aluguel válido: ${remainingDays} dias`)
-          : 'Comprado (Permanente)',
-        companyId: r.company_id,
-        companyName: r.company_name
-      };
-    });
+    const mapped = await getUserPurchasesList(userId);
 
     res.json({
       success: true,
@@ -229,9 +282,9 @@ router.get('/user/:userId/purchases', async (req, res) => {
  * POST /api/companies/vendor/tracks
  * Permite que vendedores autorizados ou administradores cadastrem/atualizem faixas
  */
-router.post('/vendor/tracks', async (req, res) => {
+router.post('/vendor/tracks', verifyToken, async (req, res) => {
+  const authUserId = req.user.id;
   const {
-    userId,
     companyId,
     title,
     artist,
@@ -252,16 +305,14 @@ router.post('/vendor/tracks', async (req, res) => {
   }
 
   try {
-    // Validação de autorização do usuário
-    if (userId) {
-      const [uRows] = await db.query('SELECT id, role FROM users WHERE id = ?', [userId]);
-      if (uRows.length === 0) {
-        return res.status(403).json({ error: 'Usuário não encontrado' });
-      }
-      const role = uRows[0].role;
-      if (role !== 'admin' && role !== 'seller') {
-        return res.status(403).json({ error: 'Apenas vendedores autorizados e administradores podem cadastrar faixas' });
-      }
+    // Validação de autorização da identidade autenticada no banco de dados
+    const [uRows] = await db.query('SELECT id, role FROM users WHERE id = ?', [authUserId]);
+    if (uRows.length === 0) {
+      return res.status(403).json({ error: 'Usuário não encontrado' });
+    }
+    const role = uRows[0].role;
+    if (role !== 'admin' && role !== 'seller') {
+      return res.status(403).json({ error: 'Apenas vendedores autorizados e administradores podem cadastrar faixas' });
     }
 
     const [result] = await db.query(`
@@ -300,20 +351,20 @@ router.post('/vendor/tracks', async (req, res) => {
  * Permite comprar ou alugar qualquer faixa da plataforma (busca externa, deezer, youtube ou bases).
  * Registra a transação, atualiza a biblioteca, gera notificação no sistema e envia e-mail de confirmação.
  */
-router.post('/purchase-any', async (req, res) => {
+router.post('/purchase-any', verifyToken, async (req, res) => {
+  const userId = req.user.id; // Identidade autenticada e validada via JWT
   const {
-    userId = 1,
     title,
     artist,
     album = 'Single',
     genre = 'Variado',
+    companyId: reqCompanyId,
     coverUrl,
     previewUrl,
     durationSec = 210,
     type = 'buy', // 'buy' | 'rent'
-    price = 4.90,
-    paymentMethod = 'pix',
-    email = 'usuario@devsongs.com'
+    price = 1.90,
+    paymentMethod = 'pix'
   } = req.body;
 
   if (!title || !artist) {
@@ -331,21 +382,44 @@ router.post('/purchase-any', async (req, res) => {
     );
 
     let trackId;
-    let companyId = 1;
+    let companyId = reqCompanyId ? Number(reqCompanyId) : null;
 
     if (existing.length > 0) {
       trackId = existing[0].id;
-      companyId = existing[0].company_id || 1;
+      companyId = existing[0].company_id || companyId || 1;
       if (coverUrl) {
         await conn.query('UPDATE company_tracks SET cover_url = COALESCE(cover_url, ?) WHERE id = ?', [coverUrl, trackId]);
       }
     } else {
-      // Cadastra na base padrão (1 - DevSongs Urban Records)
+      // Se companyId não foi informado, tenta associar por gênero musical ou artista
+      if (!companyId) {
+        const [allCompanies] = await conn.query('SELECT id, genre, name FROM companies WHERE status = "active"');
+        const cleanG = (genre || '').toLowerCase();
+        const cleanA = (artist || '').toLowerCase();
+        for (const c of allCompanies) {
+          const cG = (c.genre || '').toLowerCase();
+          const cN = (c.name || '').toLowerCase();
+          if (
+            (cleanG && cleanG !== 'variado' && cG.includes(cleanG)) ||
+            (cleanG.includes('forro') && cG.includes('forr')) ||
+            (cleanG.includes('piseiro') && cG.includes('piseiro')) ||
+            (cleanG.includes('trap') && cG.includes('trap')) ||
+            (cleanG.includes('funk') && cG.includes('funk')) ||
+            (cleanG.includes('pop') && cG.includes('pop'))
+          ) {
+            companyId = c.id;
+            break;
+          }
+        }
+        if (!companyId) companyId = 1; // Fallback para primeira base cadastrada
+      }
+
+      // Cadastra no acervo da gravadora definida
       const [insertRes] = await conn.query(`
         INSERT INTO company_tracks 
           (company_id, title, artist, album, genre, cover_url, preview_url, duration_sec, stock_quantity, sale_price, rent_price, available_for_stream)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 99, ?, ?, 1)
-      `, [companyId, title, artist, album, genre, coverUrl || null, previewUrl || null, durationSec, price, type === 'rent' ? price : 1.90]);
+      `, [companyId, title, artist, album, genre, coverUrl || null, previewUrl || null, durationSec, price, type === 'rent' ? price : 0.50]);
       trackId = insertRes.insertId;
     }
 
@@ -491,16 +565,16 @@ router.get('/:id/tracks', async (req, res) => {
         artist: t.artist,
         album: t.album || 'Single',
         genre: t.genre,
-        cover: t.cover_url || company.logo_url || '/img/logo-devsongs.png',
+        cover: t.cover_url || company.logo_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
         preview: t.preview_url,
         durationSec: t.duration_sec || 210,
         duration: `${min}:${String(sec).padStart(2, '0')}`,
         plays: `Estoque: ${t.stock_quantity} un`,
         stockQuantity: t.stock_quantity,
-        salePrice: Number(t.sale_price || 4.90).toFixed(2),
-        rentPrice: Number(t.rent_price || 1.90).toFixed(2),
-        priceSale: `R$ ${Number(t.sale_price || 4.90).toFixed(2).replace('.', ',')}`,
-        priceRent: `R$ ${Number(t.rent_price || 1.90).toFixed(2).replace('.', ',')}`,
+        salePrice: Number(t.sale_price || 1.90).toFixed(2),
+        rentPrice: Number(t.rent_price || 0.50).toFixed(2),
+        priceSale: `R$ ${Number(t.sale_price || 1.90).toFixed(2).replace('.', ',')}`,
+        priceRent: `R$ ${Number(t.rent_price || 0.50).toFixed(2).replace('.', ',')}`,
         availableForSale: t.stock_quantity > 0,
         availableForRent: t.stock_quantity > 0,
         isExclusive: Boolean(t.is_exclusive)
@@ -521,15 +595,15 @@ router.get('/:id/tracks', async (req, res) => {
  * POST /api/companies/:id/buy
  * Compra de música com baixa automática no estoque da empresa e validações
  */
-router.post('/:id/buy', async (req, res) => {
+router.post('/:id/buy', verifyToken, async (req, res) => {
   const { id } = req.params;
-  const { trackId, userId } = req.body;
+  const { trackId } = req.body;
 
   if (!trackId) {
     return res.status(400).json({ error: 'trackId é obrigatório' });
   }
 
-  const uId = userId || 1; // Fallback para usuário autenticado
+  const uId = req.user.id; // Identidade autenticada e validada via JWT
   const cleanId = String(trackId).replace('ct-', '');
 
   const conn = await db.getConnection();
@@ -635,15 +709,15 @@ router.post('/:id/buy', async (req, res) => {
  * POST /api/companies/:id/rent
  * Aluguel de música por 30 dias com baixa no estoque e validações
  */
-router.post('/:id/rent', async (req, res) => {
+router.post('/:id/rent', verifyToken, async (req, res) => {
   const { id } = req.params;
-  const { trackId, userId } = req.body;
+  const { trackId } = req.body;
 
   if (!trackId) {
     return res.status(400).json({ error: 'trackId é obrigatório' });
   }
 
-  const uId = userId || 1;
+  const uId = req.user.id; // Identidade autenticada e validada via JWT
   const cleanId = String(trackId).replace('ct-', '');
 
   const conn = await db.getConnection();

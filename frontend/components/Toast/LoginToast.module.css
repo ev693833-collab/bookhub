@@ -1,0 +1,199 @@
+/* ===== LOGIN & AUTH TOAST NOTIFICATION — SUCESSO & ERRO ===== */
+
+.toastContainer {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 999999;
+  pointer-events: none;
+}
+
+.toastCard {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 320px;
+  max-width: 420px;
+  padding: 16px 36px 18px 16px;
+  background: linear-gradient(135deg, rgba(10, 22, 52, 0.95) 0%, rgba(6, 14, 36, 0.98) 100%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(0, 145, 255, 0.75);
+  border-radius: 14px;
+  box-shadow: 
+    0 0 24px rgba(0, 145, 255, 0.35),
+    0 10px 32px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Variação de Erro (E-mail ou senha inválidos) */
+.toastCardError {
+  background: linear-gradient(135deg, rgba(30, 10, 18, 0.96) 0%, rgba(18, 6, 12, 0.98) 100%) !important;
+  border-color: rgba(239, 68, 68, 0.75) !important;
+  box-shadow: 
+    0 0 24px rgba(239, 68, 68, 0.35),
+    0 10px 32px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+.toastCardClosing {
+  animation: toastSlideOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* Ícone circular azul destacado com brilho suave (Sucesso) */
+.iconBadge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+  box-shadow: 0 0 14px rgba(0, 180, 216, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Ícone circular vermelho destacado com brilho suave (Erro) */
+.iconBadgeError {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.7) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Textos da notificação */
+.textWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+
+.titleSingle {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.1px;
+  line-height: 1.35;
+}
+
+.subtitle {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+/* Botão de fechar (×) no canto superior direito */
+.closeBtn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.closeBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Barra de progresso na parte inferior */
+.progressTrack {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3.5px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #00b4d8 0%, #0091ff 50%, #38bdf8 100%);
+  box-shadow: 0 0 10px rgba(0, 145, 255, 0.8);
+  animation-name: toastProgress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.progressBarError {
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%) !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8) !important;
+}
+
+/* Animações */
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.96);
+  }
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 640px) {
+  .toastContainer {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+  }
+
+  .toastCard {
+    min-width: unset;
+    width: 100%;
+    max-width: 100%;
+  }
+}

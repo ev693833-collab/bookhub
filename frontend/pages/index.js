@@ -340,7 +340,7 @@ export default function Home() {
       <Head>
         <title>DevSongs</title>
         <meta name="description" content="Explore suas músicas favoritas, lançamentos, álbuns e artistas no DevSongs." />
-        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="icon" href="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025191/bookhub/favicon.png" type="image/png" />
       </Head>
 
       <div className={styles.app}>
@@ -351,7 +351,7 @@ export default function Home() {
           <div className={styles.container}>
             <div className={styles.nav}>
               <div className={styles.logo}>
-                <Image src="/img/logo-devsongs.png" alt="DevSongs" width={36} height={36} className={styles.logoImg} />
+                <Image src="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png" alt="DevSongs" width={36} height={36} className={styles.logoImg} />
                 <span className={styles.brandTitle}>Dev<span className={styles.logoHighlight}>Songs</span></span>
               </div>
               <div className={styles.navActions}>
@@ -715,7 +715,7 @@ export default function Home() {
           <div className={styles.container}>
             <div className={styles.footerBrand}>
               <div className={styles.logo}>
-                <Image src="/img/logo-devsongs.png" alt="DevSongs" width={32} height={32} className={styles.logoImg} />
+                <Image src="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png" alt="DevSongs" width={32} height={32} className={styles.logoImg} />
                 <span className={styles.brandTitle} style={{ color: 'white' }}>Dev<span className={styles.logoHighlight}>Songs</span></span>
               </div>
               <p className={styles.footerTagline}>A plataforma musical pensada para desenvolvedores e mentes criativas.</p>

@@ -72,10 +72,10 @@ export default function BackgroundVideo() {
         loop
         muted
         playsInline
-        poster="/video/bg-poster.png"
+        poster="https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025351/bookhub/video/bg-poster.png"
         className={styles.bgVideo}
       >
-        <source src="/video/bg-particles.mp4" type="video/mp4" />
+        <source src="https://res.cloudinary.com/z7j0hqnl/video/upload/v1793025348/bookhub/video/bg-particles.mp4" type="video/mp4" />
       </video>
 
       {/* Camada de bolinhas azuis com brilho intenso */}

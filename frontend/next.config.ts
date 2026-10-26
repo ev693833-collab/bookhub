@@ -30,6 +30,11 @@ const nextConfig: NextConfig = {
         hostname: 'is1-ssl.mzstatic.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
     ],
   },
 };

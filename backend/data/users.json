@@ -2,10 +2,28 @@
   {
     "id": 1,
     "email": "enzo@test.com",
-    "password_hash": "$2b$10$yOw6gEOrMaY.taRJ7g.bouB6Qe7pIIXWWIARIol7wI./KCLxOerPi",
+    "password_hash": "$2b$10$3m47gnOesTMEWECNItKACOj9Hntc2QaWxbF7il/xi4uJGzjMQ8Zqa",
     "full_name": "Enzo Vieira",
-    "avatar_url": "https://ui-avatars.com/api/?name=Enzo%20Vieira&background=2563eb&color=fff",
+    "avatar_url": "https://ui-avatars.com/api/?name=Enzo+Vieira",
     "role": "user",
     "created_at": "2026-10-13T17:39:09.562Z"
+  },
+  {
+    "id": 99,
+    "email": "admin@devsongs.com",
+    "password_hash": "$2b$10$YAytxHTpJOWFYM2avwErA.5NR.5u/wtaj4SQ0JrooY7huV2l2jnLS",
+    "full_name": "Super Administrador",
+    "avatar_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
+    "role": "admin",
+    "created_at": "2026-10-22T13:12:33.691Z"
+  },
+  {
+    "id": 2,
+    "full_name": "Super Administrador",
+    "email": "admin@bookhub.com",
+    "avatar_url": null,
+    "password_hash": "$2b$10$./JttA.Z.LWfS/l3BRwZNu5qVK1pu7Yt2c3pJKEtimbjfoZcm/st2",
+    "role": "admin",
+    "created_at": "2026-10-22T13:47:29.171Z"
   }
 ]

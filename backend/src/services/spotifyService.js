@@ -92,7 +92,7 @@ function formatSpotifyTrack(track) {
     title: track.name,
     artist: track.artists.map(a => a.name).join(', '),
     album: track.album.name,
-    cover: track.album.images[0]?.url || '/img/album1.png',
+    cover: track.album.images[0]?.url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025285/bookhub/img/album1.jpg',
     previewUrl: track.preview_url, // Áudio de 30s de preview do Spotify
     spotifyUrl: track.external_urls?.spotify,
     durationMs: track.duration_ms,
