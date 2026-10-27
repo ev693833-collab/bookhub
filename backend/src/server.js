@@ -13,7 +13,7 @@ app.use('/api', routes);
 app.use(routes);
 
 // Definir porta dinâmica para produção ou desenvolvimento
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 
 // Iniciar o servidor apenas se rodando localmente
 if (require.main === module) {
