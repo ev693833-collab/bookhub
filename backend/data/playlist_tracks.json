@@ -1,0 +1,37 @@
+[
+  {
+    "id": 2,
+    "playlist_id": 1,
+    "track_id": 1,
+    "position": 1,
+    "added_at": "2026-10-30T12:43:26.982Z"
+  },
+  {
+    "id": 3,
+    "playlist_id": 1,
+    "track_id": 11,
+    "position": 2,
+    "added_at": "2026-10-30T13:11:58.087Z"
+  },
+  {
+    "id": 4,
+    "playlist_id": 1,
+    "track_id": 4,
+    "position": 3,
+    "added_at": "2026-10-30T13:12:02.720Z"
+  },
+  {
+    "id": 5,
+    "playlist_id": 1,
+    "track_id": 10,
+    "position": 4,
+    "added_at": "2026-10-30T13:32:24.797Z"
+  },
+  {
+    "id": 6,
+    "playlist_id": 1,
+    "track_id": 23,
+    "position": 5,
+    "added_at": "2026-10-30T14:20:34.621Z"
+  }
+]
