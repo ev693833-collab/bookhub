@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "name": "DevSongs Urban Records",
+    "slug": "devsongs-urban",
+    "genre": "Trap & Hip-Hop",
+    "description": "Gravadora focada nos maiores nomes do trap, rap e cultura urbana nacional.",
+    "logo_url": "/img/bk_avatar.png",
+    "banner_url": "/img/bk_banner.jpg",
+    "city": "Rio de Janeiro",
+    "state": "RJ",
+    "status": "active",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "name": "Forró & Piseiro Prime",
+    "slug": "forro-prime",
+    "genre": "Forró & Piseiro",
+    "description": "Acervo exclusivo com as melhores faixas de vaquejada, piseiro e forró do Brasil.",
+    "logo_url": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/13/98/4c/13984c56-f8fc-318e-9bc4-65b925b4783b/8447053281338.jpg/600x600bb.jpg",
+    "banner_url": "/img/artist_banner_justin.jpg",
+    "city": "Fortaleza",
+    "state": "CE",
+    "status": "active",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "name": "Mega Hits Gravadora",
+    "slug": "mega-hits",
+    "genre": "Funk & Pop",
+    "description": "Distribuidora líder em lançamentos de funk, pop internacional e paradas virais.",
+    "logo_url": "https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png",
+    "banner_url": "/img/bk_banner.jpg",
+    "city": "São Paulo",
+    "state": "SP",
+    "status": "active",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  }
+]

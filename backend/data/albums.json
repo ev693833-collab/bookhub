@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "title": "ICARUS",
+    "artist_name": "BK",
+    "artist_id": 1,
+    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/3b/2e/21/3b2e21b4-57f7-f735-16b1-2a622626e3a0/8445162776523.jpg/600x600bb.jpg",
+    "release_date": "2022-11-17",
+    "genre": "Rap",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "title": "Diamantes, Lágrimas e Rostos para Esquecer",
+    "artist_name": "BK",
+    "artist_id": 1,
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/927397ea14b00eba92454a88ec4f352d/500x500-000000-80-0-0.jpg",
+    "release_date": "2024-04-25",
+    "genre": "Rap",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "title": "Dos Prédios Deluxe",
+    "artist_name": "Veigh",
+    "artist_id": 2,
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/6646c5f4c6b60b0ddd4f00987623437c/500x500-000000-80-0-0.jpg",
+    "release_date": "2023-05-19",
+    "genre": "Trap",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "title": "ISSO É TRAP",
+    "artist_name": "Brandão85",
+    "artist_id": 3,
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/823c311b28a72801b809da4d99c621f4/500x500-000000-80-0-0.jpg",
+    "release_date": "2023-08-10",
+    "genre": "Trap",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 5,
+    "title": "Roda de Piseiro, Vol. 1 (Ao Vivo)",
+    "artist_name": "Pricila areba",
+    "artist_id": 4,
+    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/13/98/4c/13984c56-f8fc-318e-9bc4-65b925b4783b/8447053281338.jpg/600x600bb.jpg",
+    "release_date": "2023-09-01",
+    "genre": "Piseiro",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 6,
+    "title": "Tropykália 25 Anos",
+    "artist_name": "Forrozão Tropykália",
+    "artist_id": 5,
+    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/e0/92/da/e092da2d-9f6d-11dc-7843-2021e95a2b61/21UMGIM17518.rgb.jpg/600x600bb.jpg",
+    "release_date": "2022-07-15",
+    "genre": "Forró",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 7,
+    "title": "Par Perfeito",
+    "artist_name": "Priscila Areba",
+    "artist_id": 4,
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/e3dd74dfebdfae5ad220ce690a6f8b1b/500x500-000000-80-0-0.jpg",
+    "release_date": "2024-01-20",
+    "genre": "Forró",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 8,
+    "title": "Nova Tendência",
+    "artist_name": "MC GP",
+    "artist_id": 6,
+    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music118/v4/b9/78/fa/b978fac2-a626-ea2e-ea93-5f7e7bf642b4/8429006299409.jpg/600x600bb.jpg",
+    "release_date": "2023-11-05",
+    "genre": "Funk",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 9,
+    "title": "Purpose",
+    "artist_name": "Justin Bieber",
+    "artist_id": 7,
+    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/81/a4/dc/81a4dc50-8d7e-6ae5-71d3-f83393348248/15UMGIM59807.rgb.jpg/600x600bb.jpg",
+    "release_date": "2015-11-13",
+    "genre": "Pop",
+    "created_at": "2026-10-15T12:00:00.000Z"
+  }
+]

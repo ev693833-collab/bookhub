@@ -1,4 +1,12 @@
 console.log("Iniciando servidor...");
+
+process.on('unhandledRejection', (reason) => {
+    console.warn('[Server] Unhandled Rejection capturado:', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+    console.warn('[Server] Uncaught Exception capturado:', err?.message || err);
+});
+
 const express = require("express");
 const cors = require("cors");
 // Configura variáveis de ambiente do .env

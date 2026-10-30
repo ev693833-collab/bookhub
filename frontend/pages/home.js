@@ -15,6 +15,7 @@ import {
   User, Shield
 } from 'lucide-react';
 import styles from '../styles/home.module.css';
+import LibraryView from '../components/library/LibraryView';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -826,10 +827,82 @@ function generatePixBrCode({ pixKey, merchantName = 'DEVSONGS', merchantCity = '
   return `${rawPayload}${crcHex}`;
 }
 
-export default function HomeUnifiedYouTubeMusic() {
+export default function HomeUnifiedYouTubeMusic(props = {}) {
   const router = useRouter();
 
   const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (props.forcedTab) {
+      setActiveTab(props.forcedTab);
+      setViewMode('home');
+    } else if (router.query.tab === 'biblioteca' || router.query.playlist) {
+      setActiveTab('biblioteca');
+      setViewMode('home');
+    }
+  }, [router.isReady, router.query, props.forcedTab]);
+
+  const handlePlayLibraryTrack = (track) => {
+    if (!track) return;
+    if (track.isExpired || track.canPlay === false) {
+      console.warn('Faixa com aluguel expirado ou bloqueada:', track.title);
+      return;
+    }
+    const isStreamAllowed = track.available_for_stream !== false && !track.isExpired && track.canPlay !== false;
+    const playObj = {
+      id: track.id ? (String(track.id).startsWith('ct-') ? track.id : `ct-${track.id}`) : track.dbTrackId,
+      dbTrackId: track.dbTrackId || Number(String(track.id).replace('ct-', '')),
+      title: track.title,
+      artist: track.artist,
+      album: track.album || 'Single',
+      genre: track.genre || 'Variado',
+      cover: track.cover_url || track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      preview: track.preview_url || track.preview,
+      youtubeVideoId: track.youtube_video_id || null,
+      durationSec: track.duration_sec || 210,
+      duration: `${Math.floor((track.duration_sec || 210)/60)}:${String((track.duration_sec || 210)%60).padStart(2, '0')}`,
+      available_for_stream: isStreamAllowed,
+      canPlay: isStreamAllowed,
+      isExpired: Boolean(track.isExpired)
+    };
+    playTrack(playObj, false);
+  };
+
+  const handlePlayLibraryQueue = (tracksList, startIndex = 0) => {
+    if (!tracksList || tracksList.length === 0) return;
+    // Exclui automaticamente músicas com aluguel expirado ou sem autorização da fila
+    const playableTracks = tracksList.filter(t => !t.isExpired && t.canPlay !== false);
+    if (playableTracks.length === 0) {
+      console.warn('Todas as faixas desta playlist ou álbum possuem aluguel expirado.');
+      return;
+    }
+    const mapped = playableTracks.map(t => ({
+      id: t.id ? (String(t.id).startsWith('ct-') ? t.id : `ct-${t.id}`) : t.dbTrackId,
+      dbTrackId: t.dbTrackId || Number(String(t.id).replace('ct-', '')),
+      title: t.title,
+      artist: t.artist,
+      album: t.album || 'Single',
+      genre: t.genre || 'Variado',
+      cover: t.cover_url || t.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      preview: t.preview_url || t.preview,
+      youtubeVideoId: t.youtube_video_id || null,
+      durationSec: t.duration_sec || 210,
+      duration: `${Math.floor((t.duration_sec || 210)/60)}:${String((t.duration_sec || 210)%60).padStart(2, '0')}`,
+      available_for_stream: true,
+      canPlay: true,
+      isExpired: false
+    }));
+    setUserPurchases(prev => {
+      const existing = new Set(prev.map(p => p.dbTrackId || p.id));
+      const newItems = mapped.filter(m => !existing.has(m.dbTrackId || m.id));
+      return [...prev, ...newItems];
+    });
+    const safeIndex = startIndex < mapped.length ? startIndex : 0;
+    const startTrack = mapped[safeIndex] || mapped[0];
+    playTrack(startTrack, false);
+  };
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedPill, setSelectedPill] = useState('Energia');
   const [tracks, setTracks] = useState(HOME_ESCOLHA_A_DEDO);
@@ -1264,7 +1337,9 @@ export default function HomeUnifiedYouTubeMusic() {
       });
       setUnlockedTrackMap(prev => ({ ...prev, ...newUnlocked }));
 
-      await fetchUserPurchases();
+      try {
+        await fetchUserPurchases();
+      } catch (_) {}
 
       // Se utilizou cupom, marca-o como UTILIZADO para não poder usar de novo
       if (appliedCoupon?.code) {
@@ -1309,7 +1384,9 @@ export default function HomeUnifiedYouTubeMusic() {
       setAppliedCoupon(null);
       setLastOrderPurchased(purchasedList);
       setCartStep('success');
-      await fetchUserPurchases();
+      try {
+        await fetchUserPurchases();
+      } catch (_) {}
     } finally {
       setIsProcessingPayment(false);
     }
@@ -1332,12 +1409,13 @@ export default function HomeUnifiedYouTubeMusic() {
       const res = await fetch(`${API_URL}/api/companies/my-purchases`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) return;
       const data = await res.json();
       if (data && data.purchases) {
         setUserPurchases(data.purchases);
       }
     } catch (err) {
-      console.error('Erro ao carregar compras do usuário:', err);
+      console.warn('Erro ao carregar compras do usuário:', err?.message || err);
     } finally {
       setIsPurchasesLoading(false);
     }
@@ -1445,7 +1523,9 @@ export default function HomeUnifiedYouTubeMusic() {
           text: `🎉 Pagamento aprovado! "${track.title}" foi liberada e adicionada à sua Biblioteca!`
         });
         setTimeout(() => setPurchaseNotice(null), 5500);
+        try {
         await fetchUserPurchases();
+      } catch (_) {}
         return true;
       } else {
         setPurchaseNotice({
@@ -1607,14 +1687,14 @@ export default function HomeUnifiedYouTubeMusic() {
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const [likedMap, setLikedMap] = useState({});
-  const [activeTab, setActiveTab] = useState('inicio');
+  const [activeTab, setActiveTab] = useState(props.forcedTab || 'inicio');
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [smartQueue, setSmartQueue] = useState([]);
   const [queueSource, setQueueSource] = useState('');
 
-  // Faixas adquiridas válidas (compradas definitivas ou aluguel vigente)
+  // Faixas adquiridas válidas (compradas definitivas ou aluguel vigente não expirado)
   const validPurchases = useMemo(() => {
-    return (userPurchases || []).filter(p => p.canPlay || p.type === 'buy' || !p.isExpired);
+    return (userPurchases || []).filter(p => p.type === 'buy' || (!p.isExpired && p.canPlay !== false));
   }, [userPurchases]);
 
   // Fila de reprodução exclusiva para faixas compradas e alugadas ativas da biblioteca
@@ -3049,7 +3129,7 @@ export default function HomeUnifiedYouTubeMusic() {
                 <div className={styles.sidebarDivider} />
 
                 {/* Botão + Nova Playlist (Foto 1) */}
-                <button className={styles.newPlaylistBtn} onClick={() => alert('Criar nova playlist')}>
+                <button className={styles.newPlaylistBtn} onClick={() => { setActiveTab('biblioteca'); setViewMode('home'); router.push('/home?tab=biblioteca', undefined, { shallow: true }); }}>
                   <Plus size={18} />
                   <span>Nova playlist</span>
                 </button>
@@ -3094,141 +3174,20 @@ export default function HomeUnifiedYouTubeMusic() {
 
               {/* 1. VISÃO DE BIBLIOTECA (Compras e Aluguéis do Usuário) */}
               {activeTab === 'biblioteca' ? (
-                <section className={styles.companyHeroSection}>
-                  <div className={styles.companyHeroCard}>
-                    <div className={styles.baseItemIconGlobal} style={{ width: 80, height: 80, fontSize: '2.5rem' }}>
-                      📚
-                    </div>
-                    <div className={styles.companyHeroContent}>
-                      <div className={styles.companyBadgeRow}>
-                        <span className={styles.companyBadgeTag}>Sua Biblioteca</span>
-                        <span className={styles.companyGenreTag}>Licenças & Acessos</span>
-                      </div>
-                      <h1 className={styles.companyHeroTitle}>Conteúdos Adquiridos</h1>
-                      <p className={styles.companyHeroDesc}>
-                        Gerencie suas músicas compradas definitivamente e acompanhe o prazo de vigência dos seus aluguéis ativos.
-                      </p>
-                      <div className={styles.companyStatsRow}>
-                        <span>Total de itens na biblioteca: <strong>{userPurchases.length} faixas</strong></span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.btnVoltarGlobal}
-                      onClick={() => {
-                        setActiveTab('inicio');
-                        handleSelectBaseMode('all');
-                      }}
-                      title="Explorar o catálogo"
-                    >
-                      Explorar Catálogo
-                    </button>
-                  </div>
-
-                  <div className={styles.companyTracksSection}>
-                    <div className={styles.homeSectionHeader}>
-                      <div>
-                        <h2 className={styles.homeSectionTitle}>Suas Faixas Compradas e Alugadas</h2>
-                        <span className={styles.recentSectionSub}>
-                          Clique para reproduzir diretamente no player inferior
-                        </span>
-                      </div>
-                    </div>
-
-                    {isPurchasesLoading ? (
-                      <div style={{ padding: '2rem', textAlign: 'center', color: '#a7a7a7' }}>Carregando sua biblioteca...</div>
-                    ) : userPurchases.length === 0 ? (
-                      <div style={{ padding: '3rem', textAlign: 'center', color: '#a7a7a7', background: 'rgba(255,255,255,0.03)', borderRadius: 12 }}>
-                        <p style={{ fontSize: '1.05rem', marginBottom: '1rem', color: '#ffffff' }}>Você ainda não comprou ou alugou nenhuma faixa.</p>
-                        <button
-                          type="button"
-                          className={styles.btnVoltarGlobal}
-                          onClick={() => {
-                            setActiveTab('inicio');
-                            handleSelectBaseMode('buy');
-                          }}
-                        >
-                          Ver Músicas para Compra e Aluguel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className={styles.companyTracksGrid}>
-                        {userPurchases.map((item) => {
-                          const isCurrent = currentTrack?.id === item.id || currentTrack?.title === item.title;
-                          return (
-                            <div
-                              key={item.purchaseId}
-                              className={`${styles.companyTrackCard} ${isCurrent ? styles.companyTrackCardActive : ''}`}
-                            >
-                              <div
-                                className={styles.companyTrackCoverWrap}
-                                onClick={() => {
-                                  if (item.canPlay) {
-                                    playTrack(item);
-                                  } else {
-                                    alert('Este aluguel expirou. Renove para continuar ouvindo.');
-                                  }
-                                }}
-                              >
-                                <img
-                                  src={item.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
-                                  alt={item.title}
-                                  className={styles.companyTrackCover}
-                                  onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
-                                />
-                                <div className={styles.companyTrackPlayOverlay}>
-                                  {isCurrent && isPlaying ? (
-                                    <Pause size={22} fill="#ffffff" color="#ffffff" />
-                                  ) : (
-                                    <Play size={22} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className={styles.companyTrackInfo}>
-                                <span className={styles.companyTrackTitle} title={item.title}>{item.title}</span>
-                                <span className={styles.companyTrackArtist}>{(item.artist || '').replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, '')}</span>
-                                <span className={styles.companyTrackAlbum}>{item.album} • {item.companyName}</span>
-
-                                <div className={styles.companyStockBadgeRow}>
-                                  {item.type === 'buy' ? (
-                                    <span className={styles.purchasedBadge}>Comprado (Permanente)</span>
-                                  ) : item.isExpired ? (
-                                    <span className={styles.expiredBadge}>Aluguel Expirado</span>
-                                  ) : (
-                                    <span className={styles.rentedBadge}>Válido por {item.remainingDays} dias</span>
-                                  )}
-                                </div>
-
-                                <div className={styles.companyTrackActionsRow}>
-                                  {item.canPlay ? (
-                                    <button
-                                      type="button"
-                                      className={styles.btnBuyTrack}
-                                      onClick={() => playTrack(item)}
-                                      title="Reproduzir no player"
-                                    >
-                                      Ouvir Agora
-                                    </button>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      className={styles.btnRentTrack}
-                                      onClick={() => handleBuyCompanyTrack({ dbTrackId: item.dbTrackId, companyId: item.companyId, title: item.title }, 'rent')}
-                                      title="Renovar aluguel por mais 30 dias"
-                                    >
-                                      Renovar Aluguel
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </section>
+                <LibraryView
+                  token={typeof window !== 'undefined' ? localStorage.getItem('token') : null}
+                  user={user}
+                  onPlayTrack={handlePlayLibraryTrack}
+                  onPlayQueue={handlePlayLibraryQueue}
+                  currentTrack={currentTrack}
+                  isPlaying={isPlaying}
+                  initialPlaylistId={router.query.playlist || null}
+                  onExploreCatalog={() => {
+                    setSelectedCompany(null);
+                    setBaseMode('all');
+                    setActiveTab('explorar');
+                  }}
+                />
               ) : (selectedCompany || baseMode !== 'home') ? (
                 /* 2. VISÃO DE BASE ESPECÍFICA OU MODALIDADE (Todas as Bases / Streaming / Compras / Aluguéis) */
                 <section className={styles.companyHeroSection}>

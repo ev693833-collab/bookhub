@@ -1,0 +1,270 @@
+[
+  {
+    "id": 1,
+    "company_id": 1,
+    "user_id": 2,
+    "track_id": 1,
+    "type": "buy",
+    "price": 4.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T02:03:59.082Z"
+  },
+  {
+    "id": 2,
+    "company_id": 1,
+    "user_id": 2,
+    "track_id": 2,
+    "type": "rent",
+    "price": 2.5,
+    "expires_at": "2026-11-29T14:59:33.778Z",
+    "created_at": "2026-10-30T14:01:26.346Z",
+    "rented_at": "2026-10-30T14:59:33.778Z",
+    "payment_status": "confirmed",
+    "confirmed_at": "2026-10-30T14:59:33.778Z",
+    "updated_at": "2026-10-30T14:59:33.778Z"
+  },
+  {
+    "id": 3,
+    "company_id": 1,
+    "user_id": 2,
+    "track_id": 3,
+    "type": "buy",
+    "price": 6.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T04:03:59.082Z"
+  },
+  {
+    "id": 4,
+    "company_id": 1,
+    "user_id": 2,
+    "track_id": 4,
+    "type": "buy",
+    "price": 4.5,
+    "expires_at": null,
+    "created_at": "2026-10-30T05:03:59.082Z"
+  },
+  {
+    "id": 5,
+    "company_id": 2,
+    "user_id": 2,
+    "track_id": 5,
+    "type": "buy",
+    "price": 3.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T06:03:59.082Z"
+  },
+  {
+    "id": 6,
+    "company_id": 2,
+    "user_id": 2,
+    "track_id": 6,
+    "type": "rent",
+    "price": 1.5,
+    "expires_at": "2026-11-28T13:03:59.081Z",
+    "created_at": "2026-10-30T07:03:59.082Z"
+  },
+  {
+    "id": 7,
+    "company_id": 2,
+    "user_id": 2,
+    "track_id": 7,
+    "type": "buy",
+    "price": 4.2,
+    "expires_at": null,
+    "created_at": "2026-10-30T08:03:59.082Z"
+  },
+  {
+    "id": 8,
+    "company_id": 2,
+    "user_id": 2,
+    "track_id": 8,
+    "type": "buy",
+    "price": 3.5,
+    "expires_at": null,
+    "created_at": "2026-10-30T09:03:59.082Z"
+  },
+  {
+    "id": 9,
+    "company_id": 3,
+    "user_id": 2,
+    "track_id": 9,
+    "type": "buy",
+    "price": 4.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T10:03:59.082Z"
+  },
+  {
+    "id": 10,
+    "company_id": 3,
+    "user_id": 2,
+    "track_id": 10,
+    "type": "buy",
+    "price": 4.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T14:01:26.379Z",
+    "rented_at": null,
+    "payment_status": "confirmed",
+    "confirmed_at": "2026-10-30T14:59:33.798Z",
+    "updated_at": "2026-10-30T14:59:33.798Z"
+  },
+  {
+    "id": 11,
+    "company_id": 3,
+    "user_id": 2,
+    "track_id": 11,
+    "type": "buy",
+    "price": 7.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T12:03:59.082Z"
+  },
+  {
+    "id": 12,
+    "company_id": 1,
+    "user_id": 1,
+    "track_id": 1,
+    "type": "buy",
+    "price": 4.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T02:03:59.082Z"
+  },
+  {
+    "id": 13,
+    "company_id": 1,
+    "user_id": 1,
+    "track_id": 2,
+    "type": "rent",
+    "price": 2.5,
+    "expires_at": "2026-10-25T10:00:00.000Z",
+    "created_at": "2026-09-25T10:00:00.000Z"
+  },
+  {
+    "id": 14,
+    "company_id": 1,
+    "user_id": 1,
+    "track_id": 3,
+    "type": "buy",
+    "price": 6.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T04:03:59.082Z"
+  },
+  {
+    "id": 15,
+    "company_id": 1,
+    "user_id": 1,
+    "track_id": 4,
+    "type": "buy",
+    "price": 4.5,
+    "expires_at": null,
+    "created_at": "2026-10-30T05:03:59.082Z"
+  },
+  {
+    "id": 16,
+    "company_id": 2,
+    "user_id": 1,
+    "track_id": 5,
+    "type": "buy",
+    "price": 3.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T06:03:59.082Z"
+  },
+  {
+    "id": 17,
+    "company_id": 2,
+    "user_id": 1,
+    "track_id": 6,
+    "type": "rent",
+    "price": 1.5,
+    "expires_at": "2026-11-28T13:03:59.081Z",
+    "created_at": "2026-10-30T07:03:59.082Z"
+  },
+  {
+    "id": 18,
+    "company_id": 2,
+    "user_id": 1,
+    "track_id": 7,
+    "type": "buy",
+    "price": 4.2,
+    "expires_at": null,
+    "created_at": "2026-10-30T08:03:59.082Z"
+  },
+  {
+    "id": 19,
+    "company_id": 2,
+    "user_id": 1,
+    "track_id": 8,
+    "type": "buy",
+    "price": 3.5,
+    "expires_at": null,
+    "created_at": "2026-10-30T09:03:59.082Z"
+  },
+  {
+    "id": 20,
+    "company_id": 3,
+    "user_id": 1,
+    "track_id": 9,
+    "type": "buy",
+    "price": 4.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T10:03:59.082Z"
+  },
+  {
+    "id": 21,
+    "company_id": 3,
+    "user_id": 1,
+    "track_id": 10,
+    "type": "rent",
+    "price": 1.9,
+    "expires_at": "2026-10-20T10:00:00.000Z",
+    "created_at": "2026-09-20T10:00:00.000Z"
+  },
+  {
+    "id": 22,
+    "company_id": 3,
+    "user_id": 1,
+    "track_id": 11,
+    "type": "buy",
+    "price": 7.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T12:03:59.082Z"
+  },
+  {
+    "id": 23,
+    "company_id": 1,
+    "user_id": 2,
+    "track_id": 23,
+    "type": "buy",
+    "price": 4.9,
+    "expires_at": null,
+    "created_at": "2026-10-30T14:20:19.329Z"
+  },
+  {
+    "id": 24,
+    "company_id": 1,
+    "user_id": 1793384474,
+    "track_id": 3,
+    "type": "buy",
+    "price": 6.9,
+    "rented_at": null,
+    "expires_at": null,
+    "payment_status": "confirmed",
+    "confirmed_at": "2026-10-30T16:07:17.768Z",
+    "transaction_id": "tx_buy_perm_1793376437768",
+    "created_at": "2026-10-30T16:07:15.663Z",
+    "updated_at": "2026-10-30T16:07:17.768Z"
+  },
+  {
+    "id": 25,
+    "company_id": 2,
+    "user_id": 1793384474,
+    "track_id": 5,
+    "type": "rent",
+    "price": 1.5,
+    "rented_at": "2026-10-30T16:07:17.733Z",
+    "expires_at": "2026-11-29T16:07:17.733Z",
+    "payment_status": "confirmed",
+    "confirmed_at": "2026-10-30T16:07:17.733Z",
+    "transaction_id": "tx_renew_expired_1793376437733",
+    "created_at": "2026-09-25T16:07:17.709Z",
+    "updated_at": "2026-10-30T16:07:17.733Z"
+  }
+]
