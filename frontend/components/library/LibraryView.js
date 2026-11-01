@@ -3,8 +3,8 @@ import Image from 'next/image';
 import {
   ListMusic, Music, Disc, Mic2, Plus, Play, Pause, Trash2, Edit3,
   Share2, Globe, Link2, Lock, ArrowLeft, ArrowUp, ArrowDown,
-  Search, Check, AlertCircle, Clock, CheckCircle2, ChevronRight, X,
-  Camera, Upload, Image as ImageIcon
+  Search, Check, AlertCircle, Clock, CheckCircle2, ChevronRight, ChevronLeft, X,
+  Camera, Upload, Image as ImageIcon, MoreVertical, ListPlus, User, Disc3
 } from 'lucide-react';
 import styles from './LibraryView.module.css';
 
@@ -19,16 +19,24 @@ export default function LibraryView({
   isPlaying,
   initialTab = 'playlists',
   initialPlaylistId = null,
-  onExploreCatalog = null
+  selectedPlaylistIdFromParent = null,
+  triggerCreatePlaylist = 0,
+  onSelectedPlaylistChange = null,
+  onPlaylistsUpdated = null,
+  onExploreCatalog = null,
+  onSelectAlbum = null,
+  onOpenArtistProfile = null
 }) {
   const [activeCategory, setActiveCategory] = useState(initialTab); // 'playlists' | 'tracks' | 'albums' | 'artists'
   const [searchQuery, setSearchQuery] = useState('');
+  const [trackFilter, setTrackFilter] = useState('all'); // 'all' | 'buy' | 'rent'
 
   // Data states
   const [playlists, setPlaylists] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [catalogTracks, setCatalogTracks] = useState([]);
   const [albums, setAlbums] = useState([]);
+  const [catalogAlbums, setCatalogAlbums] = useState([]);
   const [artists, setArtists] = useState([]);
 
   // Loading & error
@@ -62,6 +70,7 @@ export default function LibraryView({
 
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({ open: false, type: '', id: null, title: '' });
   const [expiredModalTrack, setExpiredModalTrack] = useState(null);
+  const [trackMenuState, setTrackMenuState] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Disparar notificação temporária
@@ -146,16 +155,36 @@ export default function LibraryView({
     }
   }, []);
 
-  // Carregar álbuns
+  // Carregar álbuns comprados integralmente pelo usuário autenticado
   const fetchAlbums = useCallback(async () => {
+    if (!token) {
+      setAlbums([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/library/my-albums`, { headers: authHeaders });
+      const data = await res.json();
+      if (res.ok) {
+        setAlbums(data.albums || []);
+      } else {
+        setAlbums([]);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar álbuns comprados:', err);
+      setAlbums([]);
+    }
+  }, [token, authHeaders]);
+
+  // Carregar catálogo completo de álbuns
+  const fetchCatalogAlbums = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/library/albums`);
       const data = await res.json();
       if (res.ok) {
-        setAlbums(data.albums || []);
+        setCatalogAlbums(data.albums || []);
       }
     } catch (err) {
-      console.error('Erro ao buscar álbuns:', err);
+      console.error('Erro ao buscar catálogo de álbuns:', err);
     }
   }, []);
 
@@ -206,16 +235,227 @@ export default function LibraryView({
       fetchTracks(),
       fetchCatalogTracks(),
       fetchAlbums(),
+      fetchCatalogAlbums(),
       fetchArtists()
     ]).finally(() => setLoading(false));
-  }, [fetchPlaylists, fetchTracks, fetchCatalogTracks, fetchAlbums, fetchArtists]);
+  }, [fetchPlaylists, fetchTracks, fetchCatalogTracks, fetchAlbums, fetchCatalogAlbums, fetchArtists]);
 
-  // Se passou ID de playlist inicial na URL
-  useEffect(() => {
-    if (initialPlaylistId) {
-      fetchPlaylistDetails(initialPlaylistId);
+  // Ref para controlar última playlist carregada e evitar loop de re-abertura ao clicar em "Voltar"
+  const lastTargetIdRef = useRef(null);
+
+  // Fecha playlist e sincroniza estado
+  const handleClosePlaylist = useCallback(() => {
+    lastTargetIdRef.current = null;
+    setSelectedPlaylist(null);
+    if (onSelectedPlaylistChange) {
+      onSelectedPlaylistChange(null);
     }
-  }, [initialPlaylistId, fetchPlaylistDetails]);
+  }, [onSelectedPlaylistChange]);
+
+  // Navegar para o perfil de um artista
+  const handleGoToArtist = useCallback((artistId) => {
+    handleClosePlaylist();
+    setSelectedAlbum(null);
+    setActiveCategory('artists');
+    fetchArtistDetails(artistId);
+  }, [handleClosePlaylist, fetchArtistDetails]);
+
+  // Navegar para a página de um álbum
+  const handleGoToAlbum = useCallback((albumId) => {
+    handleClosePlaylist();
+    setSelectedArtist(null);
+    setActiveCategory('albums');
+    fetchAlbumDetails(albumId);
+  }, [handleClosePlaylist, fetchAlbumDetails]);
+
+  // Identificar participantes de uma faixa (artistas principais e colaborações/participações)
+  const getTrackParticipants = useCallback((track, artistList) => {
+    if (!track) return [];
+    const list = (artistList && artistList.length > 0) ? artistList : (artists || []);
+
+    // 1. Se a faixa já possuir lista explícita de participantes no acervo
+    if (Array.isArray(track.participants) && track.participants.length > 0) {
+      return track.participants.map(p => {
+        const found = list.find(a => Number(a.id) === Number(p.artistId || p.artist_id || p.id) || a.name?.toLowerCase() === p.name?.toLowerCase());
+        return {
+          name: p.name || (found ? found.name : 'Artista'),
+          artistId: found ? found.id : (p.artistId || p.artist_id || null),
+          hasProfile: Boolean(found && found.id)
+        };
+      });
+    }
+
+    if (!track.artist) return [];
+
+    const parts = String(track.artist)
+      .split(/[,&/]|(?:\s+e\s+)|\s+feat\.?\s+|\s+ft\.?\s+/i)
+      .map(p => p.trim())
+      .filter(Boolean);
+
+    const participants = [];
+    const seenNames = new Set();
+    const norm = str => str.toLowerCase().replace(/sc/g, 'c').replace(/[^a-z0-9]/g, '');
+
+    parts.forEach(part => {
+      const pNorm = norm(part);
+      const found = list.find(a => a.name && (norm(a.name) === pNorm || a.name.toLowerCase() === part.toLowerCase()));
+      const displayName = found ? found.name : part;
+      if (!seenNames.has(norm(displayName))) {
+        seenNames.add(norm(displayName));
+        participants.push({
+          name: displayName,
+          artistId: found ? found.id : null,
+          hasProfile: Boolean(found)
+        });
+      }
+    });
+
+    list.forEach(a => {
+      if (a.name && track.artist.toLowerCase().includes(a.name.toLowerCase())) {
+        const aNorm = norm(a.name);
+        if (!seenNames.has(aNorm)) {
+          seenNames.add(aNorm);
+          participants.push({
+            name: a.name,
+            artistId: a.id,
+            hasProfile: true
+          });
+        }
+      }
+    });
+
+    if (track.artist_id && participants.length === 0) {
+      const found = list.find(a => Number(a.id) === Number(track.artist_id));
+      if (found) {
+        participants.push({
+          name: found.name,
+          artistId: found.id,
+          hasProfile: true
+        });
+      }
+    }
+
+    if (participants.length === 0) {
+      participants.push({
+        name: track.artist,
+        artistId: null,
+        hasProfile: false
+      });
+    }
+
+    return participants;
+  }, [artists]);
+
+  // Identificar álbum associado a uma faixa (excluindo faixas avulsas ou 'Single')
+  const getTrackAssociatedAlbum = useCallback((track, albumList) => {
+    if (!track) return null;
+    const list = (albumList && albumList.length > 0) ? albumList : (catalogAlbums.length > 0 ? catalogAlbums : (albums || []));
+
+    if (track.album_id) {
+      const direct = list.find(a => Number(a.id) === Number(track.album_id));
+      if (direct) return direct;
+    }
+    if (!track.album) return null;
+    const albumName = String(track.album).trim();
+    if (!albumName || albumName.toLowerCase() === 'single') return null;
+
+    // Prioriza correspondência exata de título e artista (se houver)
+    const exactWithArtist = list.find(a => 
+      a.title && a.title.toLowerCase().trim() === albumName.toLowerCase() &&
+      (!track.artist || !a.artist_name || a.artist_name.toLowerCase().includes(track.artist.toLowerCase()) || track.artist.toLowerCase().includes(a.artist_name.toLowerCase()))
+    );
+    if (exactWithArtist) return exactWithArtist;
+
+    const exact = list.find(a => a.title && a.title.toLowerCase().trim() === albumName.toLowerCase());
+    if (exact) return exact;
+
+    const sub = list.find(a => 
+      a.title && (
+        a.title.toLowerCase().includes(albumName.toLowerCase()) ||
+        albumName.toLowerCase().includes(a.title.toLowerCase())
+      )
+    );
+    return sub || null;
+  }, [catalogAlbums, albums]);
+
+  // Abertura do menu flutuante de ações da música com cálculo inteligente de posição na tela
+  const handleOpenTrackMenu = (e, track) => {
+    e.stopPropagation();
+    if (trackMenuState && trackMenuState.trackId === track.id) {
+      setTrackMenuState(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showAbove = spaceBelow < 280;
+    setTrackMenuState({
+      track,
+      trackId: track.id,
+      top: showAbove ? rect.top - 6 : rect.bottom + 6,
+      right: Math.max(12, window.innerWidth - rect.right),
+      showAbove
+    });
+  };
+
+  // Fechar menu de ações ao teclar Escape, clicar fora ou rolar a visualização
+  useEffect(() => {
+    if (!trackMenuState) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setTrackMenuState(null);
+    };
+    const handleClickOutside = (e) => {
+      if (e.target.closest(`.${styles.trackMenuDropdown}`) || e.target.closest(`.${styles.trackMenuTriggerBtn}`)) {
+        return;
+      }
+      setTrackMenuState(null);
+    };
+    const handleScroll = () => {
+      setTrackMenuState(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('click', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [trackMenuState]);
+
+  // Se passou ID de playlist inicial na URL ou vindo da sidebar
+  useEffect(() => {
+    const targetId = selectedPlaylistIdFromParent || initialPlaylistId;
+    if (targetId) {
+      if (lastTargetIdRef.current !== targetId) {
+        lastTargetIdRef.current = targetId;
+        fetchPlaylistDetails(targetId);
+      }
+    } else {
+      lastTargetIdRef.current = null;
+    }
+  }, [selectedPlaylistIdFromParent, initialPlaylistId, fetchPlaylistDetails]);
+
+  // Sincroniza a seleção da playlist com a sidebar
+  useEffect(() => {
+    if (onSelectedPlaylistChange) {
+      onSelectedPlaylistChange(selectedPlaylist ? selectedPlaylist.id : null);
+    }
+  }, [selectedPlaylist, onSelectedPlaylistChange]);
+
+  // Listener para abrir o modal de criação de playlist acionado pela sidebar
+  useEffect(() => {
+    if (triggerCreatePlaylist) {
+      handleOpenCreatePlaylist();
+    }
+  }, [triggerCreatePlaylist]);
+
+  useEffect(() => {
+    const handleOpenCreateModal = () => handleOpenCreatePlaylist();
+    window.addEventListener('devsongs:open_create_playlist', handleOpenCreateModal);
+    return () => {
+      window.removeEventListener('devsongs:open_create_playlist', handleOpenCreateModal);
+    };
+  }, []);
 
   // Formatação de duração
   const formatDuration = (sec) => {
@@ -223,6 +463,78 @@ export default function LibraryView({
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m}:${String(s).padStart(2, '0')}`;
+  };
+
+  const backdropRef = useRef(null);
+  const suggestionsScrollRef = useRef(null);
+
+  // Dynamic scroll opacity for playlist ambient backdrop (YouTube Music style)
+  useEffect(() => {
+    if (!selectedPlaylist) return;
+
+    const handleScroll = () => {
+      window.requestAnimationFrame(() => {
+        if (!backdropRef.current) return;
+        const mainContainer = document.querySelector('main');
+        const scrollY = mainContainer ? mainContainer.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
+        // Fade smoothly from 0.70 at top (scrollY = 0) down to ~0.35 at scrollY >= 400
+        const progress = Math.min(scrollY / 400, 1);
+        const opacity = 0.70 - (progress * 0.35);
+        backdropRef.current.style.opacity = String(Math.max(0.35, opacity));
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    const mainContainer = document.querySelector('main');
+    if (mainContainer) {
+      mainContainer.addEventListener('scroll', handleScroll, { passive: true });
+    }
+
+    // Set initial opacity
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (mainContainer) {
+        mainContainer.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [selectedPlaylist]);
+
+  // Playlist Backdrop image URL
+  const playlistBackdropImage = useMemo(() => {
+    if (!selectedPlaylist) return 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png';
+    if (selectedPlaylist.cover_url) return selectedPlaylist.cover_url;
+    if (selectedPlaylist.tracks && selectedPlaylist.tracks.length > 0) {
+      const firstWithCover = selectedPlaylist.tracks.find(t => t.cover_url);
+      if (firstWithCover) return firstWithCover.cover_url;
+    }
+    return 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png';
+  }, [selectedPlaylist]);
+
+  // Playlist track suggestions (tracks from catalog/library not yet in this playlist)
+  const playlistSuggestions = useMemo(() => {
+    if (!selectedPlaylist) return [];
+    const currentTrackIds = new Set((selectedPlaylist.tracks || []).map(t => String(t.id).replace('ct-', '')));
+    const allCandidates = [...(catalogTracks || []), ...(tracks || [])];
+    const unique = [];
+    const seen = new Set();
+    for (const t of allCandidates) {
+      if (!t || !t.id) continue;
+      const cleanId = String(t.id).replace('ct-', '');
+      if (currentTrackIds.has(cleanId) || seen.has(cleanId)) continue;
+      seen.add(cleanId);
+      unique.push(t);
+      if (unique.length >= 12) break;
+    }
+    return unique;
+  }, [selectedPlaylist, catalogTracks, tracks]);
+
+  const scrollSuggestions = (direction) => {
+    if (suggestionsScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -350 : 350;
+      suggestionsScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
   };
 
   // Helper canônico para extrair ID numérico de faixa com segurança (ct-X, dbTrackId, track_id, id)
@@ -308,6 +620,8 @@ export default function LibraryView({
       showNotice('Foto da playlist atualizada com sucesso!');
       setSelectedPlaylist(data.playlist);
       fetchPlaylists();
+      window.dispatchEvent(new CustomEvent('devsongs:playlists_updated'));
+      onPlaylistsUpdated && onPlaylistsUpdated();
     } catch (err) {
       showNotice(err.message || 'Erro ao processar imagem.', 'error');
     } finally {
@@ -464,6 +778,8 @@ export default function LibraryView({
       showNotice(data.message || 'Playlist salva com sucesso!');
       setPlaylistModalOpen(false);
       fetchPlaylists();
+      window.dispatchEvent(new CustomEvent('devsongs:playlists_updated'));
+      onPlaylistsUpdated && onPlaylistsUpdated();
 
       if (selectedPlaylist && selectedPlaylist.id === playlistForm.id) {
         setSelectedPlaylist(data.playlist);
@@ -489,6 +805,8 @@ export default function LibraryView({
       showNotice('Playlist excluída com sucesso.');
       setSelectedPlaylist(null);
       fetchPlaylists();
+      window.dispatchEvent(new CustomEvent('devsongs:playlists_updated'));
+      onPlaylistsUpdated && onPlaylistsUpdated();
       setDeleteConfirmModal({ open: false, type: '', id: null, title: '' });
     } catch (err) {
       showNotice('Falha ao excluir playlist.', 'error');
@@ -518,6 +836,8 @@ export default function LibraryView({
       setAddToPlaylistModalOpen(false);
       setTrackToAddToPlaylist(null);
       fetchPlaylists();
+      window.dispatchEvent(new CustomEvent('devsongs:playlists_updated'));
+      onPlaylistsUpdated && onPlaylistsUpdated();
 
       if (selectedPlaylist && selectedPlaylist.id === Number(playlistId)) {
         setSelectedPlaylist(data.playlist);
@@ -546,6 +866,8 @@ export default function LibraryView({
         setSelectedPlaylist(data.playlist);
       }
       fetchPlaylists();
+      window.dispatchEvent(new CustomEvent('devsongs:playlists_updated'));
+      onPlaylistsUpdated && onPlaylistsUpdated();
     } catch (err) {
       showNotice('Falha ao remover música.', 'error');
     }
@@ -598,47 +920,81 @@ export default function LibraryView({
     }
   };
 
-  // Helper para verificar status de acesso e aluguel de uma faixa
+  // Helper para verificar status de acesso, bloqueio e aluguel de uma faixa
   const getTrackAccessInfo = useCallback((trackOrId) => {
     if (!trackOrId) {
-      return { isExpired: false, canPlay: true, type: 'buy', rent_price: 1.90, sale_price: 4.90 };
+      return { isExpired: false, canPlay: false, isLocked: true, accessStatus: 'not_acquired', type: 'buy', rent_price: 1.90, sale_price: 4.90 };
     }
+
+    // 1. Prioriza propriedades já validadas vindas do backend no próprio objeto da faixa
+    if (typeof trackOrId === 'object' && (trackOrId.can_play !== undefined || trackOrId.access_status !== undefined || trackOrId.is_locked !== undefined)) {
+      const canPlay = Boolean(trackOrId.can_play);
+      const isExpired = Boolean(trackOrId.is_expired || trackOrId.access_status === 'rent_expired');
+      const isLocked = Boolean(trackOrId.is_locked !== undefined ? trackOrId.is_locked : (!canPlay || isExpired));
+      return {
+        isExpired,
+        canPlay,
+        isLocked,
+        accessStatus: trackOrId.access_status || (canPlay ? 'purchased' : 'not_acquired'),
+        type: trackOrId.type || 'buy',
+        rent_price: Number(trackOrId.rent_price) || 1.90,
+        sale_price: Number(trackOrId.sale_price) || 4.90,
+        remainingDays: trackOrId.remaining_days ?? trackOrId.remainingDays,
+        expiresAt: trackOrId.expires_at || trackOrId.expiresAt,
+        userTrack: trackOrId
+      };
+    }
+
     const rawId = typeof trackOrId === 'object' ? (trackOrId.dbTrackId || trackOrId.id) : trackOrId;
     const cleanId = Number(String(rawId).replace('ct-', ''));
     const userTrack = tracks.find(t => Number(String(t.dbTrackId || t.id).replace('ct-', '')) === cleanId);
 
+    // 2. Se a faixa constar explicitamente na biblioteca de faixas adquiridas do usuário
     if (userTrack) {
+      const isExpired = Boolean(userTrack.isExpired || userTrack.is_expired);
+      const canPlay = Boolean(userTrack.canPlay !== undefined ? userTrack.canPlay : !isExpired);
+      const isLocked = !canPlay || isExpired;
       return {
-        isExpired: Boolean(userTrack.isExpired),
-        canPlay: Boolean(userTrack.canPlay),
+        isExpired,
+        canPlay,
+        isLocked,
+        accessStatus: userTrack.access_status || (userTrack.type === 'rent' ? (isExpired ? 'rent_expired' : 'rent_active') : 'purchased'),
         type: userTrack.type,
-        rent_price: userTrack.rent_price || 1.90,
-        sale_price: userTrack.sale_price || 4.90,
+        rent_price: Number(userTrack.rent_price) || 1.90,
+        sale_price: Number(userTrack.sale_price) || 4.90,
         remainingDays: userTrack.remainingDays,
         expiresAt: userTrack.expiresAt,
         userTrack
       };
     }
 
-    if (typeof trackOrId === 'object' && trackOrId.isExpired !== undefined) {
+    // 3. Objeto com propriedades no formato camelCase (se já avaliado anteriormente)
+    if (typeof trackOrId === 'object' && trackOrId.canPlay !== undefined) {
+      const canPlay = Boolean(trackOrId.canPlay);
+      const isExpired = Boolean(trackOrId.isExpired);
       return {
-        isExpired: Boolean(trackOrId.isExpired),
-        canPlay: Boolean(trackOrId.canPlay),
+        isExpired,
+        canPlay,
+        isLocked: !canPlay || isExpired || Boolean(trackOrId.isLocked),
+        accessStatus: trackOrId.accessStatus || (canPlay ? 'purchased' : 'not_acquired'),
         type: trackOrId.type || 'buy',
-        rent_price: trackOrId.rent_price || 1.90,
-        sale_price: trackOrId.sale_price || 4.90,
+        rent_price: Number(trackOrId.rent_price) || 1.90,
+        sale_price: Number(trackOrId.sale_price) || 4.90,
         remainingDays: trackOrId.remainingDays,
         expiresAt: trackOrId.expiresAt,
         userTrack: trackOrId
       };
     }
 
+    // 4. Default estritamente seguro: se não foi localizada nas compras confirmadas, ela está BLOQUEADA
     return {
       isExpired: false,
-      canPlay: true,
+      canPlay: false,
+      isLocked: true,
+      accessStatus: 'not_acquired',
       type: 'buy',
-      rent_price: 1.90,
-      sale_price: 4.90,
+      rent_price: (typeof trackOrId === 'object' && Number(trackOrId?.rent_price)) || 1.90,
+      sale_price: (typeof trackOrId === 'object' && Number(trackOrId?.sale_price)) || 4.90,
       userTrack: null
     };
   }, [tracks]);
@@ -905,11 +1261,24 @@ export default function LibraryView({
     return playlists.filter(p => (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q));
   }, [playlists, searchQuery]);
 
+  const trackCounts = useMemo(() => {
+    const total = tracks.length;
+    const bought = tracks.filter(t => t.type === 'buy' || (!t.type && !t.expiresAt)).length;
+    const rented = tracks.filter(t => t.type === 'rent').length;
+    return { total, bought, rented };
+  }, [tracks]);
+
   const filteredTracks = useMemo(() => {
-    if (!searchQuery.trim()) return tracks;
+    let result = tracks;
+    if (trackFilter === 'buy') {
+      result = result.filter(t => t.type === 'buy' || (!t.type && !t.expiresAt));
+    } else if (trackFilter === 'rent') {
+      result = result.filter(t => t.type === 'rent');
+    }
+    if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
-    return tracks.filter(t => (t.title || '').toLowerCase().includes(q) || (t.artist || '').toLowerCase().includes(q) || (t.album || '').toLowerCase().includes(q));
-  }, [tracks, searchQuery]);
+    return result.filter(t => (t.title || '').toLowerCase().includes(q) || (t.artist || '').toLowerCase().includes(q) || (t.album || '').toLowerCase().includes(q));
+  }, [tracks, trackFilter, searchQuery]);
 
   const filteredAlbums = useMemo(() => {
     if (!searchQuery.trim()) return albums;
@@ -1023,43 +1392,95 @@ export default function LibraryView({
         </div>
       )}
 
-      {/* HEADER DA BIBLIOTECA */}
-      <div className={styles.header}>
-        <div className={styles.titleRow}>
-          <h1 className={styles.title}>
-            <ListMusic className={styles.titleIcon} size={32} />
-            Biblioteca Musical
-          </h1>
-        </div>
+      {/* HEADER DA BIBLIOTECA MUSICAL — SÓ APARECE NA LISTAGEM GERAL (FOTO 2) */}
+      {!selectedPlaylist && !selectedAlbum && !selectedArtist && (
+        <div className={styles.header}>
+          <div className={styles.titleRow}>
+            <h1 className={styles.title}>
+              <ListMusic className={styles.titleIcon} size={32} />
+              Biblioteca Musical
+            </h1>
+          </div>
 
-        {/* CHIPS DE CATEGORIAS (FOTO YOUTUBE MUSIC) */}
-        <div className={styles.chipsRow}>
-          <button
-            className={`${styles.chipBtn} ${activeCategory === 'playlists' ? styles.chipBtnActive : ''}`}
-            onClick={() => { setActiveCategory('playlists'); setSelectedPlaylist(null); setSelectedAlbum(null); setSelectedArtist(null); }}
-          >
-            <ListMusic size={16} /> Playlists ({playlists.length})
-          </button>
-          <button
-            className={`${styles.chipBtn} ${activeCategory === 'tracks' ? styles.chipBtnActive : ''}`}
-            onClick={() => { setActiveCategory('tracks'); setSelectedPlaylist(null); setSelectedAlbum(null); setSelectedArtist(null); }}
-          >
-            <Music size={16} /> Músicas ({tracks.length})
-          </button>
-          <button
-            className={`${styles.chipBtn} ${activeCategory === 'albums' ? styles.chipBtnActive : ''}`}
-            onClick={() => { setActiveCategory('albums'); setSelectedPlaylist(null); setSelectedAlbum(null); setSelectedArtist(null); }}
-          >
-            <Disc size={16} /> Álbuns ({albums.length})
-          </button>
-          <button
-            className={`${styles.chipBtn} ${activeCategory === 'artists' ? styles.chipBtnActive : ''}`}
-            onClick={() => { setActiveCategory('artists'); setSelectedPlaylist(null); setSelectedAlbum(null); setSelectedArtist(null); }}
-          >
-            <Mic2 size={16} /> Artistas ({artists.length})
-          </button>
+          {/* CHIPS DE CATEGORIAS (FOTO YOUTUBE MUSIC) */}
+          <div className={styles.chipsRow}>
+            <button
+              className={`${styles.chipBtn} ${activeCategory === 'playlists' ? styles.chipBtnActive : ''}`}
+              onClick={() => { setActiveCategory('playlists'); handleClosePlaylist(); setSelectedAlbum(null); setSelectedArtist(null); }}
+            >
+              <ListMusic size={16} /> Playlists ({playlists.length})
+            </button>
+            <button
+              className={`${styles.chipBtn} ${activeCategory === 'tracks' ? styles.chipBtnActive : ''}`}
+              onClick={() => { setActiveCategory('tracks'); handleClosePlaylist(); setSelectedAlbum(null); setSelectedArtist(null); }}
+            >
+              <Music size={16} /> Músicas ({tracks.length})
+            </button>
+            <button
+              className={`${styles.chipBtn} ${activeCategory === 'albums' ? styles.chipBtnActive : ''}`}
+              onClick={() => { setActiveCategory('albums'); handleClosePlaylist(); setSelectedAlbum(null); setSelectedArtist(null); }}
+            >
+              <Disc size={16} /> Álbuns ({albums.length})
+            </button>
+            <button
+              className={`${styles.chipBtn} ${activeCategory === 'artists' ? styles.chipBtnActive : ''}`}
+              onClick={() => { setActiveCategory('artists'); handleClosePlaylist(); setSelectedAlbum(null); setSelectedArtist(null); }}
+            >
+              <Mic2 size={16} /> Artistas ({artists.length})
+            </button>
+          </div>
+
+          {/* BARRA DE AÇÃO & BUSCA */}
+          <div className={styles.actionBar}>
+            <div className={styles.searchBox}>
+              <Search size={16} style={{ color: '#888888' }} />
+              <input
+                type="text"
+                placeholder={`Pesquisar em ${activeCategory}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 0 }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* BOTÕES DE CRIAÇÃO POR ABA */}
+            {activeCategory === 'playlists' && (
+              <button className={styles.primaryActionBtn} onClick={handleOpenCreatePlaylist}>
+                <Plus size={16} /> Nova Playlist
+              </button>
+            )}
+            {activeCategory === 'albums' && user?.role === 'admin' && (
+              <button
+                className={styles.primaryActionBtn}
+                onClick={() => {
+                  setAlbumForm({ id: null, title: '', artist_name: '', artist_id: '', cover_url: '', release_date: '', genre: 'Variado' });
+                  setAlbumModalOpen(true);
+                }}
+              >
+                <Plus size={16} /> Novo Álbum
+              </button>
+            )}
+            {activeCategory === 'artists' && (
+              <button
+                className={styles.primaryActionBtn}
+                onClick={() => {
+                  setArtistForm({ id: null, name: '', bio: '', avatar_url: '', genre: 'Variado' });
+                  setArtistModalOpen(true);
+                }}
+              >
+                <Plus size={16} /> Novo Artista
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ESTADO DE CARREGAMENTO */}
       {loading && (
@@ -1070,230 +1491,344 @@ export default function LibraryView({
       )}
 
       {/* ========================================================================= */}
-      {/* 1. VISÃO DETALHADA DE PLAYLIST */}
+      {/* 1. VISÃO DETALHADA DE PLAYLIST (ESTILO YOUTUBE MUSIC / ÁLBUM) */}
       {/* ========================================================================= */}
       {!loading && selectedPlaylist && (
-        <div>
-          <button className={styles.backBtn} onClick={() => setSelectedPlaylist(null)}>
-            <ArrowLeft size={16} /> Voltar para todas as playlists
-          </button>
-
-          <div className={styles.detailHeader}>
+        <div className={styles.playlistDetailsWrapper}>
+          {/* Fundo Dinâmico com Aura / Ambient Glow da capa da Playlist */}
+          <div ref={backdropRef} className={styles.playlistAmbientBackdrop} aria-hidden="true">
             <div
-              className={styles.detailCoverWrapper}
-              onClick={() => {
-                if (Number(selectedPlaylist.user_id) === Number(user?.id)) {
-                  detailCoverInputRef.current?.click();
-                }
-              }}
-              title={Number(selectedPlaylist.user_id) === Number(user?.id) ? "Clique para alterar a foto da playlist" : ""}
-            >
-              {renderPlaylistCover(selectedPlaylist, true)}
-              {Number(selectedPlaylist.user_id) === Number(user?.id) && (
-                <div className={styles.coverEditOverlay}>
-                  <Camera size={28} />
-                  <span>Alterar foto</span>
-                </div>
-              )}
-            </div>
-            <input
-              type="file"
-              ref={detailCoverInputRef}
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleDirectDetailCoverChange}
+              className={styles.playlistAmbientGlow}
+              style={{ backgroundImage: `url('${playlistBackdropImage}')` }}
             />
-            <div className={styles.detailInfo}>
-              <span className={styles.detailPretitle}>Playlist</span>
-              <h2 className={styles.detailTitle}>{selectedPlaylist.name}</h2>
+            <div className={styles.playlistAmbientGradientOverlay} />
+          </div>
+
+          <div className={styles.playlistTopNavRow}>
+            <button className={styles.playlistBackBtn} onClick={handleClosePlaylist}>
+              <ArrowLeft size={16} /> Voltar para todas as playlists
+            </button>
+          </div>
+
+          <div className={styles.playlistViewContainer}>
+            {/* Coluna Esquerda: Capa HD, Título, Descrição, Metadados e Ações */}
+            <div className={styles.playlistHeroColumn}>
+              <div
+                className={styles.playlistHeroCoverWrap}
+                onClick={() => {
+                  if (Number(selectedPlaylist.user_id) === Number(user?.id)) {
+                    detailCoverInputRef.current?.click();
+                  }
+                }}
+                title={Number(selectedPlaylist.user_id) === Number(user?.id) ? "Clique para alterar a foto da playlist" : ""}
+              >
+                {renderPlaylistCover(selectedPlaylist, true)}
+                {Number(selectedPlaylist.user_id) === Number(user?.id) && (
+                  <div className={styles.coverEditOverlay}>
+                    <Camera size={28} />
+                    <span>Alterar foto</span>
+                  </div>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={detailCoverInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleDirectDetailCoverChange}
+              />
+
+              <h1 className={styles.playlistHeroTitle}>{selectedPlaylist.name}</h1>
               {selectedPlaylist.description && (
-                <p className={styles.detailDesc}>{selectedPlaylist.description}</p>
+                <p className={styles.playlistHeroDesc}>{selectedPlaylist.description}</p>
               )}
-              <div className={styles.detailStats}>
+
+              <div className={styles.playlistHeroMeta}>
                 {renderPrivacyBadge(selectedPlaylist.privacy)}
-                <span>•</span>
-                <span><strong>{selectedPlaylist.track_count || selectedPlaylist.tracks?.length || 0}</strong> faixas</span>
-                <span>•</span>
-                <span>Duração: <strong>{formatDuration(selectedPlaylist.total_duration_sec)}</strong></span>
+                <span className={styles.metaDot}>•</span>
+                <span>Criada por <strong>{selectedPlaylist.creator_name || selectedPlaylist.owner_name || selectedPlaylist.user_name || (selectedPlaylist.user_id && selectedPlaylist.user_id === user?.id ? (user?.full_name || user?.name) : null) || 'Usuário DevSongs'}</strong></span>
               </div>
 
-              <div className={styles.detailActionRow}>
+              <div className={styles.playlistHeroStats}>
+                <span>
+                  {selectedPlaylist.track_count || selectedPlaylist.tracks?.length || 0} músicas • {formatDuration(selectedPlaylist.total_duration_sec)}
+                </span>
+              </div>
+
+              <div className={styles.playlistActionButtonsRow}>
+                {/* Play Playlist Big Button */}
                 {selectedPlaylist.tracks && selectedPlaylist.tracks.length > 0 && (
                   <button
-                    className={styles.playBigBtn}
+                    type="button"
+                    className={styles.playlistBigPlayBtn}
+                    title="Reproduzir Playlist"
                     onClick={() => {
                       const playlistTracksWithAccess = selectedPlaylist.tracks.map(t => ({
                         ...t,
                         ...getTrackAccessInfo(t)
                       }));
-                      const playable = playlistTracksWithAccess.filter(t => !t.isExpired && t.canPlay !== false);
+                      const playable = playlistTracksWithAccess.filter(t => !t.isExpired && t.canPlay && !t.isLocked);
                       if (playable.length === 0) {
-                        showNotice('Todas as músicas desta playlist possuem aluguel expirado. Renove o acesso para ouvir.', 'error');
+                        showNotice('Todas as músicas desta playlist estão bloqueadas ou com aluguel expirado. Adquira o acesso para ouvir.', 'error');
                         return;
                       }
-                      onPlayQueue && onPlayQueue(playlistTracksWithAccess, 0);
+                      onPlayQueue && onPlayQueue(playable, 0);
                     }}
                   >
-                    <Play size={18} fill="currentColor" /> Reproduzir Playlist
+                    <Play size={22} fill="#0f0f0f" color="#0f0f0f" style={{ marginLeft: '2px' }} />
                   </button>
                 )}
 
-                <button className={styles.secondaryBtn} onClick={() => handleSharePlaylist(selectedPlaylist)}>
-                  <Share2 size={16} /> Compartilhar
+                <button
+                  type="button"
+                  className={styles.playlistActionCircleBtn}
+                  title="Compartilhar playlist"
+                  onClick={() => handleSharePlaylist(selectedPlaylist)}
+                >
+                  <Share2 size={18} />
                 </button>
 
                 {Number(selectedPlaylist.user_id) === Number(user?.id) && (
                   <>
-                    <button className={styles.secondaryBtn} onClick={() => handleOpenEditPlaylist(selectedPlaylist)}>
-                      <Edit3 size={16} /> Editar
+                    <button
+                      type="button"
+                      className={styles.playlistActionCircleBtn}
+                      title="Editar playlist"
+                      onClick={() => handleOpenEditPlaylist(selectedPlaylist)}
+                    >
+                      <Edit3 size={18} />
                     </button>
                     <button
-                      className={styles.secondaryBtn}
-                      style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                      type="button"
+                      className={`${styles.playlistActionCircleBtn} ${styles.btnDangerAction}`}
+                      title="Excluir playlist"
                       onClick={() => setDeleteConfirmModal({ open: true, type: 'playlist', id: selectedPlaylist.id, title: selectedPlaylist.name })}
                     >
-                      <Trash2 size={16} /> Excluir
+                      <Trash2 size={18} />
                     </button>
                   </>
                 )}
               </div>
+
+              {Number(selectedPlaylist.user_id) === Number(user?.id) && (
+                <button
+                  type="button"
+                  className={styles.btnAddMusicPlaylist}
+                  onClick={() => { setAddToPlaylistModalOpen(true); setTrackToAddToPlaylist(null); }}
+                >
+                  <Plus size={16} /> Adicionar Música
+                </button>
+              )}
+            </div>
+
+            {/* Coluna Direita: Tracklist Organizada */}
+            <div className={styles.playlistTracklistColumn}>
+              <div className={styles.playlistTracklistHeader}>
+                <span style={{ width: 36, textAlign: 'center' }}>#</span>
+                <span style={{ flex: 1, paddingLeft: 8 }}>Título</span>
+                <span className={styles.hideMobile} style={{ width: 180, paddingLeft: 10 }}>Álbum</span>
+                <span style={{ width: 70, textAlign: 'right' }}><Clock size={14} /></span>
+                <span style={{ width: 110, textAlign: 'right' }}>Ações</span>
+              </div>
+
+              {selectedPlaylist.tracks && selectedPlaylist.tracks.length > 0 ? (
+                <div className={styles.playlistTracklistList}>
+                  {selectedPlaylist.tracks.map((t, idx) => {
+                    const access = getTrackAccessInfo(t);
+                    const isExpired = access.isExpired;
+                    const isLocked = !access.canPlay || access.isLocked || isExpired;
+                    const isNotAcquired = isLocked && !isExpired;
+                    const isPendingPayment = access.accessStatus === 'payment_pending';
+                    const isCurrent = currentTrack?.id === t.id || currentTrack?.title === t.title;
+                    return (
+                      <div
+                        key={t.playlist_track_id || t.id || idx}
+                        className={`${styles.playlistTrackRow} ${isCurrent ? styles.playlistTrackRowActive : ''} ${isLocked ? styles.playlistTrackRowLocked : ''} ${isExpired ? styles.playlistTrackRowExpired : ''}`}
+                        onClick={() => {
+                          if (isLocked) {
+                            setExpiredModalTrack({ ...t, ...access, isNotAcquired, isPendingPayment });
+                          } else {
+                            onPlayTrack && onPlayTrack(t);
+                          }
+                        }}
+                      >
+                        <div className={styles.playlistTrackNumCol}>
+                          {isLocked ? (
+                            <span className={styles.trackIndexNum} title={isExpired ? 'Aluguel expirado' : (isPendingPayment ? 'Pagamento pendente' : 'Música bloqueada')}>
+                              <Lock size={13} color={isExpired ? '#f87171' : '#94a3b8'} />
+                            </span>
+                          ) : isCurrent && isPlaying ? (
+                            <Pause size={14} fill="#ffffff" color="#ffffff" />
+                          ) : (
+                            <>
+                              <span className={styles.trackIndexNum}>{t.position || (idx + 1)}</span>
+                              <Play size={14} fill="#ffffff" color="#ffffff" className={styles.trackHoverPlayIcon} />
+                            </>
+                          )}
+                        </div>
+
+                        <div className={`${styles.playlistTrackThumbWrap} ${isLocked ? styles.playlistTrackThumbWrapLocked : ''}`}>
+                          <img
+                            src={t.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                            alt={t.title}
+                            className={`${styles.playlistTrackThumb} ${isLocked ? styles.playlistTrackThumbLocked : ''}`}
+                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                          />
+                        </div>
+
+                        <div className={styles.playlistTrackMainInfo}>
+                          <div className={`${styles.playlistTrackTitle} ${isLocked ? styles.playlistTrackTitleLocked : ''}`}>
+                            {t.title}
+                          </div>
+                          <div className={`${styles.playlistTrackArtist} ${isLocked ? styles.playlistTrackArtistLocked : ''}`}>
+                            {t.artist}
+                            {isExpired && (
+                              <span className={styles.badgeExpiredTag}>
+                                • Aluguel Expirado
+                              </span>
+                            )}
+                            {isPendingPayment && (
+                              <span className={styles.badgePendingTag}>
+                                • Pagamento Pendente
+                              </span>
+                            )}
+                            {isNotAcquired && !isPendingPayment && (
+                              <span className={styles.badgeLockedTag}>
+                                • Bloqueada
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className={`${styles.playlistTrackAlbum} ${styles.hideMobile} ${isLocked ? styles.playlistTrackSubLocked : ''}`}>
+                          {t.album || 'Single'}
+                        </div>
+
+                        <div className={`${styles.playlistTrackDuration} ${isLocked ? styles.playlistTrackSubLocked : ''}`}>
+                          {formatDuration(t.duration_sec)}
+                        </div>
+
+                        <div className={styles.playlistTrackActions} onClick={(e) => e.stopPropagation()}>
+                          {Number(selectedPlaylist.user_id) === Number(user?.id) && (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.trackActionMiniBtn}
+                                title="Subir posição"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveTrackOrder(selectedPlaylist.id, t.id, 'up')}
+                              >
+                                <ArrowUp size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.trackActionMiniBtn}
+                                title="Descer posição"
+                                disabled={idx === selectedPlaylist.tracks.length - 1}
+                                onClick={() => handleMoveTrackOrder(selectedPlaylist.id, t.id, 'down')}
+                              >
+                                <ArrowDown size={14} />
+                              </button>
+                            </>
+                          )}
+
+                          <button
+                            type="button"
+                            className={`${styles.trackActionMiniBtn} ${trackMenuState?.trackId === t.id ? styles.trackActionMiniBtnActive : ''} ${styles.trackMenuTriggerBtn}`}
+                            title="Mais opções"
+                            onClick={(e) => handleOpenTrackMenu(e, t)}
+                          >
+                            <MoreVertical size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className={styles.emptyPlaylistNotice}>
+                  <Music size={32} />
+                  <h4>Esta playlist ainda não tem músicas</h4>
+                  <p>Adicione faixas do seu acervo ou das sugestões abaixo para começar a ouvir.</p>
+                  {Number(selectedPlaylist.user_id) === Number(user?.id) && (
+                    <button
+                      type="button"
+                      className={styles.btnAddMusicPlaylist}
+                      onClick={() => { setAddToPlaylistModalOpen(true); setTrackToAddToPlaylist(null); }}
+                      style={{ margin: '1rem auto 0 auto', width: 'fit-content' }}
+                    >
+                      <Plus size={16} /> Adicionar Música
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Músicas da Playlist */}
-          <div className={styles.actionBar}>
-            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Faixas da Playlist</h3>
-            {Number(selectedPlaylist.user_id) === Number(user?.id) && (
-              <button
-                className={styles.primaryActionBtn}
-                onClick={() => { setAddToPlaylistModalOpen(true); setTrackToAddToPlaylist(null); }}
-              >
-                <Plus size={16} /> Adicionar Música
-              </button>
-            )}
-          </div>
+          {/* Seção de Sugestões de Músicas (Carrossel Horizontal) */}
+          {playlistSuggestions && playlistSuggestions.length > 0 && (
+            <div className={styles.playlistSuggestionsSection}>
+              <div className={styles.suggestionsHeader}>
+                <div>
+                  <h3 className={styles.suggestionsTitle}>Sugestões para esta playlist</h3>
+                  <p className={styles.suggestionsSub}>Com base nas músicas do acervo não adicionadas ainda</p>
+                </div>
+                <div className={styles.suggestionsNavActions}>
+                  <button
+                    type="button"
+                    className={styles.roundNavBtn}
+                    onClick={() => scrollSuggestions('left')}
+                    title="Anterior"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.roundNavBtn}
+                    onClick={() => scrollSuggestions('right')}
+                    title="Próximo"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
 
-          {selectedPlaylist.tracks && selectedPlaylist.tracks.length > 0 ? (
-            <table className={styles.trackTable}>
-              <thead>
-                <tr>
-                  <th style={{ width: 40 }}>#</th>
-                  <th>Título</th>
-                  <th>Álbum</th>
-                  <th>Duração</th>
-                  <th style={{ textAlign: 'right' }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedPlaylist.tracks.map((t, idx) => {
-                  const access = getTrackAccessInfo(t);
-                  const isExpired = access.isExpired;
-                  return (
-                    <tr
-                      key={t.playlist_track_id || t.id}
-                      className={`${styles.trackRow} ${isExpired ? styles.trackRowExpired : ''}`}
-                      onClick={() => isExpired && setExpiredModalTrack({ ...t, ...access })}
-                      style={{ cursor: isExpired ? 'pointer' : 'default' }}
-                    >
-                      <td className={styles.trackIndexCol}>{t.position || idx + 1}</td>
-                      <td className={styles.trackCell}>
-                        <div className={styles.trackTitleCell}>
-                          <Image
-                            unoptimized
-                            src={t.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
-                            alt={t.title}
-                            width={42}
-                            height={42}
-                            className={styles.trackThumb}
-                          />
-                          <div className={styles.trackMeta}>
-                            <span className={styles.trackName}>{t.title}</span>
-                            <span className={styles.trackArtist}>
-                              {t.artist}
-                              {isExpired && (
-                                <span style={{ marginLeft: 6, color: '#f87171', fontSize: '0.72rem', fontWeight: 600 }}>
-                                  • Aluguel Expirado
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className={styles.trackCell}>{t.album || 'Single'}</td>
-                      <td className={styles.trackCell}>{formatDuration(t.duration_sec)}</td>
-                      <td className={styles.trackCell}>
-                        <div className={styles.trackActions}>
-                          {isExpired ? (
-                            <button
-                              className={styles.lockIconBtn}
-                              title="Aluguel expirado - Clique para renovar ou comprar"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpiredModalTrack({ ...t, ...access });
-                              }}
-                            >
-                              <Lock size={15} />
-                            </button>
-                          ) : (
-                            <button
-                              className={styles.iconBtn}
-                              title="Reproduzir"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onPlayTrack && onPlayTrack(t);
-                              }}
-                            >
-                              <Play size={16} fill="currentColor" />
-                            </button>
-                          )}
-
-                        {Number(selectedPlaylist.user_id) === Number(user?.id) && (
-                          <>
-                            <button
-                              className={styles.iconBtn}
-                              title="Subir posição"
-                              disabled={idx === 0}
-                              onClick={() => handleMoveTrackOrder(selectedPlaylist.id, t.id, 'up')}
-                            >
-                              <ArrowUp size={15} />
-                            </button>
-                            <button
-                              className={styles.iconBtn}
-                              title="Descer posição"
-                              disabled={idx === selectedPlaylist.tracks.length - 1}
-                              onClick={() => handleMoveTrackOrder(selectedPlaylist.id, t.id, 'down')}
-                            >
-                              <ArrowDown size={15} />
-                            </button>
-                            <button
-                              className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                              title="Remover da playlist"
-                              onClick={() => handleRemoveTrackFromPlaylist(selectedPlaylist.id, t.id)}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              </tbody>
-            </table>
-          ) : (
-            <div className={styles.emptyState}>
-              <div className={styles.emptyIcon}><Music size={28} /></div>
-              <h4 className={styles.emptyTitle}>Esta playlist está vazia</h4>
-              <p className={styles.emptyDesc}>Adicione músicas do acervo para começar a ouvir.</p>
-              {Number(selectedPlaylist.user_id) === Number(user?.id) && (
-                <button
-                  className={styles.primaryActionBtn}
-                  onClick={() => { setAddToPlaylistModalOpen(true); setTrackToAddToPlaylist(null); }}
-                >
-                  <Plus size={16} /> Adicionar primeira música
-                </button>
-              )}
+              <div ref={suggestionsScrollRef} className={styles.suggestionsCarousel}>
+                {playlistSuggestions.map((sugTrack) => (
+                  <div key={sugTrack.id} className={styles.suggestionCard}>
+                    <div className={styles.suggestionCoverWrap}>
+                      <img
+                        src={sugTrack.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                        alt={sugTrack.title}
+                        className={styles.suggestionCover}
+                        onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                      />
+                      <button
+                        type="button"
+                        className={styles.suggestionPlayHover}
+                        title={`Tocar ${sugTrack.title}`}
+                        onClick={() => onPlayTrack && onPlayTrack(sugTrack)}
+                      >
+                        <Play size={18} fill="#000" color="#000" style={{ marginLeft: 2 }} />
+                      </button>
+                    </div>
+                    <div className={styles.suggestionInfo}>
+                      <h4 className={styles.suggestionItemTitle} title={sugTrack.title}>{sugTrack.title}</h4>
+                      <p className={styles.suggestionItemArtist}>{sugTrack.artist}</p>
+                    </div>
+                    {Number(selectedPlaylist.user_id) === Number(user?.id) && (
+                      <button
+                        type="button"
+                        className={styles.btnQuickAddSuggestion}
+                        onClick={() => handleAddTrackToPlaylist(selectedPlaylist.id, sugTrack.id)}
+                        title="Adicionar à playlist"
+                      >
+                        <Plus size={14} /> Adicionar
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1638,56 +2173,6 @@ export default function LibraryView({
       {/* ========================================================================= */}
       {!loading && !selectedPlaylist && !selectedAlbum && !selectedArtist && (
         <>
-          {/* BARRA DE AÇÃO & BUSCA */}
-          <div className={styles.actionBar}>
-            <div className={styles.searchBox}>
-              <Search size={16} style={{ color: '#888888' }} />
-              <input
-                type="text"
-                placeholder={`Pesquisar em ${activeCategory}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 0 }}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* BOTÕES DE CRIAÇÃO POR ABA */}
-            {activeCategory === 'playlists' && (
-              <button className={styles.primaryActionBtn} onClick={handleOpenCreatePlaylist}>
-                <Plus size={16} /> Nova Playlist
-              </button>
-            )}
-            {activeCategory === 'albums' && (
-              <button
-                className={styles.primaryActionBtn}
-                onClick={() => {
-                  setAlbumForm({ id: null, title: '', artist_name: '', artist_id: '', cover_url: '', release_date: '', genre: 'Variado' });
-                  setAlbumModalOpen(true);
-                }}
-              >
-                <Plus size={16} /> Novo Álbum
-              </button>
-            )}
-            {activeCategory === 'artists' && (
-              <button
-                className={styles.primaryActionBtn}
-                onClick={() => {
-                  setArtistForm({ id: null, name: '', bio: '', avatar_url: '', genre: 'Variado' });
-                  setArtistModalOpen(true);
-                }}
-              >
-                <Plus size={16} /> Novo Artista
-              </button>
-            )}
-          </div>
-
           {/* ABA: PLAYLISTS */}
           {activeCategory === 'playlists' && (
             <div>
@@ -1740,6 +2225,33 @@ export default function LibraryView({
           {/* ABA: MÚSICAS */}
           {activeCategory === 'tracks' && (
             <div>
+              {/* Barra de Filtros de Licença (Todas, Compradas, Alugadas) */}
+              <div className={styles.trackFilterBar}>
+                <div className={styles.trackFilterGroup}>
+                  <button
+                    type="button"
+                    className={`${styles.trackFilterBtn} ${trackFilter === 'all' ? styles.trackFilterBtnActive : ''}`}
+                    onClick={() => setTrackFilter('all')}
+                  >
+                    Todas ({trackCounts.total})
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.trackFilterBtn} ${trackFilter === 'buy' ? styles.trackFilterBtnActive : ''}`}
+                    onClick={() => setTrackFilter('buy')}
+                  >
+                    Compradas ({trackCounts.bought})
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.trackFilterBtn} ${trackFilter === 'rent' ? styles.trackFilterBtnActive : ''}`}
+                    onClick={() => setTrackFilter('rent')}
+                  >
+                    Alugadas ({trackCounts.rented})
+                  </button>
+                </div>
+              </div>
+
               {filteredTracks.length > 0 ? (
                 <table className={styles.trackTable}>
                   <thead>
@@ -1846,11 +2358,21 @@ export default function LibraryView({
               ) : (
                 <div className={styles.emptyState}>
                   <div className={styles.emptyIcon}><Music size={32} /></div>
-                  <h3 className={styles.emptyTitle}>Sua biblioteca de músicas está vazia</h3>
+                  <h3 className={styles.emptyTitle}>
+                    {trackFilter === 'rent'
+                      ? 'Nenhuma música alugada encontrada'
+                      : trackFilter === 'buy'
+                      ? 'Nenhuma música comprada encontrada'
+                      : 'Nenhuma música adquirida'}
+                  </h3>
                   <p className={styles.emptyDesc}>
                     {searchQuery
                       ? 'Nenhuma música adquirida corresponde aos termos pesquisados.'
-                      : 'As músicas que você comprar ou alugar na plataforma aparecerão aqui para você ouvir quando quiser e adicionar às suas playlists.'}
+                      : trackFilter === 'rent'
+                      ? 'Você ainda não possui músicas alugadas. Alugue faixas no catálogo por 30 dias.'
+                      : trackFilter === 'buy'
+                      ? 'As músicas que você comprar individualmente na plataforma aparecerão aqui. Faixas de álbuns comprados integralmente ficam disponíveis diretamente na aba Álbuns.'
+                      : 'As músicas que você adquirir (compradas ou alugadas) na plataforma aparecerão aqui.'}
                   </p>
                   {!searchQuery && onExploreCatalog && (
                     <button className={styles.primaryActionBtn} onClick={onExploreCatalog} style={{ marginTop: '0.75rem' }}>
@@ -1906,8 +2428,12 @@ export default function LibraryView({
               ) : (
                 <div className={styles.emptyState}>
                   <div className={styles.emptyIcon}><Disc size={32} /></div>
-                  <h3 className={styles.emptyTitle}>Nenhum álbum encontrado</h3>
-                  <p className={styles.emptyDesc}>Adicione álbuns para agrupar faixas e lançamentos discográficos.</p>
+                  <h3 className={styles.emptyTitle}>Nenhum álbum comprado integralmente</h3>
+                  <p className={styles.emptyDesc}>
+                    {searchQuery
+                      ? 'Nenhum álbum adquirido corresponde aos termos pesquisados.'
+                      : 'Os álbuns que você comprar por completo aparecerão aqui com acesso à sua discografia integral.'}
+                  </p>
                 </div>
               )}
             </div>
@@ -2113,15 +2639,32 @@ export default function LibraryView({
               {trackToAddToPlaylist && (
                 <div>
                   <span className={styles.formLabel}>Selecione a playlist de destino:</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.65rem' }}>
-                    {playlists.length > 0 ? (
-                      playlists.map((pl) => {
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.65rem', maxHeight: '350px', overflowY: 'auto' }}>
+                    {(() => {
+                      const userPlaylists = playlists.filter(pl => {
+                        const isOwner = Number(pl.user_id) === Number(user?.id) || !pl.user_id;
+                        const isNotCurrent = selectedPlaylist ? Number(pl.id) !== Number(selectedPlaylist.id) : true;
+                        return isOwner && isNotCurrent;
+                      });
+
+                      if (userPlaylists.length === 0) {
+                        return (
+                          <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.88rem' }}>
+                            <p style={{ margin: 0, fontWeight: 500 }}>Nenhuma outra playlist disponível.</p>
+                            <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                              Crie uma nova playlist na barra lateral ou na biblioteca para organizar suas faixas.
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return userPlaylists.map((pl) => {
                         const targetTrackId = getCleanTrackId(trackToAddToPlaylist);
                         const alreadyLinked = Boolean(
                           targetTrackId && (
                             (pl.track_ids && pl.track_ids.includes(targetTrackId)) ||
                             (pl.tracks && pl.tracks.some(pt => getCleanTrackId(pt) === targetTrackId)) ||
-                            (selectedPlaylist && selectedPlaylist.id === pl.id && selectedPlaylist.tracks?.some(pt => getCleanTrackId(pt) === targetTrackId))
+                            (selectedPlaylist && Number(selectedPlaylist.id) === Number(pl.id) && selectedPlaylist.tracks?.some(pt => getCleanTrackId(pt) === targetTrackId))
                           )
                         );
 
@@ -2149,7 +2692,7 @@ export default function LibraryView({
                             </div>
                             <div className={styles.privacyText}>
                               <span className={styles.privacyName}>{pl.name}</span>
-                              <span className={styles.privacyDesc}>{pl.track_count || 0} músicas • {pl.privacy}</span>
+                              <span className={styles.privacyDesc}>{pl.track_count || pl.tracks?.length || 0} músicas • {pl.privacy}</span>
                             </div>
                             {alreadyLinked ? (
                               <span style={{ fontSize: '0.8rem', color: '#22c55e', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -2160,10 +2703,8 @@ export default function LibraryView({
                             )}
                           </div>
                         );
-                      })
-                    ) : (
-                      <p style={{ color: '#888', fontSize: '0.85rem' }}>Nenhuma playlist criada. Crie uma playlist primeiro.</p>
-                    )}
+                      });
+                    })()}
                   </div>
                 </div>
               )}
@@ -2492,16 +3033,23 @@ export default function LibraryView({
         <div className={styles.modalBackdrop} onClick={() => setDeleteConfirmModal({ open: false, type: '', id: null, title: '' })}>
           <div className={styles.modal} style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle} style={{ color: '#ef4444' }}>Confirmar Exclusão</h3>
+              <h3 className={styles.modalTitle} style={{ color: '#ef4444' }}>
+                {deleteConfirmModal.type === 'playlist_track' ? 'Remover da Playlist' : 'Confirmar Exclusão'}
+              </h3>
               <button className={styles.iconBtn} onClick={() => setDeleteConfirmModal({ open: false, type: '', id: null, title: '' })}>
                 <X size={18} />
               </button>
             </div>
             <div className={styles.modalBody}>
               <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.5, color: '#e5e5e5' }}>
-                Tem certeza de que deseja excluir <strong>"{deleteConfirmModal.title}"</strong>?
+                {deleteConfirmModal.type === 'playlist_track' ? (
+                  <>Tem certeza de que deseja remover <strong>"{deleteConfirmModal.title}"</strong> desta playlist?</>
+                ) : (
+                  <>Tem certeza de que deseja excluir <strong>"{deleteConfirmModal.title}"</strong>?</>
+                )}
               </p>
               <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', color: '#a7a7a7' }}>
+                {deleteConfirmModal.type === 'playlist_track' && 'A música será removida apenas desta playlist. Ela permanecerá salva e disponível no catálogo do DevSongs.'}
                 {deleteConfirmModal.type === 'track' && 'As regras de integridade comercial serão aplicadas: se a faixa tiver compras vinculadas, será desativada/arquivada.'}
                 {deleteConfirmModal.type === 'playlist' && 'Esta playlist e seu ordenamento serão removidos definitivamente.'}
                 {(deleteConfirmModal.type === 'artist' || deleteConfirmModal.type === 'album') && 'A exclusão só será permitida se não houver faixas vinculadas.'}
@@ -2527,13 +3075,17 @@ export default function LibraryView({
                   cursor: 'pointer'
                 }}
                 onClick={() => {
+                  if (deleteConfirmModal.type === 'playlist_track') {
+                    handleRemoveTrackFromPlaylist(deleteConfirmModal.playlistId, deleteConfirmModal.id);
+                    setDeleteConfirmModal({ open: false, type: '', id: null, title: '' });
+                  }
                   if (deleteConfirmModal.type === 'playlist') handleDeletePlaylist(deleteConfirmModal.id);
                   if (deleteConfirmModal.type === 'artist') handleDeleteArtist(deleteConfirmModal.id);
                   if (deleteConfirmModal.type === 'album') handleDeleteAlbum(deleteConfirmModal.id);
                   if (deleteConfirmModal.type === 'track') handleDeleteTrack(deleteConfirmModal.id);
                 }}
               >
-                Sim, Excluir
+                {deleteConfirmModal.type === 'playlist_track' ? 'Sim, Remover' : 'Sim, Excluir'}
               </button>
             </div>
           </div>
@@ -2541,7 +3093,7 @@ export default function LibraryView({
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: ALUGUEL EXPIRADO & BLOQUEIO AUTOMÁTICO (DevSongs)                  */}
+      {/* MODAL: MÚSICA BLOQUEADA, ALUGUEL EXPIRADO & AQUISIÇÃO (DevSongs)           */}
       {/* ========================================================================= */}
       {expiredModalTrack && (
         <div className={styles.modalBackdrop} onClick={() => !actionLoading && setExpiredModalTrack(null)}>
@@ -2552,10 +3104,18 @@ export default function LibraryView({
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#ffffff', fontWeight: 700 }}>
-                  Aluguel Expirado
+                  {expiredModalTrack.isExpired
+                    ? 'Aluguel Expirado'
+                    : expiredModalTrack.isPendingPayment
+                    ? 'Pagamento Pendente'
+                    : 'Música Bloqueada'}
                 </h3>
                 <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.82rem', color: '#a1a1aa' }}>
-                  O período de acesso a esta faixa terminou. Escolha como deseja continuar ouvindo.
+                  {expiredModalTrack.isExpired
+                    ? 'O período de acesso a esta faixa terminou. Escolha como deseja continuar ouvindo.'
+                    : expiredModalTrack.isPendingPayment
+                    ? 'Aguardando confirmação de pagamento para liberar o acesso a esta faixa.'
+                    : 'Esta música ainda não foi adquirida na sua biblioteca. Adquira o acesso para ouvir.'}
                 </p>
               </div>
               <button
@@ -2589,7 +3149,13 @@ export default function LibraryView({
 
             <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 10, padding: '0.75rem 1rem', fontSize: '0.82rem', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <AlertCircle size={18} style={{ flexShrink: 0, color: '#ef4444' }} />
-              <span>A reprodução desta faixa está bloqueada até a renovação do aluguel ou aquisição definitiva.</span>
+              <span>
+                {expiredModalTrack.isExpired
+                  ? 'A reprodução desta faixa está bloqueada até a renovação do aluguel ou aquisição definitiva.'
+                  : expiredModalTrack.isPendingPayment
+                  ? 'O pedido desta faixa está pendente de confirmação. A reprodução só é liberada após a confirmação do pagamento.'
+                  : 'A reprodução desta faixa está bloqueada porque ela ainda não foi adquirida. Escolha uma das opções abaixo para liberar o acesso.'}
+              </span>
             </div>
 
             <div className={styles.expiredActionsGrid}>
@@ -2600,7 +3166,7 @@ export default function LibraryView({
                 disabled={actionLoading}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Clock size={16} /> Renovar Aluguel (30 dias)
+                  <Clock size={16} /> {expiredModalTrack.isExpired ? 'Renovar Aluguel (30 dias)' : 'Alugar por 30 dias'}
                 </span>
                 <span style={{ fontWeight: 700 }}>
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(expiredModalTrack.rent_price || expiredModalTrack.rentPrice || 1.90)}
@@ -2633,6 +3199,201 @@ export default function LibraryView({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MENU FLUTUANTE DE OPÇÕES DA MÚSICA NA PLAYLIST (DevSongs)                 */}
+      {/* ========================================================================= */}
+      {trackMenuState && trackMenuState.track && (
+        <div
+          className={styles.trackMenuDropdown}
+          style={{
+            top: trackMenuState.top,
+            right: trackMenuState.right,
+            transform: trackMenuState.showAbove ? 'translateY(-100%)' : 'none'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Cabeçalho do menu com informações da música */}
+          <div className={styles.trackMenuHeader}>
+            <img
+              src={trackMenuState.track.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+              alt={trackMenuState.track.title}
+              className={styles.trackMenuThumb}
+              onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+            />
+            <div className={styles.trackMenuHeaderInfo}>
+              <div className={styles.trackMenuHeaderTitle} title={trackMenuState.track.title}>
+                {trackMenuState.track.title}
+              </div>
+              <div className={styles.trackMenuHeaderArtist} title={trackMenuState.track.artist}>
+                {trackMenuState.track.artist}
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.trackMenuDivider} />
+
+          {/* 1. Adicionar a outra playlist */}
+          <button
+            type="button"
+            className={styles.trackMenuItem}
+            onClick={() => {
+              const trk = trackMenuState.track;
+              setTrackMenuState(null);
+              setTrackToAddToPlaylist(trk);
+              setAddToPlaylistModalOpen(true);
+            }}
+          >
+            <ListPlus size={16} />
+            <span>Adicionar a outra playlist</span>
+          </button>
+
+          {/* 2. Ir para o perfil do artista (com suporte a múltiplos artistas e participações) */}
+          {(() => {
+            const participants = getTrackParticipants(trackMenuState.track, artists);
+            if (participants.length <= 1) {
+              const part = participants[0] || { name: trackMenuState.track.artist, artistId: null, hasProfile: false };
+              if (part.hasProfile) {
+                return (
+                  <button
+                    type="button"
+                    className={styles.trackMenuItem}
+                    onClick={() => {
+                      const artistId = part.artistId;
+                      const artistName = part.name;
+                      setTrackMenuState(null);
+                      if (onOpenArtistProfile) {
+                        onOpenArtistProfile(artistName, artistId);
+                      } else {
+                        handleGoToArtist(artistId);
+                      }
+                    }}
+                  >
+                    <User size={16} />
+                    <span>Ir para o artista ({part.name})</span>
+                  </button>
+                );
+              }
+              return (
+                <div
+                  className={`${styles.trackMenuItem} ${styles.trackMenuItemDisabled}`}
+                  title="Perfil do artista não encontrado no catálogo"
+                >
+                  <User size={16} />
+                  <span>Artista: {part.name} (sem perfil)</span>
+                </div>
+              );
+            }
+
+            return (
+              <div className={styles.trackMenuSubGroup}>
+                <div className={styles.trackMenuSubGroupTitle}>
+                  <User size={13} />
+                  <span>Artistas / Participações</span>
+                </div>
+                <div className={styles.trackMenuSubList}>
+                  {participants.map((part, pIdx) => {
+                    if (part.hasProfile) {
+                      return (
+                        <button
+                          key={part.artistId || pIdx}
+                          type="button"
+                          className={`${styles.trackMenuItem} ${styles.trackMenuItemSub}`}
+                          onClick={() => {
+                            const artistId = part.artistId;
+                            const artistName = part.name;
+                            setTrackMenuState(null);
+                            if (onOpenArtistProfile) {
+                              onOpenArtistProfile(artistName, artistId);
+                            } else {
+                              handleGoToArtist(artistId);
+                            }
+                          }}
+                        >
+                          <span className={styles.trackMenuSubDot}>•</span>
+                          <span>Ir para {part.name}</span>
+                        </button>
+                      );
+                    }
+                    return (
+                      <div
+                        key={pIdx}
+                        className={`${styles.trackMenuItem} ${styles.trackMenuItemSub} ${styles.trackMenuItemDisabled}`}
+                        title="Perfil não encontrado no catálogo"
+                      >
+                        <span className={styles.trackMenuSubDot}>•</span>
+                        <span>{part.name}</span>
+                        <span className={styles.trackMenuNote}>(sem perfil)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 3. Ir para o álbum (somente se houver álbum relacionado e não for Single) */}
+          {(() => {
+            const associatedAlbum = getTrackAssociatedAlbum(trackMenuState.track, catalogAlbums);
+            if (!associatedAlbum) return null;
+            return (
+              <button
+                type="button"
+                className={styles.trackMenuItem}
+                onClick={() => {
+                  const album = associatedAlbum;
+                  setTrackMenuState(null);
+                  if (onSelectAlbum) {
+                    onSelectAlbum({
+                      ...album,
+                      id: album.id,
+                      albumId: album.id,
+                      title: album.title,
+                      artist: album.artist_name || album.artist || trackMenuState.track.artist,
+                      artistName: album.artist_name || album.artist || trackMenuState.track.artist,
+                      artist_name: album.artist_name || album.artist || trackMenuState.track.artist,
+                      cover: album.cover_url || album.cover || trackMenuState.track.cover_url,
+                      cover_url: album.cover_url || album.cover || trackMenuState.track.cover_url,
+                      year: album.release_date ? String(album.release_date).slice(0, 4) : '2024'
+                    });
+                  } else {
+                    handleGoToAlbum(album.id);
+                  }
+                }}
+              >
+                <Disc3 size={16} />
+                <span>Ir para o álbum ({associatedAlbum.title})</span>
+              </button>
+            );
+          })()}
+
+          {/* 4. Remover da playlist (exibido apenas se o usuário for o criador/dono da playlist) */}
+          {selectedPlaylist && Number(selectedPlaylist.user_id) === Number(user?.id) && (
+            <>
+              <div className={styles.trackMenuDivider} />
+              <button
+                type="button"
+                className={`${styles.trackMenuItem} ${styles.trackMenuItemDanger}`}
+                onClick={() => {
+                  const trk = trackMenuState.track;
+                  const plId = selectedPlaylist.id;
+                  setTrackMenuState(null);
+                  setDeleteConfirmModal({
+                    open: true,
+                    type: 'playlist_track',
+                    id: trk.id,
+                    playlistId: plId,
+                    title: trk.title
+                  });
+                }}
+              >
+                <Trash2 size={16} />
+                <span>Remover da playlist</span>
+              </button>
+            </>
+          )}
         </div>
       )}
 

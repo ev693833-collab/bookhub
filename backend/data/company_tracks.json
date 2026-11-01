@@ -10,13 +10,28 @@
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 214,
-    "stock_quantity": 44,
+    "stock_quantity": 31,
     "sale_price": 4.9,
     "rent_price": 1.9,
     "available_for_stream": true,
     "is_exclusive": true,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "BK",
+        "artistId": 1,
+        "hasProfile": true,
+        "avatarUrl": "https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/bk_avatar.png",
+        "bio": "Rapper, compositor e produtor brasileiro, um dos expoentes do hip-hop nacional.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      1
+    ],
+    "artist_id": 1,
+    "album_id": 1
   },
   {
     "id": 2,
@@ -25,7 +40,7 @@
     "artist": "BK",
     "album": "Diamantes, Lágrimas e Rostos para Esquecer",
     "genre": "Rap",
-    "cover_url": "https://cdn-images.dzcdn.net/images/cover/927397ea14b00eba92454a88ec4f352d/500x500-000000-80-0-0.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/783fc325547bd01f1e3897918a0f04c2/1000x1000-000000-80-0-0.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 198,
@@ -35,7 +50,22 @@
     "available_for_stream": true,
     "is_exclusive": true,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "BK",
+        "artistId": 1,
+        "hasProfile": true,
+        "avatarUrl": "https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/bk_avatar.png",
+        "bio": "Rapper, compositor e produtor brasileiro, um dos expoentes do hip-hop nacional.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      1
+    ],
+    "artist_id": 1,
+    "album_id": 2
   },
   {
     "id": 3,
@@ -44,17 +74,32 @@
     "artist": "Veigh",
     "album": "Dos Prédios Deluxe",
     "genre": "Trap",
-    "cover_url": "https://cdn-images.dzcdn.net/images/cover/6646c5f4c6b60b0ddd4f00987623437c/500x500-000000-80-0-0.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/b300e05a1b78466f15c81677e4ba33d9/1000x1000-000000-80-0-0.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 184,
-    "stock_quantity": 12,
+    "stock_quantity": 0,
     "sale_price": 6.9,
     "rent_price": 2.9,
     "available_for_stream": true,
     "is_exclusive": false,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "Veigh",
+        "artistId": 2,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/cover/6646c5f4c6b60b0ddd4f00987623437c/500x500-000000-80-0-0.jpg",
+        "bio": "Destaque do trap nacional com sucessos que lideraram as paradas do streaming.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      2
+    ],
+    "artist_id": 2,
+    "album_id": 3
   },
   {
     "id": 4,
@@ -63,17 +108,50 @@
     "artist": "Brandão85, Jovem Dex, Leviano",
     "album": "ISSO É TRAP",
     "genre": "Trap",
-    "cover_url": "https://cdn-images.dzcdn.net/images/cover/823c311b28a72801b809da4d99c621f4/500x500-000000-80-0-0.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/823c311b28a72801b809da4d99c621f4/1000x1000-000000-80-0-0.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 165,
-    "stock_quantity": 8,
+    "stock_quantity": 0,
     "sale_price": 4.5,
     "rent_price": 1.8,
     "available_for_stream": true,
     "is_exclusive": false,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "Brandão85",
+        "artistId": 3,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/cover/823c311b28a72801b809da4d99c621f4/500x500-000000-80-0-0.jpg",
+        "bio": "Artista do trap e hip-hop com parcerias marcantes.",
+        "role": "primary"
+      },
+      {
+        "name": "Jovem Dex",
+        "artistId": 12,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/9e3af30341ac3a62425bb563212415e5/1000x1000-000000-80-0-0.jpg",
+        "bio": "Jovem Dex é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "feat"
+      },
+      {
+        "name": "Leviano",
+        "artistId": 11,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/f1798562d69abd2a8535bc0e1c0acef4/1000x1000-000000-80-0-0.jpg",
+        "bio": "Leviano é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "feat"
+      }
+    ],
+    "artist_ids": [
+      3,
+      12,
+      11
+    ],
+    "artist_id": 3,
+    "album_id": 4
   },
   {
     "id": 5,
@@ -82,17 +160,32 @@
     "artist": "Pricila areba",
     "album": "Roda de Piseiro, Vol. 1 (Ao Vivo)",
     "genre": "Piseiro",
-    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/13/98/4c/13984c56-f8fc-318e-9bc4-65b925b4783b/8447053281338.jpg/600x600bb.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/9801cd5811ab4677837a17edbaefb505/1000x1000-000000-80-0-0.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 190,
-    "stock_quantity": 25,
+    "stock_quantity": 12,
     "sale_price": 3.9,
     "rent_price": 1.5,
     "available_for_stream": true,
     "is_exclusive": true,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "Pricila areba",
+        "artistId": 4,
+        "hasProfile": true,
+        "avatarUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/13/98/4c/13984c56-f8fc-318e-9bc4-65b925b4783b/8447053281338.jpg/600x600bb.jpg",
+        "bio": "Voz marcante do piseiro e vaquejada nordestina.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      4
+    ],
+    "artist_id": 4,
+    "album_id": 5
   },
   {
     "id": 6,
@@ -101,7 +194,7 @@
     "artist": "Pricila areba",
     "album": "Roda de Piseiro, Vol. 1 (Ao Vivo)",
     "genre": "Piseiro",
-    "cover_url": "https://cdn-images.dzcdn.net/images/cover/f9e0787a4ddf82e8b625cf030b42774a/500x500-000000-80-0-0.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/9801cd5811ab4677837a17edbaefb505/1000x1000-000000-80-0-0.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 210,
@@ -111,7 +204,22 @@
     "available_for_stream": true,
     "is_exclusive": true,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "Pricila areba",
+        "artistId": 4,
+        "hasProfile": true,
+        "avatarUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/13/98/4c/13984c56-f8fc-318e-9bc4-65b925b4783b/8447053281338.jpg/600x600bb.jpg",
+        "bio": "Voz marcante do piseiro e vaquejada nordestina.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      4
+    ],
+    "artist_id": 4,
+    "album_id": 5
   },
   {
     "id": 7,
@@ -120,17 +228,32 @@
     "artist": "Forrozão Tropykália",
     "album": "Tropykália 25 Anos",
     "genre": "Forró",
-    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/e0/92/da/e092da2d-9f6d-11dc-7843-2021e95a2b61/21UMGIM17518.rgb.jpg/600x600bb.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/8a0f4c77fb572cc619519e7ed7b67ce7/1000x1000-000000-80-0-0.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 230,
-    "stock_quantity": 40,
+    "stock_quantity": 27,
     "sale_price": 4.2,
     "rent_price": 1.7,
     "available_for_stream": true,
     "is_exclusive": false,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "Forrozão Tropykália",
+        "artistId": 5,
+        "hasProfile": true,
+        "avatarUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/e0/92/da/e092da2d-9f6d-11dc-7843-2021e95a2b61/21UMGIM17518.rgb.jpg/600x600bb.jpg",
+        "bio": "Grupo icônico de forró romântico brasileiro.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      5
+    ],
+    "artist_id": 5,
+    "album_id": 6
   },
   {
     "id": 8,
@@ -139,7 +262,7 @@
     "artist": "Priscila Areba",
     "album": "Par Perfeito",
     "genre": "Forró",
-    "cover_url": "https://cdn-images.dzcdn.net/images/cover/e3dd74dfebdfae5ad220ce690a6f8b1b/500x500-000000-80-0-0.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/6775ec0b834d6bab971acd7994be7166/1000x1000-000000-80-0-0.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 185,
@@ -149,7 +272,22 @@
     "available_for_stream": true,
     "is_exclusive": false,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "Pricila areba",
+        "artistId": 4,
+        "hasProfile": true,
+        "avatarUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/13/98/4c/13984c56-f8fc-318e-9bc4-65b925b4783b/8447053281338.jpg/600x600bb.jpg",
+        "bio": "Voz marcante do piseiro e vaquejada nordestina.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      4
+    ],
+    "artist_id": 4,
+    "album_id": 7
   },
   {
     "id": 9,
@@ -158,7 +296,7 @@
     "artist": "MC GP",
     "album": "Nova Tendência",
     "genre": "Funk",
-    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music118/v4/b9/78/fa/b978fac2-a626-ea2e-ea93-5f7e7bf642b4/8429006299409.jpg/600x600bb.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/bfe4031a9d5c5ff196aa67b8cdac0cf3/1000x1000-000000-80-0-0.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 175,
@@ -168,16 +306,31 @@
     "available_for_stream": true,
     "is_exclusive": true,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "MC GP",
+        "artistId": 6,
+        "hasProfile": true,
+        "avatarUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music118/v4/b9/78/fa/b978fac2-a626-ea2e-ea93-5f7e7bf642b4/8429006299409.jpg/600x600bb.jpg",
+        "bio": "MC da cena do funk consciente e paulista.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      6
+    ],
+    "artist_id": 6,
+    "album_id": 8
   },
   {
     "id": 10,
     "company_id": 3,
     "title": "Peitão Molhado",
     "artist": "MC GP",
-    "album": "Funk Hits",
+    "album": "Single",
     "genre": "Funk",
-    "cover_url": "https://cdn-images.dzcdn.net/images/cover/b4618e8071852c93850ea9c7a233b2a2/500x500-000000-80-0-0.jpg",
+    "cover_url": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/c5/7c/dd/c57cdd1c-fd15-3148-1856-fbac5c86ff4a/5026854246734.jpg/600x600bb.jpg",
     "preview_url": null,
     "youtube_video_id": null,
     "duration_sec": 160,
@@ -187,7 +340,22 @@
     "available_for_stream": true,
     "is_exclusive": false,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "MC GP",
+        "artistId": 6,
+        "hasProfile": true,
+        "avatarUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music118/v4/b9/78/fa/b978fac2-a626-ea2e-ea93-5f7e7bf642b4/8429006299409.jpg/600x600bb.jpg",
+        "bio": "MC da cena do funk consciente e paulista.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      6
+    ],
+    "artist_id": 6,
+    "album_id": null
   },
   {
     "id": 11,
@@ -206,7 +374,22 @@
     "available_for_stream": true,
     "is_exclusive": false,
     "status": "active",
-    "created_at": "2026-10-16T10:00:00.000Z"
+    "created_at": "2026-10-16T10:00:00.000Z",
+    "participants": [
+      {
+        "name": "Justin Bieber",
+        "artistId": 7,
+        "hasProfile": true,
+        "avatarUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/81/a4/dc/81a4dc50-8d7e-6ae5-71d3-f83393348248/15UMGIM59807.rgb.jpg/600x600bb.jpg",
+        "bio": "Superestrela global do pop.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      7
+    ],
+    "artist_id": 7,
+    "album_id": 9
   },
   {
     "id": 12,
@@ -227,7 +410,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-29T20:28:22.457Z"
+    "created_at": "2026-10-29T20:28:22.457Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 13,
@@ -248,7 +442,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-29T21:05:30.989Z"
+    "created_at": "2026-10-29T21:05:30.989Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 14,
@@ -269,7 +474,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T11:48:33.279Z"
+    "created_at": "2026-10-30T11:48:33.279Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 15,
@@ -290,7 +506,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T12:18:58.874Z"
+    "created_at": "2026-10-30T12:18:58.874Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 16,
@@ -311,7 +538,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T12:32:29.660Z"
+    "created_at": "2026-10-30T12:32:29.660Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 17,
@@ -332,7 +570,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T12:40:26.554Z"
+    "created_at": "2026-10-30T12:40:26.554Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 18,
@@ -353,7 +602,18 @@
     "status": "active",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T12:55:02.689Z"
+    "created_at": "2026-10-30T12:55:02.689Z",
+    "participants": [
+      {
+        "name": "Artista Teste",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 19,
@@ -374,7 +634,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T12:55:18.872Z"
+    "created_at": "2026-10-30T12:55:18.872Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 20,
@@ -395,7 +666,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T13:05:05.237Z"
+    "created_at": "2026-10-30T13:05:05.237Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 21,
@@ -416,7 +698,18 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T13:48:50.775Z"
+    "created_at": "2026-10-30T13:48:50.775Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 22,
@@ -437,14 +730,25 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T14:01:15.813Z"
+    "created_at": "2026-10-30T14:01:15.813Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
   },
   {
     "id": 23,
     "company_id": 1,
     "title": "M4",
     "artist": "Teto e Matuê",
-    "album": "M4",
+    "album": "Single",
     "genre": "Variado",
     "cover_url": "https://cdn-images.dzcdn.net/images/cover/2001711833ffbd1db9c156bc2422e929/500x500-000000-80-0-0.jpg",
     "preview_url": null,
@@ -456,9 +760,31 @@
     "available_for_stream": true,
     "is_exclusive": false,
     "status": "active",
-    "artist_id": null,
+    "artist_id": 13,
     "album_id": null,
-    "created_at": "2026-10-30T14:20:19.326Z"
+    "created_at": "2026-10-30T14:20:19.326Z",
+    "participants": [
+      {
+        "name": "Teto",
+        "artistId": 13,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/2e074d001d9cb79055d9c648c758c160/1000x1000-000000-80-0-0.jpg",
+        "bio": "Teto é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      },
+      {
+        "name": "Matuê",
+        "artistId": 14,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/c42fcb920963cca4d195b939e51f19d1/1000x1000-000000-80-0-0.jpg",
+        "bio": "Matuê é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "feat"
+      }
+    ],
+    "artist_ids": [
+      13,
+      14
+    ]
   },
   {
     "id": 24,
@@ -479,6 +805,529 @@
     "status": "inactive",
     "artist_id": null,
     "album_id": null,
-    "created_at": "2026-10-30T14:46:37.881Z"
+    "created_at": "2026-10-30T14:46:37.881Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
+  },
+  {
+    "id": 25,
+    "company_id": 1,
+    "title": "Faixa Temporária Atualizada",
+    "artist": "DevSongs Artist",
+    "album": "DevSongs Album",
+    "genre": "Trap",
+    "cover_url": null,
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 180,
+    "stock_quantity": 50,
+    "sale_price": 4.9,
+    "rent_price": 1.9,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "inactive",
+    "artist_id": null,
+    "album_id": null,
+    "created_at": "2026-10-30T17:34:42.170Z",
+    "participants": [
+      {
+        "name": "DevSongs Artist",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      }
+    ],
+    "artist_ids": []
+  },
+  {
+    "id": 26,
+    "company_id": 1,
+    "title": "SOLTO",
+    "artist": "Djonga",
+    "album": "O MENINO QUE QUERIA SER DEUS",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/10ba01b01c2e8517166d7f2270a7d454/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 219,
+    "stock_quantity": 49,
+    "sale_price": 1.9,
+    "rent_price": 1.9,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 9,
+    "album_id": 36,
+    "created_at": "2026-10-30T19:19:35.441Z",
+    "participants": [
+      {
+        "name": "Djonga",
+        "artistId": 9,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
+        "bio": "Djonga é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      9
+    ]
+  },
+  {
+    "id": 27,
+    "company_id": 1,
+    "title": "PENSANDO EM MIM",
+    "artist": "Matchola e 2ZDINIZ",
+    "album": "PENSANDO EM MIM",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/31b86e4b5a5dc901013878cb70cdb66d/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 153,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": null,
+    "album_id": null,
+    "created_at": "2026-10-30T19:19:35.480Z",
+    "participants": [
+      {
+        "name": "Matchola",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      },
+      {
+        "name": "2ZDINIZ",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "feat"
+      }
+    ],
+    "artist_ids": []
+  },
+  {
+    "id": 28,
+    "company_id": 1,
+    "title": "desgraçadagostosamaldita",
+    "artist": "WIU",
+    "album": "Vagabundo de Luxo",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/3ef64652d6f7da29ce07bc38a11093a3/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 168,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 15,
+    "album_id": 115,
+    "created_at": "2026-10-30T19:51:37.894Z",
+    "participants": [
+      {
+        "name": "WIU",
+        "artistId": 15,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/33c57e62925f8aa9639ede9c92a198d8/1000x1000-000000-80-0-0.jpg",
+        "bio": "WIU é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      15
+    ]
+  },
+  {
+    "id": 29,
+    "company_id": 1,
+    "title": "Girassóis de Van Gogh",
+    "artist": "Baco Exu do Blues",
+    "album": "Bluesman",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/0421054a6a7d8cb4e52dd27ff4deef2c/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 198,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 16,
+    "album_id": 122,
+    "created_at": "2026-10-30T19:51:37.919Z",
+    "participants": [
+      {
+        "name": "Baco Exu do Blues",
+        "artistId": 16,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/f21ec3008588db26c43727623b98698e/1000x1000-000000-80-0-0.jpg",
+        "bio": "Baco Exu do Blues é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      16
+    ]
+  },
+  {
+    "id": 30,
+    "company_id": 1,
+    "title": "Procuro Alguém",
+    "artist": "Djonga e Coyote Beat",
+    "album": "Histórias da Minha Área",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/86427da38e1e93f57746964d3851f9fb/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 192,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 9,
+    "album_id": 34,
+    "created_at": "2026-10-30T19:51:37.944Z",
+    "participants": [
+      {
+        "name": "Djonga",
+        "artistId": 9,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
+        "bio": "Djonga é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      },
+      {
+        "name": "Coyote Beat",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "feat"
+      }
+    ],
+    "artist_ids": [
+      9
+    ]
+  },
+  {
+    "id": 31,
+    "company_id": 1,
+    "title": "Vênus",
+    "artist": "VMZ",
+    "album": "Single",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/cb93b1b278ab21cbc2661e19816b1874/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 161,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 18,
+    "album_id": null,
+    "created_at": "2026-10-30T19:52:21.602Z",
+    "participants": [
+      {
+        "name": "VMZ",
+        "artistId": 18,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/9fcec8861b268e2d21e4174ccfb474fa/1000x1000-000000-80-0-0.jpg",
+        "bio": "VMZ é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      18
+    ]
+  },
+  {
+    "id": 32,
+    "company_id": 1,
+    "title": "One Less Lonely Girl",
+    "artist": "Justin Bieber",
+    "album": "My World",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/a40e48bd5bae166186dc04c57efdae7a/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 229,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 7,
+    "album_id": 159,
+    "created_at": "2026-10-30T19:52:21.627Z",
+    "participants": [
+      {
+        "name": "Justin Bieber",
+        "artistId": 7,
+        "hasProfile": true,
+        "avatarUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/81/a4/dc/81a4dc50-8d7e-6ae5-71d3-f83393348248/15UMGIM59807.rgb.jpg/600x600bb.jpg",
+        "bio": "Superestrela global do pop.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      7
+    ]
+  },
+  {
+    "id": 33,
+    "company_id": 1,
+    "title": "Nós",
+    "artist": "Djonga",
+    "album": "NU",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/4df1597321ee02c46b995bf7746e3bb5/1000x1000-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 193,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 9,
+    "album_id": 33,
+    "created_at": "2026-10-30T19:52:21.649Z",
+    "participants": [
+      {
+        "name": "Djonga",
+        "artistId": 9,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
+        "bio": "Djonga é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      9
+    ]
+  },
+  {
+    "id": 34,
+    "company_id": 1,
+    "title": "Ó Quem Chega",
+    "artist": "Djonga",
+    "album": "NU",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/4df1597321ee02c46b995bf7746e3bb5/1000x1000-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 222,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 9,
+    "album_id": 33,
+    "created_at": "2026-10-30T19:52:21.683Z",
+    "participants": [
+      {
+        "name": "Djonga",
+        "artistId": 9,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
+        "bio": "Djonga é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      9
+    ]
+  },
+  {
+    "id": 35,
+    "company_id": 1,
+    "title": "Ricô",
+    "artist": "Djonga",
+    "album": "NU",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/4df1597321ee02c46b995bf7746e3bb5/1000x1000-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 232,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 9,
+    "album_id": 33,
+    "created_at": "2026-10-30T19:52:21.726Z",
+    "participants": [
+      {
+        "name": "Djonga",
+        "artistId": 9,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
+        "bio": "Djonga é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      9
+    ]
+  },
+  {
+    "id": 36,
+    "company_id": 1,
+    "title": "Eu",
+    "artist": "Djonga",
+    "album": "NU",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/4df1597321ee02c46b995bf7746e3bb5/1000x1000-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 310,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 9,
+    "album_id": 33,
+    "created_at": "2026-10-30T19:52:21.749Z",
+    "participants": [
+      {
+        "name": "Djonga",
+        "artistId": 9,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
+        "bio": "Djonga é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      }
+    ],
+    "artist_ids": [
+      9
+    ]
+  },
+  {
+    "id": 37,
+    "company_id": 1,
+    "title": "LUZ, CAMA E AÇÃO",
+    "artist": "Alee, Mc Cabelinho e Qualy",
+    "album": "CAOS DLX",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/6646c5f4c6b60b0ddd4f00987623437c/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 184,
+    "stock_quantity": 49,
+    "sale_price": 4.9,
+    "rent_price": 0.5,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": 19,
+    "album_id": 136,
+    "created_at": "2026-10-30T19:53:58.114Z",
+    "participants": [
+      {
+        "name": "Alee",
+        "artistId": 19,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/4fec56e2b9080c958683ea45737e1130/1000x1000-000000-80-0-0.jpg",
+        "bio": "Alee é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "primary"
+      },
+      {
+        "name": "MC Cabelinho",
+        "artistId": 17,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/9af42c5b0cecdd05765ec8a7f568d3af/1000x1000-000000-80-0-0.jpg",
+        "bio": "MC Cabelinho é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "feat"
+      },
+      {
+        "name": "Qualy",
+        "artistId": 20,
+        "hasProfile": true,
+        "avatarUrl": "https://cdn-images.dzcdn.net/images/artist/afbdd277a736ca9afaf67181da5409fc/1000x1000-000000-80-0-0.jpg",
+        "bio": "Qualy é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+        "role": "feat"
+      }
+    ],
+    "artist_ids": [
+      19,
+      17,
+      20
+    ]
+  },
+  {
+    "id": 38,
+    "company_id": 1,
+    "title": "a última dança",
+    "artist": "Link do Zap e pluglip",
+    "album": "a última dança",
+    "genre": "Variado",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/8aaff6e465612a73a87fa9c666d74ba8/500x500-000000-80-0-0.jpg",
+    "preview_url": null,
+    "youtube_video_id": null,
+    "duration_sec": 142,
+    "stock_quantity": 49,
+    "sale_price": 1.9,
+    "rent_price": 1.9,
+    "available_for_stream": true,
+    "is_exclusive": false,
+    "status": "active",
+    "artist_id": null,
+    "album_id": null,
+    "created_at": "2026-10-30T20:26:36.832Z",
+    "participants": [
+      {
+        "name": "Link do Zap",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "primary"
+      },
+      {
+        "name": "pluglip",
+        "artistId": null,
+        "hasProfile": false,
+        "avatarUrl": null,
+        "bio": null,
+        "role": "feat"
+      }
+    ],
+    "artist_ids": []
   }
 ]

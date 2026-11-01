@@ -54,5 +54,131 @@
     "avatar_url": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/81/a4/dc/81a4dc50-8d7e-6ae5-71d3-f83393348248/15UMGIM59807.rgb.jpg/600x600bb.jpg",
     "genre": "Pop",
     "created_at": "2026-10-15T12:00:00.000Z"
+  },
+  {
+    "id": 8,
+    "name": "LEALL",
+    "bio": "LEALL é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/ceb93edbe8c08c59e347aa4179fe2fef/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-10-30T19:31:41.635Z",
+    "updated_at": "2026-10-30T19:31:41.635Z"
+  },
+  {
+    "id": 9,
+    "name": "Djonga",
+    "bio": "Djonga é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-10-30T19:35:35.433Z",
+    "updated_at": "2026-10-30T19:35:35.433Z"
+  },
+  {
+    "id": 10,
+    "name": "Scalene",
+    "bio": "Scalene é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/7b75b50b0033b0612f2a36795ac283a0/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-10-31T21:31:43.777Z",
+    "updated_at": "2026-10-31T21:31:43.777Z"
+  },
+  {
+    "id": 11,
+    "name": "Leviano",
+    "bio": "Leviano é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/f1798562d69abd2a8535bc0e1c0acef4/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:06:28.157Z",
+    "updated_at": "2026-11-01T00:06:28.157Z"
+  },
+  {
+    "id": 12,
+    "name": "Jovem Dex",
+    "bio": "Jovem Dex é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/9e3af30341ac3a62425bb563212415e5/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:21:21.773Z",
+    "updated_at": "2026-11-01T00:21:21.773Z"
+  },
+  {
+    "id": 13,
+    "name": "Teto",
+    "bio": "Teto é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/2e074d001d9cb79055d9c648c758c160/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:22:24.994Z",
+    "updated_at": "2026-11-01T00:22:24.994Z"
+  },
+  {
+    "id": 14,
+    "name": "Matuê",
+    "bio": "Matuê é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/c42fcb920963cca4d195b939e51f19d1/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:22:26.468Z",
+    "updated_at": "2026-11-01T00:22:26.468Z"
+  },
+  {
+    "id": 15,
+    "name": "WIU",
+    "bio": "WIU é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/33c57e62925f8aa9639ede9c92a198d8/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:22:28.004Z",
+    "updated_at": "2026-11-01T00:22:28.004Z"
+  },
+  {
+    "id": 16,
+    "name": "Baco Exu do Blues",
+    "bio": "Baco Exu do Blues é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/f21ec3008588db26c43727623b98698e/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:22:32.787Z",
+    "updated_at": "2026-11-01T00:22:32.787Z"
+  },
+  {
+    "id": 17,
+    "name": "MC Cabelinho",
+    "bio": "MC Cabelinho é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/9af42c5b0cecdd05765ec8a7f568d3af/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:22:34.346Z",
+    "updated_at": "2026-11-01T00:22:34.346Z"
+  },
+  {
+    "id": 18,
+    "name": "VMZ",
+    "bio": "VMZ é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/9fcec8861b268e2d21e4174ccfb474fa/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:22:36.564Z",
+    "updated_at": "2026-11-01T00:22:36.564Z"
+  },
+  {
+    "id": 19,
+    "name": "Alee",
+    "bio": "Alee é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/4fec56e2b9080c958683ea45737e1130/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:22:38.474Z",
+    "updated_at": "2026-11-01T00:22:38.474Z"
+  },
+  {
+    "id": 20,
+    "name": "Qualy",
+    "bio": "Qualy é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/afbdd277a736ca9afaf67181da5409fc/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T00:22:40.367Z",
+    "updated_at": "2026-11-01T00:22:40.367Z"
+  },
+  {
+    "id": 21,
+    "name": "Manu Chao",
+    "bio": "Manu Chao é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/8761b9e8ef9dfd200775d1458ea6446e/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T01:11:44.632Z",
+    "updated_at": "2026-11-01T01:11:44.632Z"
   }
 ]
