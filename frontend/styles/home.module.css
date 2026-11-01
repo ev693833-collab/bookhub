@@ -18,26 +18,36 @@
   display: flex;
   flex-direction: row;
   flex: 1;
-  height: calc(100vh - 64px);
+  height: 100vh;
   width: 100%;
   overflow: hidden;
   position: relative;
 }
 
-/* ─── SIDEBAR (YouTube Music Style - Photo 1) ───────────── */
+/* ─── SIDEBAR (YouTube Music & Spotify Frosted Glass Dark Aesthetic) ───── */
 .sidebar {
   width: 250px;
   min-width: 250px;
-  background-color: #030303;
+  margin-top: 64px;
+  height: calc(100vh - 64px);
+  background-color: rgba(8, 8, 8, 0.72);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   padding: 1rem 0.85rem 6.5rem;
-  height: 100%;
   box-sizing: border-box;
   z-index: 30;
   user-select: none;
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease;
+}
+
+.sidebarScrolled {
+  background-color: rgba(8, 8, 8, 0.82) !important;
+  backdrop-filter: blur(24px) saturate(1.6) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.6) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .sidebarCollapsed {
@@ -121,16 +131,16 @@
 
 /* 2. Estado ROLADO (isScrolled): TopAppBar e Sidebar perfeitamente sincronizados em #030303 */
 .appContainerArtist .topAppBar.topAppBarScrolled {
-  background: #030303 !important;
-  background-color: #030303 !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(8, 8, 8, 0.85) !important;
+  backdrop-filter: blur(24px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.8) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 .appContainerArtist .sidebar.sidebarArtistScrolled {
-  background: #030303 !important;
-  background-color: #030303 !important;
+  background-color: rgba(8, 8, 8, 0.82) !important;
+  backdrop-filter: blur(24px) saturate(1.6) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.6) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
@@ -155,6 +165,7 @@
   width: 100% !important;
   flex: 1 !important;
   margin-left: 0 !important;
+  padding-top: 0 !important;
 }
 
 .appContainerArtist .artistBannerContainer {
@@ -354,11 +365,19 @@
   margin: 0.5rem 0.5rem 1.25rem;
 }
 
+.sidebarPlaylistsContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .newPlaylistBtn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
-  padding: 0.65rem 1.25rem;
+  padding: 0.65rem 1.15rem;
   border-radius: 999px;
   font-size: 0.88rem;
   font-weight: 600;
@@ -367,59 +386,135 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  margin: 0 0.5rem 1.25rem;
+  margin: 0 0.5rem 0.85rem;
+  flex-shrink: 0;
   transition: all 0.2s ease;
 }
 
 .newPlaylistBtn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #60a5fa;
+  transform: translateY(-1px);
 }
 
-.autoPlaylistSection {
-  padding: 0 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.autoPlaylistTitle {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.autoPlaylistSub {
-  font-size: 0.75rem;
-  color: #717171;
-}
-
-.playlistList {
+.sidebarPlaylistScroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  margin-top: 1rem;
+  gap: 2px;
+  padding: 0 0.25rem 0 0.4rem;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-.playlistItem {
+.sidebarPlaylistScroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebarPlaylistScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebarPlaylistScroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.sidebarPlaylistScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sidebarPlaylistItem {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0.85rem;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
   border-radius: 8px;
-  font-size: 0.85rem;
-  color: #a7a7a7;
+  color: #cbd5e1;
   cursor: pointer;
   transition: all 0.15s ease;
+  position: relative;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  user-select: none;
 }
 
-.playlistItem:hover {
+.sidebarPlaylistItem:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebarPlaylistItemActive {
+  background: rgba(59, 130, 246, 0.16) !important;
+  color: #60a5fa !important;
+  font-weight: 600;
+  border-left: 3px solid #3b82f6;
+  border-radius: 0 8px 8px 0;
+}
+
+.sidebarPlaylistItemIcon {
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.sidebarPlaylistItem:hover .sidebarPlaylistItemIcon,
+.sidebarPlaylistItemActive .sidebarPlaylistItemIcon {
+  color: #60a5fa;
+}
+
+.sidebarPlaylistItemName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.sidebarPlaylistPlayBtn {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.sidebarPlaylistItem:hover .sidebarPlaylistPlayBtn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.sidebarPlaylistPlayBtn:hover {
+  background: #2563eb;
+  transform: scale(1.12) !important;
+}
+
+.sidebarPlaylistsEmpty {
+  font-size: 0.8rem;
+  color: #64748b;
+  padding: 0.75rem 0.65rem;
+  text-align: center;
+  line-height: 1.4;
 }
 
 /* ─── MAIN CONTENT AREA (Page background #090909) ───────── */
@@ -429,11 +524,13 @@
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
+  padding-top: 64px;
   padding-bottom: 7rem;
   background-color: #090909; /* Exata cor de fundo requerida para a transição */
   position: relative;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+  box-sizing: border-box;
 }
 
 .mainContent::-webkit-scrollbar {
@@ -453,8 +550,12 @@
   background: rgba(255, 255, 255, 0.42);
 }
 
-/* Top App Bar (YouTube Music Style - Photo 1) */
+/* Top App Bar (Spotify & YouTube Music Dark Glass Aesthetic) */
 .topAppBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 64px;
   min-height: 64px;
   width: 100%;
@@ -463,12 +564,14 @@
   align-items: center;
   justify-content: flex-start;
   padding: 0 1.75rem;
-  background-color: #030303;
+  background-color: rgba(9, 9, 9, 0.72);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   gap: 1.5rem;
   box-sizing: border-box;
   flex-shrink: 0;
-  transition: background-color 0.25s ease, border-color 0.25s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease, backdrop-filter 0.25s ease;
 }
 
 .topAppBarLeft {
@@ -510,10 +613,10 @@
 }
 
 .topAppBarScrolled {
-  background-color: rgba(9, 9, 9, 0.92) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(8, 8, 8, 0.85) !important;
+  backdrop-filter: blur(24px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.8) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 .searchWrap {
@@ -2027,6 +2130,14 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  padding: 0.25rem 0 1rem;
+}
+
 .cardsRow {
   display: flex;
   gap: 1.35rem;
@@ -2734,10 +2845,10 @@
 /* Fundo Dinâmico com Aura / Ambient Glow da capa do Álbum (Estilo YouTube Music & Spotify) */
 .albumAmbientBackdrop {
   position: absolute;
-  top: 0;
+  top: -64px;
   left: 0;
   right: 0;
-  height: 640px;
+  height: 700px;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
@@ -2789,6 +2900,31 @@
   position: sticky;
   top: 90px;
   height: fit-content;
+}
+
+.albumBackBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(8px);
+  transition: all 0.15s ease;
+}
+
+.albumBackBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateX(-2px);
 }
 
 .albumArtistRow {
@@ -3201,6 +3337,15 @@
 }
 
 /* ─── TELA DE INÍCIO YOUTUBE MUSIC (Foto 1 - Escolha a Dedo e Álbuns) ─── */
+.libraryViewWrapper {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
 .homeViewContainer {
   padding: 1rem 3rem 6.5rem 3rem;
   max-width: 1720px;

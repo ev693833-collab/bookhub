@@ -9,7 +9,9 @@ process.on('uncaughtException', (err) => {
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 // Configura variáveis de ambiente do .env
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
 require("dotenv").config();
 const routes = require("./routes");
 
@@ -27,6 +29,18 @@ const port = process.env.PORT || 5000;
 if (require.main === module) {
     const server = app.listen(port, () => {
         console.log(`Servidor rodando na porta ${port}`);
+
+        // Processo interno em segundo plano de identificação e correção automática de capas
+        setTimeout(() => {
+            try {
+                const coverService = require('./services/coverEnrichmentService');
+                coverService.runInternalCoverEnrichment({ verbose: true }).catch(err => {
+                    console.warn('[Server] Aviso na verificação automática de capas:', err.message);
+                });
+            } catch (e) {
+                console.warn('[Server] Falha ao carregar coverEnrichmentService:', e.message);
+            }
+        }, 2000);
     });
 
     server.on('error', (err) => {

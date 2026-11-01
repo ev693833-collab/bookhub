@@ -845,11 +845,11 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
   const handlePlayLibraryTrack = (track) => {
     if (!track) return;
-    if (track.isExpired || track.canPlay === false) {
+    if (track.isExpired || track.canPlay === false || track.isLocked) {
       console.warn('Faixa com aluguel expirado ou bloqueada:', track.title);
       return;
     }
-    const isStreamAllowed = track.available_for_stream !== false && !track.isExpired && track.canPlay !== false;
+    const isStreamAllowed = track.available_for_stream !== false && !track.isExpired && track.canPlay === true && !track.isLocked;
     const playObj = {
       id: track.id ? (String(track.id).startsWith('ct-') ? track.id : `ct-${track.id}`) : track.dbTrackId,
       dbTrackId: track.dbTrackId || Number(String(track.id).replace('ct-', '')),
@@ -864,17 +864,18 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       duration: `${Math.floor((track.duration_sec || 210)/60)}:${String((track.duration_sec || 210)%60).padStart(2, '0')}`,
       available_for_stream: isStreamAllowed,
       canPlay: isStreamAllowed,
-      isExpired: Boolean(track.isExpired)
+      isExpired: Boolean(track.isExpired),
+      isLocked: Boolean(track.isLocked)
     };
     playTrack(playObj, false);
   };
 
   const handlePlayLibraryQueue = (tracksList, startIndex = 0) => {
     if (!tracksList || tracksList.length === 0) return;
-    // Exclui automaticamente músicas com aluguel expirado ou sem autorização da fila
-    const playableTracks = tracksList.filter(t => !t.isExpired && t.canPlay !== false);
+    // Exclui automaticamente músicas com aluguel expirado, não adquiridas ou bloqueadas da fila
+    const playableTracks = tracksList.filter(t => !t.isExpired && t.canPlay === true && !t.isLocked);
     if (playableTracks.length === 0) {
-      console.warn('Todas as faixas desta playlist ou álbum possuem aluguel expirado.');
+      console.warn('Nenhuma faixa com reprodução autorizada disponível na lista.');
       return;
     }
     const mapped = playableTracks.map(t => ({
@@ -891,22 +892,103 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       duration: `${Math.floor((t.duration_sec || 210)/60)}:${String((t.duration_sec || 210)%60).padStart(2, '0')}`,
       available_for_stream: true,
       canPlay: true,
-      isExpired: false
+      isExpired: false,
+      isLocked: false
     }));
-    setUserPurchases(prev => {
-      const existing = new Set(prev.map(p => p.dbTrackId || p.id));
-      const newItems = mapped.filter(m => !existing.has(m.dbTrackId || m.id));
-      return [...prev, ...newItems];
-    });
     const safeIndex = startIndex < mapped.length ? startIndex : 0;
     const startTrack = mapped[safeIndex] || mapped[0];
     playTrack(startTrack, false);
   };
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarPlaylists, setSidebarPlaylists] = useState([]);
+  const [selectedSidebarPlaylistId, setSelectedSidebarPlaylistId] = useState(null);
+  const [playingPlaylistId, setPlayingPlaylistId] = useState(null);
+  const [triggerCreatePlaylist, setTriggerCreatePlaylist] = useState(0);
+
+  // Auto-abrir a barra lateral em telas desktop amplas (padrão YouTube Music)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1200) {
+      setSidebarOpen(true);
+    }
+  }, []);
+
+  const fetchSidebarPlaylists = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setSidebarPlaylists([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/library/playlists`, {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.playlists) {
+        setSidebarPlaylists(data.playlists);
+      }
+    } catch (err) {
+      console.warn('Erro ao atualizar playlists da barra lateral:', err.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSidebarPlaylists();
+    const handleUpdate = () => fetchSidebarPlaylists();
+    window.addEventListener('devsongs:playlists_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('devsongs:playlists_updated', handleUpdate);
+    };
+  }, [fetchSidebarPlaylists]);
+
+  const handleSidebarNewPlaylist = () => {
+    setActiveTab('biblioteca');
+    setViewMode('home');
+    setSelectedAlbum(null);
+    setSelectedCompany(null);
+    setSelectedSidebarPlaylistId(null);
+    setTriggerCreatePlaylist(Date.now());
+    window.dispatchEvent(new CustomEvent('devsongs:open_create_playlist'));
+  };
+
+  const handleOpenSidebarPlaylist = (pl) => {
+    setSelectedSidebarPlaylistId(pl.id);
+    setActiveTab('biblioteca');
+    setViewMode('home');
+    setSelectedAlbum(null);
+    setSelectedCompany(null);
+    router.push({ pathname: '/home', query: { tab: 'biblioteca', playlist: pl.id } }, undefined, { shallow: true });
+  };
+
+  const handlePlaySidebarPlaylist = async (pl) => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${API_URL}/api/library/playlists/${pl.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const data = await res.json();
+      if (!res.ok || !data.playlist) {
+        setPurchaseNotice({ text: 'Não foi possível carregar as faixas desta playlist.', type: 'error' });
+        setTimeout(() => setPurchaseNotice(null), 3500);
+        return;
+      }
+      const pTracks = data.playlist.tracks || [];
+      if (pTracks.length === 0) {
+        setPurchaseNotice({ text: `A playlist "${pl.name}" está vazia. Adicione músicas para reproduzir.`, type: 'info' });
+        setTimeout(() => setPurchaseNotice(null), 3500);
+        return;
+      }
+      setPlayingPlaylistId(pl.id);
+      handlePlayLibraryQueue(pTracks, 0);
+    } catch (err) {
+      console.error('Erro ao reproduzir playlist pela sidebar:', err);
+    }
+  };
   const [selectedPill, setSelectedPill] = useState('Energia');
   const [tracks, setTracks] = useState(HOME_ESCOLHA_A_DEDO);
   const [showAllTopTracks, setShowAllTopTracks] = useState(false);
+  const [showAllAlbums, setShowAllAlbums] = useState(false);
+  const [showAllSingles, setShowAllSingles] = useState(false);
   const [albums, setAlbums] = useState(JUSTIN_ALBUMS);
   const [singles, setSingles] = useState(JUSTIN_SINGLES);
   const [appearsOn, setAppearsOn] = useState([]);
@@ -1541,6 +1623,68 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     }
   };
 
+  const handleBuyOrRentAlbum = async (album, type = 'buy') => {
+    if (!album) return;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setPurchaseNotice({
+        type: 'error',
+        text: 'Faça login para adquirir este álbum.'
+      });
+      setTimeout(() => setPurchaseNotice(null), 4000);
+      return;
+    }
+
+    try {
+      let albumId = album.id || album.albumId || 0;
+      if (typeof albumId === 'string' && albumId.startsWith('dz-alb-')) {
+        albumId = albumId.replace('dz-alb-', '');
+      }
+
+      const res = await fetch(`${API_URL}/api/library/albums/${albumId}/${type}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: album.title,
+          artist_name: album.artist || album.artistName || activeArtist?.name,
+          cover_url: album.cover || album.cover_url,
+          release_date: album.year ? `${album.year}-01-01` : null,
+          genre: album.genre || 'Variado',
+          price: type === 'buy' ? 29.90 : 9.90
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPurchaseNotice({
+          type: 'success',
+          text: type === 'buy'
+            ? `🎉 Compra integral do álbum "${album.title}" confirmada com sucesso! Liberado exclusivamente na sua aba Álbuns.`
+            : `⏳ Aluguel do álbum "${album.title}" por 30 dias ativado!`
+        });
+        try {
+          await fetchUserPurchases();
+        } catch (_) {}
+      } else {
+        setPurchaseNotice({
+          type: 'error',
+          text: data.error || data.message || 'Não foi possível adquirir este álbum.'
+        });
+      }
+      setTimeout(() => setPurchaseNotice(null), 6000);
+    } catch (err) {
+      console.error('Erro ao processar aquisição de álbum:', err);
+      setPurchaseNotice({
+        type: 'error',
+        text: 'Erro de conexão ao processar compra do álbum.'
+      });
+      setTimeout(() => setPurchaseNotice(null), 4000);
+    }
+  };
+
   // View Mode: 'home' (Tela de Início YouTube Music) | 'artist' (Perfil) | 'search' (Resultados) | 'album' (Álbum dedicado)
   const [viewMode, setViewMode] = useState('home');
   const [selectedAlbum, setSelectedAlbum] = useState(null);
@@ -1779,10 +1923,50 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
   const isClosingRef = useRef(false);
   const currentTrackRef = useRef(null);
   const mainContentRef = useRef(null);
+  const previousViewRef = useRef(null);
 
   useEffect(() => {
     currentTrackRef.current = currentTrack;
   }, [currentTrack]);
+
+  // Função para retornar da tela de Álbum dedicado ou Artista para onde o usuário estava (ex: Playlist na Biblioteca)
+  const handleBackFromDedicatedView = () => {
+    if (previousViewRef.current) {
+      const prev = previousViewRef.current;
+      previousViewRef.current = null;
+      setViewMode(prev.viewMode || 'home');
+      if (prev.activeTab) setActiveTab(prev.activeTab);
+      if (prev.selectedSidebarPlaylistId !== undefined) {
+        setSelectedSidebarPlaylistId(prev.selectedSidebarPlaylistId);
+      }
+      if (prev.selectedAlbum) setSelectedAlbum(prev.selectedAlbum);
+      if (prev.activeArtist) setActiveArtist(prev.activeArtist);
+    } else {
+      setViewMode('home');
+      setActiveTab('biblioteca');
+    }
+  };
+
+  // Suporte ao botão Voltar / Avançar do navegador (popstate) mantendo a integridade da navegação
+  useEffect(() => {
+    const handlePopState = () => {
+      if (previousViewRef.current) {
+        const prev = previousViewRef.current;
+        previousViewRef.current = null;
+        setViewMode(prev.viewMode || 'home');
+        if (prev.activeTab) setActiveTab(prev.activeTab);
+        if (prev.selectedSidebarPlaylistId !== undefined) {
+          setSelectedSidebarPlaylistId(prev.selectedSidebarPlaylistId);
+        }
+        if (prev.selectedAlbum) setSelectedAlbum(prev.selectedAlbum);
+        if (prev.activeArtist) setActiveArtist(prev.activeArtist);
+      } else if (viewMode === 'album' || viewMode === 'artist') {
+        setViewMode('home');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [viewMode]);
 
   // Rolar carrosséis horizontalmente
   const scrollRow = (ref, dir) => {
@@ -1928,10 +2112,27 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
         setActiveArtist(artistObj);
         setTracks(data.tracks || []);
         if (data.albums) {
-          setAlbums(data.albums.map(a => ({
-            ...a,
-            year: getDisplayAlbumYear(a, artistObj.name || query, a.year)
-          })));
+          const seenAlbumKeys = new Set();
+          const uniqueAlbums = [];
+          for (const a of data.albums) {
+            const root = (a.title || '')
+              .toLowerCase()
+              .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              .replace(/\s*\([^)]*(deluxe|edition|version|clean|edited|anniversary|bonus|complete|expanded|special|international|explicit|remastered|feat|ft\.|part\.|prod\.)[^)]*\)/gi, '')
+              .replace(/\s*\[[^\]]*(deluxe|edition|version|clean|edited|anniversary|bonus|complete|expanded|special|international|explicit|remastered|feat|ft\.|part\.|prod\.)[^\]]*\]/gi, '')
+              .replace(/\s*(feat\.|ft\.|featuring|part\.|participação).*$/gi, '')
+              .replace(/[^a-z0-9]/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (!seenAlbumKeys.has(root)) {
+              seenAlbumKeys.add(root);
+              uniqueAlbums.push({
+                ...a,
+                year: getDisplayAlbumYear(a, artistObj.name || query, a.year)
+              });
+            }
+          }
+          setAlbums(uniqueAlbums);
         }
         if (data.singles) {
           setSingles(data.singles.map(s => ({
@@ -2419,12 +2620,28 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
   }, []);
 
   // Abre a página de perfil completo do artista (Foto 3 mantida)
-  const openArtistProfile = (artistName, artistId) => {
+  const openArtistProfile = (artistName, artistId, returnState = null) => {
     if (!artistName && !artistId) return;
+    if (returnState) {
+      previousViewRef.current = returnState;
+    } else if (viewMode !== 'artist') {
+      previousViewRef.current = {
+        viewMode,
+        activeTab,
+        selectedSidebarPlaylistId,
+        selectedAlbum: selectedAlbum ? { ...selectedAlbum } : null,
+        activeArtist: activeArtist ? { ...activeArtist } : null
+      };
+    }
+    if (typeof window !== 'undefined' && window.history) {
+      window.history.pushState({ devsongsView: 'artist', artistName, artistId }, '');
+    }
     setViewMode('artist');
     setSelectedAlbum(null);
     setShowSuggestions(false);
     setSidebarOpen(false);
+    setShowAllAlbums(false);
+    setShowAllSingles(false);
 
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = 0;
@@ -2501,7 +2718,22 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
 
   // Ao clicar em um álbum, abre a visualização dedicada do Álbum (Foto do YouTube Music)
-  const handleSelectAlbum = async (album) => {
+  const handleSelectAlbum = async (album, returnState = null) => {
+    if (!album) return;
+    if (returnState) {
+      previousViewRef.current = returnState;
+    } else if (viewMode !== 'album') {
+      previousViewRef.current = {
+        viewMode,
+        activeTab,
+        selectedSidebarPlaylistId,
+        selectedAlbum: selectedAlbum ? { ...selectedAlbum } : null,
+        activeArtist: activeArtist ? { ...activeArtist } : null
+      };
+    }
+    if (typeof window !== 'undefined' && window.history) {
+      window.history.pushState({ devsongsView: 'album', albumId: album.albumId || album.id, title: album.title }, '');
+    }
     try {
       setIsSearching(true);
       setIsAlbumLoading(true);
@@ -2662,7 +2894,9 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 : isScrolled
                   ? styles.topAppBarScrolled
                   : styles.topAppBarTransparent
-              : ''
+              : isScrolled
+                ? styles.topAppBarScrolled
+                : ''
           }`}
         >
           <div className={styles.topAppBarLeft}>
@@ -3073,7 +3307,9 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 ? isScrolled
                   ? styles.sidebarArtistScrolled
                   : styles.sidebarArtist
-                : ''
+                : isScrolled
+                  ? styles.sidebarScrolled
+                  : ''
             }`}
           >
             <nav className={styles.navSection}>
@@ -3106,6 +3342,11 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 onClick={() => {
                   setActiveTab('biblioteca');
                   setViewMode('home');
+                  setSelectedSidebarPlaylistId(null);
+                  if (router.query.playlist) {
+                    const { playlist, ...restQuery } = router.query;
+                    router.replace({ pathname: '/home', query: restQuery }, undefined, { shallow: true });
+                  }
                   fetchUserPurchases();
                 }}
                 className={`${styles.navItem} ${activeTab === 'biblioteca' ? styles.navItemActive : ''}`}
@@ -3125,20 +3366,66 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             </nav>
 
             {sidebarOpen && (
-              <>
+              <div className={styles.sidebarPlaylistsContainer}>
                 <div className={styles.sidebarDivider} />
 
-                {/* Botão + Nova Playlist (Foto 1) */}
-                <button className={styles.newPlaylistBtn} onClick={() => { setActiveTab('biblioteca'); setViewMode('home'); router.push('/home?tab=biblioteca', undefined, { shallow: true }); }}>
+                {/* Botão + Nova Playlist */}
+                <button
+                  type="button"
+                  className={styles.newPlaylistBtn}
+                  onClick={handleSidebarNewPlaylist}
+                  title="Criar nova playlist"
+                >
                   <Plus size={18} />
                   <span>Nova playlist</span>
                 </button>
 
-                <div className={styles.autoPlaylistSection}>
-                  <div className={styles.autoPlaylistTitle}>Episódios para mais tarde</div>
-                  <div className={styles.autoPlaylistSub}>Playlist automática</div>
+                {/* Lista de Playlists com rolagem independente */}
+                <div className={styles.sidebarPlaylistScroll}>
+                  {sidebarPlaylists && sidebarPlaylists.length > 0 ? (
+                    sidebarPlaylists.map((pl) => {
+                      const isSelected = String(selectedSidebarPlaylistId) === String(pl.id) || String(router.query.playlist) === String(pl.id);
+                      const isThisPlaying = playingPlaylistId === pl.id && isPlaying;
+                      return (
+                        <div
+                          key={pl.id}
+                          className={`${styles.sidebarPlaylistItem} ${isSelected ? styles.sidebarPlaylistItemActive : ''}`}
+                          onClick={() => handleOpenSidebarPlaylist(pl)}
+                          title={`${pl.name} (${pl.track_count || pl.tracks?.length || 0} músicas)`}
+                        >
+                          <div className={styles.sidebarPlaylistItemIcon}>
+                            <ListMusic size={15} />
+                          </div>
+                          <span className={styles.sidebarPlaylistItemName}>{pl.name}</span>
+                          <button
+                            type="button"
+                            className={styles.sidebarPlaylistPlayBtn}
+                            title={isThisPlaying ? `Pausar ${pl.name}` : `Reproduzir ${pl.name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isThisPlaying) {
+                                togglePlayPause();
+                              } else {
+                                handlePlaySidebarPlaylist(pl);
+                              }
+                            }}
+                          >
+                            {isThisPlaying ? (
+                              <Pause size={12} fill="#ffffff" color="#ffffff" />
+                            ) : (
+                              <Play size={12} fill="#ffffff" color="#ffffff" style={{ marginLeft: 1 }} />
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className={styles.sidebarPlaylistsEmpty}>
+                      <span>Crie sua primeira playlist para ouvi-la aqui</span>
+                    </div>
+                  )}
                 </div>
-              </>
+              </div>
             )}
           </aside>
 
@@ -3158,22 +3445,20 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
               CONDITIONAL VIEW: TELA DE INÍCIO | ÁLBUM DEDICADO | SEARCH RESULTS | ARTIST PROFILE
               ══════════════════════════════════════════════════════════ */}
           {viewMode === 'home' ? (
-            /* ─── TELA DE INÍCIO YOUTUBE MUSIC (Foto 1 do Usuário) ─── */
-            <div className={styles.homeViewContainer}>
+            activeTab === 'biblioteca' ? (
+              /* ─── VISÃO DE BIBLIOTECA (Largura total, sem margens excessivas) ─── */
+              <div className={styles.libraryViewWrapper}>
+                {/* Toast de Notificação de Compra / Aluguel Multi-Base */}
+                {purchaseNotice && (
+                  <div className={`${styles.purchaseToast} ${purchaseNotice.type === 'error' ? styles.purchaseToastError : ''}`}>
+                    <CheckCircle2 size={18} />
+                    <span>{purchaseNotice.text}</span>
+                    <button onClick={() => setPurchaseNotice(null)} className={styles.toastCloseBtn}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
 
-              {/* Toast de Notificação de Compra / Aluguel Multi-Base */}
-              {purchaseNotice && (
-                <div className={`${styles.purchaseToast} ${purchaseNotice.type === 'error' ? styles.purchaseToastError : ''}`}>
-                  <CheckCircle2 size={18} />
-                  <span>{purchaseNotice.text}</span>
-                  <button onClick={() => setPurchaseNotice(null)} className={styles.toastCloseBtn}>
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-
-              {/* 1. VISÃO DE BIBLIOTECA (Compras e Aluguéis do Usuário) */}
-              {activeTab === 'biblioteca' ? (
                 <LibraryView
                   token={typeof window !== 'undefined' ? localStorage.getItem('token') : null}
                   user={user}
@@ -3182,13 +3467,53 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                   currentTrack={currentTrack}
                   isPlaying={isPlaying}
                   initialPlaylistId={router.query.playlist || null}
+                  selectedPlaylistIdFromParent={selectedSidebarPlaylistId}
+                  triggerCreatePlaylist={triggerCreatePlaylist}
+                  onSelectedPlaylistChange={(id) => {
+                    setSelectedSidebarPlaylistId(id);
+                    if (!id && router.query.playlist) {
+                      const { playlist, ...restQuery } = router.query;
+                      router.replace({ pathname: '/home', query: restQuery }, undefined, { shallow: true });
+                    }
+                  }}
+                  onPlaylistsUpdated={fetchSidebarPlaylists}
                   onExploreCatalog={() => {
                     setSelectedCompany(null);
                     setBaseMode('all');
                     setActiveTab('explorar');
                   }}
+                  onSelectAlbum={(album) => {
+                    handleSelectAlbum(album, {
+                      viewMode: 'home',
+                      activeTab: 'biblioteca',
+                      selectedSidebarPlaylistId
+                    });
+                  }}
+                  onOpenArtistProfile={(artistName, artistId) => {
+                    openArtistProfile(artistName, artistId, {
+                      viewMode: 'home',
+                      activeTab: 'biblioteca',
+                      selectedSidebarPlaylistId
+                    });
+                  }}
                 />
-              ) : (selectedCompany || baseMode !== 'home') ? (
+              </div>
+            ) : (
+              /* ─── TELA DE INÍCIO YOUTUBE MUSIC (Foto 1 do Usuário) ─── */
+              <div className={styles.homeViewContainer}>
+
+                {/* Toast de Notificação de Compra / Aluguel Multi-Base */}
+                {purchaseNotice && (
+                  <div className={`${styles.purchaseToast} ${purchaseNotice.type === 'error' ? styles.purchaseToastError : ''}`}>
+                    <CheckCircle2 size={18} />
+                    <span>{purchaseNotice.text}</span>
+                    <button onClick={() => setPurchaseNotice(null)} className={styles.toastCloseBtn}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {(selectedCompany || baseMode !== 'home') ? (
                 /* 2. VISÃO DE BASE ESPECÍFICA OU MODALIDADE (Todas as Bases / Streaming / Compras / Aluguéis) */
                 <section className={styles.companyHeroSection}>
                   <div className={styles.companyHeroCard}>
@@ -3657,6 +3982,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 </>
               )}
             </div>
+            )
           ) : viewMode === 'album' && selectedAlbum ? (
             /* ─── TELA DO ÁLBUM ESTILO YOUTUBE MUSIC (Foto do Usuário) ─── */
             <div className={styles.albumViewWrapper}>
@@ -3670,8 +3996,17 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
               </div>
 
               <div className={styles.albumViewContainer}>
-                {/* Coluna Esquerda: Mini Artista, Cover HD, Título, Estatísticas e Ações */}
+                {/* Coluna Esquerda: Botão Voltar, Mini Artista, Cover HD, Título, Estatísticas e Ações */}
                 <div className={styles.albumHeroColumn}>
+                  <button
+                    type="button"
+                    className={styles.albumBackBtn}
+                    onClick={handleBackFromDedicatedView}
+                    title="Voltar à tela anterior"
+                  >
+                    <ArrowLeft size={16} />
+                    <span>Voltar</span>
+                  </button>
                   <div
                     className={styles.albumArtistRow}
                     onClick={() => openArtistProfile(selectedAlbum.artistName || activeArtist?.name, selectedAlbum.artistId || activeArtist?.id)}
@@ -3749,14 +4084,14 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                     <button
                       type="button"
                       className={styles.btnBuyAlbum}
-                      onClick={() => alert(`Compra do álbum "${selectedAlbum.title}" iniciada (${selectedAlbum.priceSale || 'R$ 29,90'})!`)}
+                      onClick={() => handleBuyOrRentAlbum(selectedAlbum, 'buy')}
                     >
                       Comprar Álbum • {selectedAlbum.priceSale || 'R$ 29,90'}
                     </button>
                     <button
                       type="button"
                       className={styles.btnRentAlbum}
-                      onClick={() => alert(`Aluguel do álbum "${selectedAlbum.title}" por 30 dias (${selectedAlbum.priceRent || 'R$ 9,90'}) ativado!`)}
+                      onClick={() => handleBuyOrRentAlbum(selectedAlbum, 'rent')}
                     >
                       Alugar Álbum • {selectedAlbum.priceRent || 'R$ 9,90'} / mês
                     </button>
@@ -4307,6 +4642,18 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 }}
               >
                 <div className={styles.bannerContent}>
+                  {previousViewRef.current && (
+                    <button
+                      type="button"
+                      className={styles.albumBackBtn}
+                      style={{ marginBottom: '0.75rem', alignSelf: 'flex-start' }}
+                      onClick={handleBackFromDedicatedView}
+                      title="Voltar à tela anterior"
+                    >
+                      <ArrowLeft size={16} />
+                      <span>Voltar</span>
+                    </button>
+                  )}
                   <h1 className={styles.bannerArtistTitle}>{activeArtist?.name || 'Artista'}</h1>
                   <p className={styles.bannerMonthlyListeners}>{activeArtist?.listeners || ''}</p>
                   <p className={styles.bannerBio}>
@@ -4433,33 +4780,39 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                     <div className={styles.sectionHeaderRow}>
                       <h2 className={styles.sectionHeading}>Álbuns</h2>
                       <div className={styles.sectionNavControls}>
-                        <button
-                          type="button"
-                          className={styles.btnMais}
-                          onClick={() => setShowAllTopTracks(true)}
-                        >
-                          Mais
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.carouselArrowBtn}
-                          onClick={() => scrollRow(albumsRowRef, 'left')}
-                          aria-label="Rolar álbuns para esquerda"
-                        >
-                          <ChevronLeft size={18} />
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.carouselArrowBtn}
-                          onClick={() => scrollRow(albumsRowRef, 'right')}
-                          aria-label="Rolar álbuns para direita"
-                        >
-                          <ChevronRight size={18} />
-                        </button>
+                        {albums.length > 5 && (
+                          <button
+                            type="button"
+                            className={styles.btnMais}
+                            onClick={() => setShowAllAlbums(!showAllAlbums)}
+                          >
+                            {showAllAlbums ? 'Mostrar menos' : 'Mais'}
+                          </button>
+                        )}
+                        {!showAllAlbums && (
+                          <>
+                            <button
+                              type="button"
+                              className={styles.carouselArrowBtn}
+                              onClick={() => scrollRow(albumsRowRef, 'left')}
+                              aria-label="Rolar álbuns para esquerda"
+                            >
+                              <ChevronLeft size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.carouselArrowBtn}
+                              onClick={() => scrollRow(albumsRowRef, 'right')}
+                              aria-label="Rolar álbuns para direita"
+                            >
+                              <ChevronRight size={18} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <div className={styles.cardsRow} ref={albumsRowRef}>
+                    <div className={showAllAlbums ? styles.cardsGrid : styles.cardsRow} ref={albumsRowRef}>
                       {albums.map((album) => (
                         <div
                           key={album.id}
@@ -4505,33 +4858,39 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                     <div className={styles.sectionHeaderRow}>
                       <h2 className={styles.sectionHeading}>Singles e EPs</h2>
                       <div className={styles.sectionNavControls}>
-                        <button
-                          type="button"
-                          className={styles.btnMais}
-                          onClick={() => setShowAllTopTracks(true)}
-                        >
-                          Mais
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.carouselArrowBtn}
-                          onClick={() => scrollRow(singlesRowRef, 'left')}
-                          aria-label="Rolar singles para esquerda"
-                        >
-                          <ChevronLeft size={18} />
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.carouselArrowBtn}
-                          onClick={() => scrollRow(singlesRowRef, 'right')}
-                          aria-label="Rolar singles para direita"
-                        >
-                          <ChevronRight size={18} />
-                        </button>
+                        {singles.length > 5 && (
+                          <button
+                            type="button"
+                            className={styles.btnMais}
+                            onClick={() => setShowAllSingles(!showAllSingles)}
+                          >
+                            {showAllSingles ? 'Mostrar menos' : 'Mais'}
+                          </button>
+                        )}
+                        {!showAllSingles && (
+                          <>
+                            <button
+                              type="button"
+                              className={styles.carouselArrowBtn}
+                              onClick={() => scrollRow(singlesRowRef, 'left')}
+                              aria-label="Rolar singles para esquerda"
+                            >
+                              <ChevronLeft size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.carouselArrowBtn}
+                              onClick={() => scrollRow(singlesRowRef, 'right')}
+                              aria-label="Rolar singles para direita"
+                            >
+                              <ChevronRight size={18} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <div className={styles.cardsRow} ref={singlesRowRef}>
+                    <div className={showAllSingles ? styles.cardsGrid : styles.cardsRow} ref={singlesRowRef}>
                       {singles.map((single) => (
                         <div
                           key={single.id}

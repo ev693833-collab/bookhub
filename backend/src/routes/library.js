@@ -205,9 +205,68 @@ router.delete('/artists/:id', verifyToken, async (req, res) => {
 // 3. ALBUMS ROUTES
 // =========================================================================
 
-// GET /api/library/albums - Listar álbuns
-router.get('/albums', async (req, res) => {
+// GET /api/library/my-albums - Listar exclusivamente os álbuns comprados integralmente pelo usuário autenticado
+router.get('/my-albums', verifyToken, async (req, res) => {
   try {
+    const albums = await libraryStorage.getUserPurchasedAlbums(req.user.id);
+    res.json({ success: true, count: albums.length, albums });
+  } catch (err) {
+    console.error('Erro ao listar álbuns comprados do usuário:', err);
+    res.status(500).json({ error: 'Erro ao carregar álbuns adquiridos do usuário.' });
+  }
+});
+
+// POST /api/library/albums/:id/buy - Comprar álbum integralmente
+router.post('/albums/:id/buy', verifyToken, async (req, res) => {
+  try {
+    const { price, companyId, title, artist_name, cover_url, release_date, genre } = req.body;
+    const result = await libraryStorage.purchaseAlbum(req.user.id, {
+      albumId: req.params.id,
+      companyId,
+      type: 'buy',
+      price,
+      title,
+      artist_name,
+      cover_url,
+      release_date,
+      genre
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('Erro ao comprar álbum integral:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao comprar álbum integral.' });
+  }
+});
+
+// POST /api/library/albums/:id/rent - Alugar álbum por 30 dias
+router.post('/albums/:id/rent', verifyToken, async (req, res) => {
+  try {
+    const { price, companyId, title, artist_name, cover_url, release_date, genre } = req.body;
+    const result = await libraryStorage.purchaseAlbum(req.user.id, {
+      albumId: req.params.id,
+      companyId,
+      type: 'rent',
+      price,
+      title,
+      artist_name,
+      cover_url,
+      release_date,
+      genre
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('Erro ao alugar álbum:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao alugar álbum.' });
+  }
+});
+
+// GET /api/library/albums - Listar álbuns (comprados pelo usuário se autenticado na biblioteca, ou catálogo se catalog=true)
+router.get('/albums', optionalAuth, async (req, res) => {
+  try {
+    if (req.user && req.query.my === 'true') {
+      const albums = await libraryStorage.getUserPurchasedAlbums(req.user.id);
+      return res.json({ success: true, count: albums.length, albums });
+    }
     const albums = await libraryStorage.getAlbums();
     res.json({ success: true, count: albums.length, albums });
   } catch (err) {
@@ -272,7 +331,8 @@ router.delete('/albums/:id', verifyToken, async (req, res) => {
 // GET /api/library/my-tracks - Listar músicas adquiridas (compradas e alugadas) pelo usuário logado
 router.get('/my-tracks', verifyToken, async (req, res) => {
   try {
-    const tracks = await libraryStorage.getUserPurchasedTracks(req.user.id);
+    const filter = req.query.filter || req.query.type || 'all';
+    const tracks = await libraryStorage.getUserLibraryTracks(req.user.id, filter);
     res.json({ success: true, count: tracks.length, tracks });
   } catch (err) {
     console.error('Erro ao listar músicas adquiridas do usuário:', err);
@@ -366,8 +426,8 @@ router.get('/tracks/:id/playback-auth', verifyToken, async (req, res) => {
   }
 });
 
-// GET /api/library/tracks/:id/audio - Endpoint seguro de áudio (impede contorno direto do bloqueio)
-router.get('/tracks/:id/audio', optionalAuth, async (req, res) => {
+// GET /api/library/tracks/:id/audio e /api/library/tracks/:id/stream - Endpoints seguros de áudio (impedem contorno direto do bloqueio)
+const handleAudioStream = async (req, res) => {
   try {
     const userId = req.user?.id || null;
     const access = await libraryStorage.checkPlaybackAccess(userId, req.params.id);
@@ -390,7 +450,10 @@ router.get('/tracks/:id/audio', optionalAuth, async (req, res) => {
       trackId: req.params.id
     });
   }
-});
+};
+
+router.get('/tracks/:id/audio', optionalAuth, handleAudioStream);
+router.get('/tracks/:id/stream', optionalAuth, handleAudioStream);
 
 // POST /api/library/tracks/:id/renew-rent - Renovar período de aluguel por 30 dias
 router.post('/tracks/:id/renew-rent', verifyToken, async (req, res) => {

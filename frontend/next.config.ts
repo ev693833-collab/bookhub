@@ -32,6 +32,26 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: '*.mzstatic.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'coverartarchive.org',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.archive.org',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'archive.org',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'res.cloudinary.com',
         pathname: '/**',
       },

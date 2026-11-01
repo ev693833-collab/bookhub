@@ -73,84 +73,12 @@ function mapTrackRecord(t, userPurchasesMap = new Map()) {
 }
 
 /**
- * Helper: Carrega e formata a lista de compras/aluguéis de um usuário
+ * Helper: Carrega e formata a lista de músicas compradas individualmente pelo usuário autenticado
+ * Respeita a regra de separação da Biblioteca: não exibe aluguéis nem faixas de álbuns comprados integralmente.
  */
-async function getUserPurchasesList(targetUserId) {
-  try {
-    const [rows] = await db.query(`
-      SELECT 
-        cp.id AS purchase_id,
-        cp.type,
-        cp.price,
-        cp.expires_at,
-        cp.created_at,
-        ct.id AS db_track_id,
-        ct.title,
-        ct.artist,
-        ct.album,
-        ct.genre,
-        ct.cover_url,
-        ct.preview_url,
-        ct.duration_sec,
-        ct.youtube_video_id,
-        c.id AS company_id,
-        c.name AS company_name,
-        c.logo_url AS company_logo
-      FROM company_purchases cp
-      JOIN company_tracks ct ON cp.track_id = ct.id
-      JOIN companies c ON cp.company_id = c.id
-      WHERE cp.user_id = ?
-      ORDER BY cp.created_at DESC
-    `, [targetUserId]);
-
-    const now = new Date();
-    return rows.map(r => {
-      const min = Math.floor((r.duration_sec || 210) / 60);
-      const sec = (r.duration_sec || 210) % 60;
-      const isRent = r.type === 'rent';
-      const isExpired = isRent ? (new Date(r.expires_at) < now) : false;
-      const remainingDays = isRent && !isExpired
-        ? Math.max(0, Math.ceil((new Date(r.expires_at) - now) / (1000 * 60 * 60 * 24)))
-        : null;
-
-      return {
-        purchaseId: r.purchase_id,
-        type: r.type,
-        price: r.price,
-        purchasedAt: r.created_at,
-        expiresAt: r.expires_at,
-        isExpired,
-        remainingDays,
-        canPlay: !isExpired,
-        id: `ct-${r.db_track_id}`,
-        dbTrackId: r.db_track_id,
-        title: r.title,
-        artist: r.artist,
-        album: r.album || 'Single',
-        genre: r.genre,
-        cover: r.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
-        cover_url: r.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
-        preview: r.preview_url,
-        preview_url: r.preview_url,
-        youtubeVideoId: r.youtube_video_id || null,
-        durationSec: r.duration_sec || 210,
-        duration_sec: r.duration_sec || 210,
-        duration: `${min}:${String(sec).padStart(2, '0')}`,
-        plays: isRent
-          ? (isExpired ? 'Aluguel Expirado' : `Aluguel válido: ${remainingDays} dias`)
-          : 'Comprado (Permanente)',
-        licenseLabel: isRent
-          ? (isExpired ? 'Aluguel Expirado' : `Aluguel (${remainingDays} dias restantes)`)
-          : 'Comprada (Permanente)',
-        companyId: r.company_id,
-        companyName: r.company_name
-      };
-    });
-  } catch (err) {
-    console.warn('MySQL não disponível em getUserPurchasesList, usando fallback de biblioteca:', err.message);
-    const libraryStorage = require('../services/libraryStorage');
-    return libraryStorage.getUserPurchasedTracks(targetUserId);
-  }
+async function getUserPurchasesList(targetUserId, filter = 'all') {
+  const libraryStorage = require('../services/libraryStorage');
+  return libraryStorage.getUserLibraryTracks(targetUserId, filter);
 }
 
 /**
@@ -244,7 +172,8 @@ router.get('/multibase/tracks', verifyToken.optional, async (req, res) => {
 router.get('/my-purchases', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const mapped = await getUserPurchasesList(userId);
+    const filter = req.query.filter || req.query.type || 'all';
+    const mapped = await getUserPurchasesList(userId, filter);
 
     res.json({
       success: true,

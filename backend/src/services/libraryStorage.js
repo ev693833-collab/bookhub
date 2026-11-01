@@ -11,6 +11,31 @@ const TRACKS_FILE = path.join(DATA_DIR, 'company_tracks.json');
 const PURCHASES_FILE = path.join(DATA_DIR, 'company_purchases.json');
 const COMPANIES_FILE = path.join(DATA_DIR, 'companies.json');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+/**
+ * Helper para carregar o nome de exibição real do usuário criador da playlist
+ */
+function getCreatorInfo(userId) {
+  if (!userId) {
+    return { owner_name: 'Usuário DevSongs', creator_name: 'Usuário DevSongs', owner_email: null };
+  }
+  try {
+    const users = readJson(USERS_FILE);
+    const u = users.find(user => Number(user.id) === Number(userId));
+    if (u) {
+      const name = (u.full_name || u.name || u.username || (u.email ? u.email.split('@')[0] : '')).trim();
+      return {
+        owner_name: name || 'Usuário DevSongs',
+        creator_name: name || 'Usuário DevSongs',
+        owner_email: u.email || null
+      };
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar dados do criador da playlist:', err.message);
+  }
+  return { owner_name: 'Usuário DevSongs', creator_name: 'Usuário DevSongs', owner_email: null };
+}
 
 // Constante canônica do ciclo de aluguel: exatamente 30 dias contados em milissegundos
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -85,7 +110,7 @@ const INITIAL_TRACKS = [
     artist: 'BK',
     album: 'Diamantes, Lágrimas e Rostos para Esquecer',
     genre: 'Rap',
-    cover_url: 'https://cdn-images.dzcdn.net/images/cover/927397ea14b00eba92454a88ec4f352d/500x500-000000-80-0-0.jpg',
+    cover_url: 'https://cdn-images.dzcdn.net/images/cover/783fc325547bd01f1e3897918a0f04c2/1000x1000-000000-80-0-0.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 198,
@@ -104,7 +129,7 @@ const INITIAL_TRACKS = [
     artist: 'Veigh',
     album: 'Dos Prédios Deluxe',
     genre: 'Trap',
-    cover_url: 'https://cdn-images.dzcdn.net/images/cover/6646c5f4c6b60b0ddd4f00987623437c/500x500-000000-80-0-0.jpg',
+    cover_url: 'https://cdn-images.dzcdn.net/images/cover/b300e05a1b78466f15c81677e4ba33d9/1000x1000-000000-80-0-0.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 184,
@@ -123,7 +148,7 @@ const INITIAL_TRACKS = [
     artist: 'Brandão85, Jovem Dex, Leviano',
     album: 'ISSO É TRAP',
     genre: 'Trap',
-    cover_url: 'https://cdn-images.dzcdn.net/images/cover/823c311b28a72801b809da4d99c621f4/500x500-000000-80-0-0.jpg',
+    cover_url: 'https://cdn-images.dzcdn.net/images/cover/823c311b28a72801b809da4d99c621f4/1000x1000-000000-80-0-0.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 165,
@@ -142,7 +167,7 @@ const INITIAL_TRACKS = [
     artist: 'Pricila areba',
     album: 'Roda de Piseiro, Vol. 1 (Ao Vivo)',
     genre: 'Piseiro',
-    cover_url: 'https://cdn-images.dzcdn.net/images/cover/927397ea14b00eba92454a88ec4f352d/500x500-000000-80-0-0.jpg',
+    cover_url: 'https://cdn-images.dzcdn.net/images/cover/9801cd5811ab4677837a17edbaefb505/1000x1000-000000-80-0-0.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 190,
@@ -161,7 +186,7 @@ const INITIAL_TRACKS = [
     artist: 'Pricila areba',
     album: 'Roda de Piseiro, Vol. 1 (Ao Vivo)',
     genre: 'Piseiro',
-    cover_url: 'https://cdn-images.dzcdn.net/images/cover/f9e0787a4ddf82e8b625cf030b42774a/500x500-000000-80-0-0.jpg',
+    cover_url: 'https://cdn-images.dzcdn.net/images/cover/9801cd5811ab4677837a17edbaefb505/1000x1000-000000-80-0-0.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 210,
@@ -180,7 +205,7 @@ const INITIAL_TRACKS = [
     artist: 'Forrozão Tropykália',
     album: 'Tropykália 25 Anos',
     genre: 'Forró',
-    cover_url: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/e0/92/da/e092da2d-9f6d-11dc-7843-2021e95a2b61/21UMGIM17518.rgb.jpg/600x600bb.jpg',
+    cover_url: 'https://cdn-images.dzcdn.net/images/cover/8a0f4c77fb572cc619519e7ed7b67ce7/1000x1000-000000-80-0-0.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 230,
@@ -199,7 +224,7 @@ const INITIAL_TRACKS = [
     artist: 'Priscila Areba',
     album: 'Par Perfeito',
     genre: 'Forró',
-    cover_url: 'https://cdn-images.dzcdn.net/images/cover/e3dd74dfebdfae5ad220ce690a6f8b1b/500x500-000000-80-0-0.jpg',
+    cover_url: 'https://cdn-images.dzcdn.net/images/cover/6775ec0b834d6bab971acd7994be7166/1000x1000-000000-80-0-0.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 185,
@@ -218,7 +243,7 @@ const INITIAL_TRACKS = [
     artist: 'MC GP',
     album: 'Nova Tendência',
     genre: 'Funk',
-    cover_url: 'https://is1-ssl.mzstatic.com/image/thumb/Music118/v4/b9/78/fa/b978fac2-a626-ea2e-ea93-5f7e7bf642b4/8429006299409.jpg/600x600bb.jpg',
+    cover_url: 'https://cdn-images.dzcdn.net/images/cover/bfe4031a9d5c5ff196aa67b8cdac0cf3/1000x1000-000000-80-0-0.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 175,
@@ -237,7 +262,7 @@ const INITIAL_TRACKS = [
     artist: 'MC GP',
     album: 'Funk Hits',
     genre: 'Funk',
-    cover_url: 'https://cdn-images.dzcdn.net/images/cover/b4618e8071852c93850ea9c7a233b2a2/500x500-000000-80-0-0.jpg',
+    cover_url: 'https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/c5/7c/dd/c57cdd1c-fd15-3148-1856-fbac5c86ff4a/5026854246734.jpg/600x600bb.jpg',
     preview_url: null,
     youtube_video_id: null,
     duration_sec: 160,
@@ -424,6 +449,8 @@ async function getPlaylists(userId, includePublic = false) {
             COUNT(pt.id) AS track_count, 
             COALESCE(SUM(ct.duration_sec), 0) AS total_duration_sec,
             u.full_name AS owner_name,
+            u.full_name AS creator_name,
+            u.email AS owner_email,
             (
               SELECT GROUP_CONCAT(DISTINCT ct2.cover_url ORDER BY pt2.position ASC SEPARATOR '||')
               FROM playlist_tracks pt2
@@ -448,6 +475,8 @@ async function getPlaylists(userId, includePublic = false) {
             COUNT(pt.id) AS track_count, 
             COALESCE(SUM(ct.duration_sec), 0) AS total_duration_sec,
             u.full_name AS owner_name,
+            u.full_name AS creator_name,
+            u.email AS owner_email,
             (
               SELECT GROUP_CONCAT(DISTINCT ct2.cover_url ORDER BY pt2.position ASC SEPARATOR '||')
               FROM playlist_tracks pt2
@@ -508,9 +537,13 @@ async function getPlaylists(userId, includePublic = false) {
     }
 
     const trackIds = pts.map(pt => Number(pt.track_id));
+    const creatorInfo = getCreatorInfo(p.user_id);
 
     return {
       ...p,
+      owner_name: creatorInfo.owner_name,
+      creator_name: creatorInfo.creator_name,
+      owner_email: creatorInfo.owner_email,
       track_count: pts.length,
       total_duration_sec: totalDuration,
       track_covers: trackCovers,
@@ -519,14 +552,203 @@ async function getPlaylists(userId, includePublic = false) {
   }).sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
 }
 
+/**
+ * Avalia o status de acesso/reprodução de uma faixa para um usuário específico.
+ * Centraliza as regras de acesso da plataforma DevSongs:
+ * 1. Streaming público/gratuito (available_for_stream && (!sale_price || sale_price === 0)) -> liberado
+ * 2. Compra do álbum integral que contém a faixa -> liberado permanente
+ * 3. Compra definitiva confirmada da faixa -> liberada permanente
+ * 4. Aluguel ativo dentro do prazo de 30 dias -> liberado
+ * 5. Aluguel expirado -> bloqueado (is_expired: true, can_play: false, is_locked: true, access_status: 'rent_expired')
+ * 6. Pedido pendente de pagamento -> bloqueado (is_locked: true, can_play: false, access_status: 'payment_pending')
+ * 7. No carrinho ou não adquirida -> bloqueada (is_locked: true, can_play: false, access_status: 'not_acquired')
+ */
+async function evaluateTrackAccess(track, userId = null, preloadedData = null) {
+  const salePrice = Number(track?.sale_price !== undefined ? track.sale_price : 4.90);
+  const rentPrice = Number(track?.rent_price !== undefined ? track.rent_price : 1.90);
+
+  if (!track) {
+    return {
+      can_play: false,
+      is_locked: true,
+      is_expired: false,
+      access_status: 'not_acquired',
+      reason: 'track_not_found',
+      sale_price: salePrice,
+      rent_price: rentPrice,
+      type: null
+    };
+  }
+
+  // 1. Streaming aberto/gratuito
+  if (track.available_for_stream && (!track.sale_price || Number(track.sale_price) === 0)) {
+    return {
+      can_play: true,
+      is_locked: false,
+      is_expired: false,
+      access_status: 'free',
+      reason: 'public_stream',
+      sale_price: 0,
+      rent_price: 0,
+      type: 'free'
+    };
+  }
+
+  const uId = userId ? Number(userId) : null;
+  if (!uId) {
+    return {
+      can_play: false,
+      is_locked: true,
+      is_expired: false,
+      access_status: 'not_acquired',
+      reason: 'unauthenticated',
+      sale_price: salePrice,
+      rent_price: rentPrice,
+      type: 'buy'
+    };
+  }
+
+  const tId = Number(track.id || track.dbTrackId);
+
+  // 2. Checar se o álbum integral desta faixa foi adquirido integralmente pelo usuário
+  let userAlbums = preloadedData?.userAlbums;
+  if (!userAlbums) {
+    userAlbums = await getUserPurchasedAlbums(uId);
+  }
+  const trackAlbumId = Number(track.album_id);
+  const trackAlbumTitle = (track.album || '').toLowerCase().trim();
+
+  const isCoveredByAlbum = userAlbums.some(alb =>
+    (trackAlbumId && Number(alb.id) === trackAlbumId) ||
+    (trackAlbumTitle && (alb.title || '').toLowerCase().trim() === trackAlbumTitle)
+  );
+
+  if (isCoveredByAlbum) {
+    return {
+      can_play: true,
+      is_locked: false,
+      is_expired: false,
+      access_status: 'purchased',
+      reason: 'album_purchased',
+      sale_price: salePrice,
+      rent_price: rentPrice,
+      type: 'buy'
+    };
+  }
+
+  // 3. Checar aquisições da faixa (compras individuais e aluguéis)
+  let acquisitions = preloadedData?.acquisitions;
+  if (!acquisitions) {
+    acquisitions = await getUserAcquisitions(uId);
+  }
+  const userTrack = acquisitions.find(t =>
+    Number(t.dbTrackId) === tId ||
+    Number(String(t.id).replace('ct-', '')) === tId
+  );
+
+  if (userTrack) {
+    if (userTrack.type === 'buy') {
+      return {
+        can_play: true,
+        is_locked: false,
+        is_expired: false,
+        access_status: 'purchased',
+        reason: 'track_purchased',
+        sale_price: salePrice,
+        rent_price: rentPrice,
+        type: 'buy',
+        userTrack
+      };
+    }
+
+    if (userTrack.type === 'rent') {
+      if (!userTrack.isExpired && userTrack.canPlay) {
+        return {
+          can_play: true,
+          is_locked: false,
+          is_expired: false,
+          access_status: 'rent_active',
+          reason: 'rent_active',
+          sale_price: salePrice,
+          rent_price: rentPrice,
+          type: 'rent',
+          remaining_days: userTrack.remainingDays,
+          expires_at: userTrack.expiresAt,
+          rented_at: userTrack.rentedAt,
+          userTrack
+        };
+      } else {
+        return {
+          can_play: false,
+          is_locked: true,
+          is_expired: true,
+          access_status: 'rent_expired',
+          reason: 'rent_expired',
+          sale_price: salePrice,
+          rent_price: rentPrice,
+          type: 'rent',
+          remaining_days: 0,
+          expires_at: userTrack.expiresAt,
+          rented_at: userTrack.rentedAt,
+          userTrack
+        };
+      }
+    }
+  }
+
+  // 4. Checar se existe pedido pendente de pagamento
+  let orders = preloadedData?.orders;
+  if (!orders) {
+    orders = readJson(ORDERS_FILE, []);
+  }
+  const pendingOrder = orders.find(o =>
+    Number(o.user_id) === uId &&
+    Number(o.track_id) === tId &&
+    o.payment_status === 'pending'
+  );
+
+  if (pendingOrder) {
+    return {
+      can_play: false,
+      is_locked: true,
+      is_expired: false,
+      access_status: 'payment_pending',
+      reason: 'payment_pending',
+      sale_price: salePrice,
+      rent_price: rentPrice,
+      type: pendingOrder.type || 'buy'
+    };
+  }
+
+  // 5. Faixa não adquirida (no carrinho ou catálogo não adquirido)
+  return {
+    can_play: false,
+    is_locked: true,
+    is_expired: false,
+    access_status: 'not_acquired',
+    reason: 'not_acquired',
+    sale_price: salePrice,
+    rent_price: rentPrice,
+    type: 'buy'
+  };
+}
+
 async function getPlaylistById(playlistId, userId = null) {
   const pId = Number(playlistId);
+  const uId = userId ? Number(userId) : null;
   const hasMySql = await checkMySql();
+
+  // Pré-carrega dados para validação de acesso das faixas se o usuário estiver autenticado
+  const preloadedData = uId ? {
+    userAlbums: await getUserPurchasedAlbums(uId),
+    acquisitions: await getUserAcquisitions(uId),
+    orders: readJson(ORDERS_FILE, [])
+  } : null;
 
   if (hasMySql) {
     try {
       const [pRows] = await db.query(
-        `SELECT p.*, u.full_name AS owner_name, u.email AS owner_email
+        `SELECT p.*, u.full_name AS owner_name, u.full_name AS creator_name, u.email AS owner_email
          FROM playlists p
          LEFT JOIN users u ON p.user_id = u.id
          WHERE p.id = ? LIMIT 1`,
@@ -536,7 +758,7 @@ async function getPlaylistById(playlistId, userId = null) {
       const playlist = pRows[0];
 
       // Privacy Authorization Check
-      const isOwner = userId && Number(playlist.user_id) === Number(userId);
+      const isOwner = uId && Number(playlist.user_id) === uId;
       if (!isOwner) {
         if (playlist.privacy === 'private') {
           const err = new Error('Acesso negado. Esta playlist é particular.');
@@ -546,10 +768,11 @@ async function getPlaylistById(playlistId, userId = null) {
         // 'public' and 'unlisted' can be viewed via direct ID
       }
 
-      const [trackRows] = await db.query(
+      const [rawTrackRows] = await db.query(
         `SELECT pt.id AS playlist_track_id, pt.position, pt.added_at,
                 ct.id, ct.title, ct.artist, ct.album, ct.genre, ct.cover_url,
                 ct.preview_url, ct.duration_sec, ct.available_for_stream, ct.status,
+                ct.sale_price, ct.rent_price, ct.album_id,
                 c.name AS company_name
          FROM playlist_tracks pt
          JOIN company_tracks ct ON pt.track_id = ct.id
@@ -558,6 +781,34 @@ async function getPlaylistById(playlistId, userId = null) {
          ORDER BY pt.position ASC, pt.id ASC`,
         [pId]
       );
+
+      const jsonTracks = readJson(TRACKS_FILE);
+      const jsonTracksMap = new Map(jsonTracks.map(t => [Number(t.id), t]));
+
+      const trackRows = [];
+      for (const t of rawTrackRows) {
+        const meta = jsonTracksMap.get(Number(t.id)) || {};
+        const enrichedT = {
+          ...t,
+          album_id: t.album_id !== undefined && t.album_id !== null ? t.album_id : (meta.album_id !== undefined ? meta.album_id : null),
+          artist_id: meta.artist_id || null,
+          artist_ids: meta.artist_ids || (meta.artist_id ? [meta.artist_id] : []),
+          participants: meta.participants || []
+        };
+        const access = await evaluateTrackAccess(enrichedT, uId, preloadedData);
+        trackRows.push({
+          ...enrichedT,
+          sale_price: access.sale_price,
+          rent_price: access.rent_price,
+          can_play: access.can_play,
+          is_locked: access.is_locked,
+          is_expired: access.is_expired,
+          access_status: access.access_status,
+          remaining_days: access.remaining_days,
+          expires_at: access.expires_at,
+          type: access.type
+        });
+      }
 
       const totalDuration = trackRows.reduce((acc, t) => acc + (t.duration_sec || 0), 0);
 
@@ -589,7 +840,7 @@ async function getPlaylistById(playlistId, userId = null) {
   const playlist = playlists.find(p => Number(p.id) === pId);
   if (!playlist) return null;
 
-  const isOwner = userId && Number(playlist.user_id) === Number(userId);
+  const isOwner = uId && Number(playlist.user_id) === uId;
   if (!isOwner) {
     if (playlist.privacy === 'private') {
       const err = new Error('Acesso negado. Esta playlist é particular.');
@@ -598,6 +849,8 @@ async function getPlaylistById(playlistId, userId = null) {
     }
   }
 
+  const creatorInfo = getCreatorInfo(playlist.user_id);
+
   const playlistTracks = readJson(PLAYLIST_TRACKS_FILE);
   const tracks = readJson(TRACKS_FILE);
 
@@ -605,24 +858,44 @@ async function getPlaylistById(playlistId, userId = null) {
     .filter(pt => Number(pt.playlist_id) === pId)
     .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-  const trackList = matchedPts.map(pt => {
+  const trackList = [];
+  for (const pt of matchedPts) {
     const track = tracks.find(t => Number(t.id) === Number(pt.track_id)) || {};
-    return {
+    const baseTrack = {
       playlist_track_id: pt.id,
       position: pt.position,
       added_at: pt.added_at,
       id: track.id,
       title: track.title,
       artist: track.artist,
+      artist_id: track.artist_id || null,
+      artist_ids: track.artist_ids || (track.artist_id ? [track.artist_id] : []),
+      participants: track.participants || [],
       album: track.album,
+      album_id: track.album_id !== undefined ? track.album_id : null,
       genre: track.genre,
       cover_url: track.cover_url,
       preview_url: track.preview_url,
       duration_sec: track.duration_sec || 0,
       available_for_stream: track.available_for_stream !== false,
-      status: track.status || 'active'
+      status: track.status || 'active',
+      sale_price: track.sale_price !== undefined ? track.sale_price : 4.90,
+      rent_price: track.rent_price !== undefined ? track.rent_price : 1.90
     };
-  });
+    const access = await evaluateTrackAccess(baseTrack, uId, preloadedData);
+    trackList.push({
+      ...baseTrack,
+      sale_price: access.sale_price,
+      rent_price: access.rent_price,
+      can_play: access.can_play,
+      is_locked: access.is_locked,
+      is_expired: access.is_expired,
+      access_status: access.access_status,
+      remaining_days: access.remaining_days,
+      expires_at: access.expires_at,
+      type: access.type
+    });
+  }
 
   const totalDuration = trackList.reduce((acc, t) => acc + (t.duration_sec || 0), 0);
 
@@ -637,6 +910,9 @@ async function getPlaylistById(playlistId, userId = null) {
 
   return {
     ...playlist,
+    owner_name: creatorInfo.owner_name,
+    creator_name: creatorInfo.creator_name,
+    owner_email: creatorInfo.owner_email,
     track_count: trackList.length,
     total_duration_sec: totalDuration,
     track_covers: trackCovers,
@@ -684,6 +960,8 @@ async function createPlaylist(userId, { name, description = null, cover_url = nu
   const newId = playlists.length > 0 ? Math.max(...playlists.map(p => Number(p.id) || 0)) + 1 : 1;
   const now = new Date().toISOString();
 
+  const creatorInfo = getCreatorInfo(userId);
+
   const newPlaylist = {
     id: newId,
     user_id: Number(userId),
@@ -700,6 +978,9 @@ async function createPlaylist(userId, { name, description = null, cover_url = nu
 
   return {
     ...newPlaylist,
+    owner_name: creatorInfo.owner_name,
+    creator_name: creatorInfo.creator_name,
+    owner_email: creatorInfo.owner_email,
     track_count: 0,
     total_duration_sec: 0,
     tracks: []
@@ -1871,6 +2152,16 @@ async function createTrack({
   tracks.push(newTrack);
   writeJson(TRACKS_FILE, tracks);
 
+  // Disparo interno em segundo plano para busca automática de capa se ausente ou padrão
+  if (!cover_url || cover_url.includes('logo-devsongs') || cover_url.includes('placeholder')) {
+    setTimeout(() => {
+      try {
+        const coverService = require('./coverEnrichmentService');
+        coverService.enrichTrackCover(newTrack.id).catch(() => {});
+      } catch (_) {}
+    }, 100);
+  }
+
   return newTrack;
 }
 
@@ -1967,6 +2258,17 @@ async function updateTrack(trackId, { title, artist, album, genre, cover_url, pr
   }
 
   writeJson(TRACKS_FILE, tracks);
+
+  // Disparo interno em segundo plano se a capa foi removida ou definida como padrão
+  if (cover_url === null || (cover_url && (cover_url.includes('logo-devsongs') || cover_url.includes('placeholder')))) {
+    setTimeout(() => {
+      try {
+        const coverService = require('./coverEnrichmentService');
+        coverService.enrichTrackCover(tId).catch(() => {});
+      } catch (_) {}
+    }, 100);
+  }
+
   return getTrackById(tId);
 }
 
@@ -2045,120 +2347,320 @@ async function deleteTrack(trackId) {
 }
 
 // =========================================================================
-// 5. USER ACQUIRED TRACKS (PURCHASES & RENTALS)
+// 5. USER ACQUIRED ALBUMS & TRACKS (PURCHASES & SEPARATION RULES)
 // =========================================================================
 
-async function getUserPurchasedTracks(userId) {
+/**
+ * Retorna exclusivamente os álbuns comprados integralmente pelo usuário.
+ * Regras Estritas:
+ * 1. Exibir somente álbuns com compra integral confirmada (type === 'buy', payment_status !== 'pending').
+ * 2. Não exibir álbuns que possuem apenas uma ou algumas faixas compradas individualmente.
+ * 3. Não exibir álbuns que foram apenas alugados (type === 'rent').
+ * 4. Pagamento precisa estar efetivamente confirmado.
+ */
+async function getUserPurchasedAlbums(userId) {
   const uId = Number(userId);
-  const now = new Date();
-  const hasMySql = await checkMySql();
+  if (!uId) return [];
 
-  if (hasMySql) {
-    try {
-      const [rows] = await db.query(`
-        SELECT 
-          cp.id AS purchase_id,
-          cp.type,
-          cp.price,
-          cp.expires_at,
-          cp.created_at,
-          ct.id AS db_track_id,
-          ct.title,
-          ct.artist,
-          ct.album,
-          ct.genre,
-          ct.cover_url,
-          ct.preview_url,
-          ct.duration_sec,
-          ct.youtube_video_id,
-          ct.sale_price,
-          ct.rent_price,
-          c.id AS company_id,
-          c.name AS company_name
-        FROM company_purchases cp
-        JOIN company_tracks ct ON cp.track_id = ct.id
-        LEFT JOIN companies c ON cp.company_id = c.id
-        WHERE cp.user_id = ?
-        ORDER BY cp.created_at DESC
-      `, [uId]);
+  const purchases = readJson(PURCHASES_FILE, []);
+  const allAlbums = readJson(ALBUMS_FILE, []);
+  const allTracks = readJson(TRACKS_FILE, []);
 
-      // Agrupa para que compra permanente prevaleça sobre aluguéis expirados
-      const byTrack = new Map();
-      for (const r of rows) {
-        const tid = Number(r.db_track_id);
-        if (!byTrack.has(tid)) {
-          byTrack.set(tid, r);
-        } else {
-          const existing = byTrack.get(tid);
-          if (existing.type !== 'buy' && r.type === 'buy') {
-            byTrack.set(tid, r);
-          }
-        }
-      }
-      const distinctRows = Array.from(byTrack.values());
+  // 1. Filtrar compras integrais de álbum confirmadas
+  const albumPurchases = purchases.filter(p => {
+    if (Number(p.user_id) !== uId) return false;
+    if (p.type !== 'buy') return false; // Rejeita aluguéis
+    if (p.payment_status === 'pending') return false; // Rejeita pendentes
+    // Identificador de compra integral de álbum: item_type === 'album' ou (album_id preenchido e track_id nulo/zerado)
+    const isAlbumItem = p.item_type === 'album' || (p.album_id && (!p.track_id || Number(p.track_id) === 0));
+    return isAlbumItem;
+  });
 
-      return distinctRows.map(r => {
-        const min = Math.floor((r.duration_sec || 210) / 60);
-        const sec = (r.duration_sec || 210) % 60;
-        const isRent = r.type === 'rent';
-        const isExpired = isRent ? (new Date(r.expires_at) < now) : false;
-        const remainingDays = isRent && !isExpired
-          ? Math.max(0, Math.ceil((new Date(r.expires_at) - now) / (1000 * 60 * 60 * 24)))
-          : null;
-
-        return {
-          purchaseId: r.purchase_id,
-          type: r.type,
-          price: r.price,
-          sale_price: r.sale_price || 4.90,
-          rent_price: r.rent_price || 1.90,
-          salePrice: r.sale_price || 4.90,
-          rentPrice: r.rent_price || 1.90,
-          purchasedAt: r.created_at,
-          rentedAt: r.rented_at || r.created_at,
-          expiresAt: r.expires_at,
-          isExpired,
-          remainingDays,
-          canPlay: !isExpired,
-          id: `ct-${r.db_track_id}`,
-          dbTrackId: r.db_track_id,
-          title: r.title,
-          artist: r.artist,
-          album: r.album || 'Single',
-          genre: r.genre || 'Variado',
-          cover_url: r.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
-          cover: r.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
-          preview_url: r.preview_url,
-          preview: r.preview_url,
-          youtubeVideoId: r.youtube_video_id || null,
-          duration_sec: r.duration_sec || 210,
-          durationSec: r.duration_sec || 210,
-          duration: `${min}:${String(sec).padStart(2, '0')}`,
-          plays: isRent
-            ? (isExpired ? 'Aluguel Expirado' : `Aluguel válido: ${remainingDays} dias`)
-            : 'Comprado (Permanente)',
-          licenseLabel: isRent
-            ? (isExpired ? 'Aluguel Expirado' : `Aluguel (${remainingDays} dias restantes)`)
-            : 'Comprada (Permanente)',
-          companyId: r.company_id,
-          companyName: r.company_name || 'DevSongs Gravadora'
-        };
-      });
-    } catch (err) {
-      console.warn('Erro ao consultar compras no MySQL, usando fallback JSON:', err.message);
+  const distinctAlbumMap = new Map();
+  for (const p of albumPurchases) {
+    const albId = Number(p.album_id);
+    if (!distinctAlbumMap.has(albId)) {
+      distinctAlbumMap.set(albId, p);
     }
   }
 
-  // Fallback JSON
-  const purchases = readJson(PURCHASES_FILE);
-  const tracks = readJson(TRACKS_FILE);
-  const companies = readJson(COMPANIES_FILE);
+  const result = [];
+  for (const [albId, p] of distinctAlbumMap.entries()) {
+    const alb = allAlbums.find(a => Number(a.id) === albId) || {
+      id: albId,
+      title: p.title || 'Álbum Adquirido',
+      artist_name: p.artist || 'Artista',
+      cover_url: p.cover_url || null,
+      release_date: p.release_date || null,
+      genre: p.genre || 'Variado'
+    };
 
-  const userPurchases = purchases
-    .filter(p => Number(p.user_id) === uId)
+    const cleanTitle = (alb.title || '').toLowerCase().trim();
+    const albTracks = allTracks.filter(t => 
+      (t.album_id === albId || (t.album || '').toLowerCase().trim() === cleanTitle) && t.status !== 'inactive'
+    );
+    const totalDuration = albTracks.reduce((acc, t) => acc + (t.duration_sec || 0), 0);
+
+    result.push({
+      id: alb.id,
+      purchaseId: p.id,
+      title: alb.title,
+      artist_name: alb.artist_name || alb.artist || 'Artista',
+      artist: alb.artist_name || alb.artist || 'Artista',
+      cover_url: alb.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      cover: alb.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      release_date: alb.release_date || null,
+      year: alb.release_date ? String(alb.release_date).slice(0, 4) : '2024',
+      genre: alb.genre || 'Variado',
+      price: p.price,
+      type: 'buy',
+      purchasedAt: p.created_at,
+      licenseLabel: 'Comprado Integralmente (Permanente)',
+      tracks_count: albTracks.length,
+      total_duration_sec: totalDuration,
+      tracks: albTracks
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Registra compra integral ou aluguel de um álbum completo.
+ */
+async function purchaseAlbum(userId, { albumId, title, artist_name, cover_url, release_date, genre, companyId = 1, type = 'buy', price = null, paymentStatus = 'confirmed' }) {
+  const uId = Number(userId);
+  let albId = Number(albumId);
+  const albums = readJson(ALBUMS_FILE, []);
+  let album = albums.find(a => (albId && Number(a.id) === albId) || (title && (a.title || '').toLowerCase().trim() === title.toLowerCase().trim()));
+
+  if (!album && title && artist_name) {
+    album = await createAlbum({ title, artist_name, cover_url, release_date, genre });
+    albId = Number(album.id);
+  }
+
+  if (!album) {
+    const err = new Error('Álbum não encontrado.');
+    err.statusCode = 404;
+    throw err;
+  }
+  albId = Number(album.id);
+
+  const purchases = readJson(PURCHASES_FILE, []);
+  const existingBuy = purchases.find(p => 
+    Number(p.user_id) === uId && 
+    Number(p.album_id) === albId && 
+    (p.item_type === 'album' || !p.track_id) && 
+    p.type === 'buy' && 
+    p.payment_status !== 'pending'
+  );
+
+  if (type === 'buy' && existingBuy) {
+    return {
+      success: true,
+      alreadyPurchased: true,
+      message: 'Você já possui este álbum comprado integralmente na sua biblioteca!',
+      album,
+      purchase: existingBuy
+    };
+  }
+
+  const now = new Date();
+  const effectivePrice = price !== null ? Number(price) : (type === 'rent' ? 9.90 : 29.90);
+  const expiresAt = type === 'rent' ? new Date(Date.now() + THIRTY_DAYS_MS).toISOString() : null;
+  const newId = purchases.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0) + 1;
+
+  const newPurchase = {
+    id: newId,
+    company_id: companyId || 1,
+    user_id: uId,
+    item_type: 'album',
+    album_id: albId,
+    track_id: null,
+    type,
+    price: effectivePrice,
+    payment_status: paymentStatus,
+    expires_at: expiresAt,
+    created_at: now.toISOString(),
+    rented_at: type === 'rent' && paymentStatus === 'confirmed' ? now.toISOString() : null,
+    confirmed_at: paymentStatus === 'confirmed' ? now.toISOString() : null,
+    transaction_id: `tx_alb_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+  };
+
+  purchases.push(newPurchase);
+  writeJson(PURCHASES_FILE, purchases);
+
+  // Também registra em orders.json para rastreabilidade financeira
+  const orders = readJson(ORDERS_FILE, []);
+  const newOrderId = orders.reduce((max, o) => Math.max(max, Number(o.id) || 0), 0) + 1;
+  const newOrder = {
+    id: newOrderId,
+    user_id: uId,
+    company_id: companyId || 1,
+    item_type: 'album',
+    album_id: albId,
+    track_id: null,
+    type,
+    price: effectivePrice,
+    payment_status: paymentStatus,
+    created_at: now.toISOString(),
+    rented_at: type === 'rent' && paymentStatus === 'confirmed' ? now.toISOString() : null,
+    expires_at: expiresAt,
+    confirmed_at: paymentStatus === 'confirmed' ? now.toISOString() : null,
+    transaction_id: newPurchase.transaction_id
+  };
+  orders.push(newOrder);
+  writeJson(ORDERS_FILE, orders);
+
+  return {
+    success: true,
+    message: type === 'buy'
+      ? `Álbum "${album.title}" comprado integralmente com sucesso!`
+      : `Álbum "${album.title}" alugado com sucesso por 30 dias!`,
+    album,
+    purchase: newPurchase,
+    order: newOrder
+  };
+}
+
+/**
+ * Retorna exclusivamente as músicas compradas individualmente pelo usuário.
+ * Regras Estritas de Separação e Prevenção de Duplicidade:
+ * 1. Exibir somente músicas com compra individual confirmada (type === 'buy', payment_status !== 'pending').
+ * 2. Não exibir músicas apenas alugadas (type === 'rent').
+ * 3. Não exibir músicas que estejam disponíveis exclusivamente porque fazem parte de um álbum comprado integralmente.
+ * 4. Não considerar compras pendentes como concluídas.
+ * 5. Se o usuário comprou o álbum integralmente posteriormente, as faixas desse álbum NÃO aparecem aqui.
+ */
+async function getUserPurchasedTracks(userId) {
+  const uId = Number(userId);
+  if (!uId) return [];
+
+  // 1. Obter álbuns comprados integralmente pelo usuário para aplicar filtro anti-duplicação
+  const userPurchasedAlbums = await getUserPurchasedAlbums(uId);
+  const purchasedAlbumIds = new Set(userPurchasedAlbums.map(a => Number(a.id)).filter(Boolean));
+  const purchasedAlbumTitles = new Set(userPurchasedAlbums.map(a => (a.title || '').toLowerCase().trim()).filter(Boolean));
+
+  const purchases = readJson(PURCHASES_FILE, []);
+  const tracks = readJson(TRACKS_FILE, []);
+  const companies = readJson(COMPANIES_FILE, []);
+
+  // 2. Filtrar compras de faixas individuais:
+  // - Apenas do usuário
+  // - Apenas compras definitivas (type === 'buy'), estritamente excluindo aluguéis (type === 'rent')
+  // - Apenas pagamentos confirmados (payment_status !== 'pending')
+  // - Apenas compras individuais de faixas (item_type !== 'album' e track_id válido)
+  const individualTrackPurchases = purchases
+    .filter(p => {
+      if (Number(p.user_id) !== uId) return false;
+      if (p.type !== 'buy') return false; // REGRA 2: Não exibir músicas apenas alugadas
+      if (p.payment_status === 'pending') return false; // REGRA 2: Não considerar compras pendentes
+      if (p.item_type === 'album') return false; // Compra de álbum integral não entra em faixas
+      if (!p.track_id || Number(p.track_id) <= 0) return false;
+      return true;
+    })
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
-  // Agrupa para que compra permanente prevaleça sobre aluguéis expirados
+  // Deduplicação de compras da mesma faixa (prevalece a mais recente)
+  const byTrack = new Map();
+  for (const p of individualTrackPurchases) {
+    const tid = Number(p.track_id);
+    if (!byTrack.has(tid)) {
+      byTrack.set(tid, p);
+    }
+  }
+
+  const result = [];
+  for (const p of byTrack.values()) {
+    const track = tracks.find(t => Number(t.id) === Number(p.track_id));
+    if (!track) continue;
+
+    // REGRA 3: Se o usuário comprar o álbum completo, ele deverá aparecer somente na aba Álbuns,
+    // sem que todas as suas faixas sejam repetidas individualmente na aba Músicas.
+    const trackAlbumId = Number(track.album_id);
+    const trackAlbumTitle = (track.album || '').toLowerCase().trim();
+
+    const isCoveredByFullAlbum = 
+      (trackAlbumId && purchasedAlbumIds.has(trackAlbumId)) ||
+      (trackAlbumTitle && purchasedAlbumTitles.has(trackAlbumTitle));
+
+    if (isCoveredByFullAlbum) {
+      // Suprime a faixa da aba Músicas para evitar duplicação
+      continue;
+    }
+
+    const company = companies.find(c => Number(c.id) === Number(p.company_id || track.company_id));
+    const min = Math.floor((track.duration_sec || 210) / 60);
+    const sec = (track.duration_sec || 210) % 60;
+
+    result.push({
+      purchaseId: p.id,
+      type: 'buy',
+      price: p.price,
+      sale_price: track.sale_price || 4.90,
+      rent_price: track.rent_price || 1.90,
+      salePrice: track.sale_price || 4.90,
+      rentPrice: track.rent_price || 1.90,
+      purchasedAt: p.created_at,
+      rentedAt: null,
+      expiresAt: null,
+      isExpired: false,
+      remainingDays: null,
+      canPlay: true,
+      id: `ct-${track.id}`,
+      dbTrackId: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album || 'Single',
+      genre: track.genre || 'Variado',
+      cover_url: track.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      cover: track.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      preview_url: track.preview_url,
+      preview: track.preview_url,
+      youtubeVideoId: track.youtube_video_id || null,
+      duration_sec: track.duration_sec || 210,
+      durationSec: track.duration_sec || 210,
+      duration: `${min}:${String(sec).padStart(2, '0')}`,
+      plays: 'Comprado (Permanente)',
+      licenseLabel: 'Comprada',
+      companyId: track.company_id,
+      companyName: company?.name || 'DevSongs Gravadora'
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Retorna as faixas adquiridas pelo usuário para exibição na Biblioteca (Aba Músicas).
+ * Suporta filtro: 'all' (todas: compradas e alugadas), 'buy'/'purchased' ou 'rent'/'rented'.
+ * Aplica regra anti-duplicação: faixas de álbuns comprados integralmente não poluem a lista de faixas compradas.
+ */
+async function getUserLibraryTracks(userId, filter = 'all') {
+  const uId = Number(userId);
+  if (!uId) return [];
+
+  const now = new Date();
+  const userPurchasedAlbums = await getUserPurchasedAlbums(uId);
+  const purchasedAlbumIds = new Set(userPurchasedAlbums.map(a => Number(a.id)).filter(Boolean));
+  const purchasedAlbumTitles = new Set(userPurchasedAlbums.map(a => (a.title || '').toLowerCase().trim()).filter(Boolean));
+
+  const purchases = readJson(PURCHASES_FILE, []);
+  const tracks = readJson(TRACKS_FILE, []);
+  const companies = readJson(COMPANIES_FILE, []);
+
+  // 1. Filtrar compras/aluguéis do usuário com pagamento confirmado (excluindo item_type === 'album')
+  const userPurchases = purchases
+    .filter(p => {
+      if (Number(p.user_id) !== uId) return false;
+      if (p.payment_status === 'pending') return false;
+      if (p.item_type === 'album') return false;
+      if (!p.track_id || Number(p.track_id) <= 0) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  // 2. Deduplicação por faixa (uma compra definitiva sobrepõe aluguel; se ambos forem do mesmo tipo, prevalece o mais recente)
   const byTrack = new Map();
   for (const p of userPurchases) {
     const tid = Number(p.track_id);
@@ -2171,9 +2673,118 @@ async function getUserPurchasedTracks(userId) {
       }
     }
   }
-  const distinctPurchases = Array.from(byTrack.values());
 
-  return distinctPurchases.map(p => {
+  const result = [];
+  for (const p of byTrack.values()) {
+    const track = tracks.find(t => Number(t.id) === Number(p.track_id));
+    if (!track) continue;
+
+    // Se o usuário comprou o álbum integral correspondente e a faixa é do tipo 'buy', suprime para evitar duplicação
+    if (p.type === 'buy') {
+      const trackAlbumId = Number(track.album_id);
+      const trackAlbumTitle = (track.album || '').toLowerCase().trim();
+      const isCoveredByFullAlbum =
+        (trackAlbumId && purchasedAlbumIds.has(trackAlbumId)) ||
+        (trackAlbumTitle && purchasedAlbumTitles.has(trackAlbumTitle));
+
+      if (isCoveredByFullAlbum) {
+        continue;
+      }
+    }
+
+    const isRent = p.type === 'rent';
+    const isExpired = isRent ? (new Date(p.expires_at) < now) : false;
+    const remainingDays = isRent && !isExpired
+      ? Math.max(0, Math.ceil((new Date(p.expires_at) - now) / (1000 * 60 * 60 * 24)))
+      : null;
+
+    // Filtro por tipo se especificado
+    if ((filter === 'buy' || filter === 'purchased') && isRent) {
+      continue;
+    }
+    if ((filter === 'rent' || filter === 'rented') && !isRent) {
+      continue;
+    }
+
+    const company = companies.find(c => Number(c.id) === Number(p.company_id || track.company_id));
+    const min = Math.floor((track.duration_sec || 210) / 60);
+    const sec = (track.duration_sec || 210) % 60;
+
+    result.push({
+      purchaseId: p.id,
+      type: p.type,
+      price: p.price,
+      sale_price: track.sale_price || 4.90,
+      rent_price: track.rent_price || 1.90,
+      salePrice: track.sale_price || 4.90,
+      rentPrice: track.rent_price || 1.90,
+      purchasedAt: p.created_at,
+      rentedAt: p.rented_at || p.created_at,
+      expiresAt: p.expires_at,
+      isExpired,
+      remainingDays,
+      canPlay: !isExpired,
+      id: `ct-${track.id}`,
+      dbTrackId: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album || 'Single',
+      album_id: track.album_id || null,
+      genre: track.genre || 'Variado',
+      cover_url: track.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      cover: track.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      preview_url: track.preview_url,
+      preview: track.preview_url,
+      youtubeVideoId: track.youtube_video_id || null,
+      duration_sec: track.duration_sec || 210,
+      durationSec: track.duration_sec || 210,
+      duration: `${min}:${String(sec).padStart(2, '0')}`,
+      plays: isRent
+        ? (isExpired ? 'Aluguel Expirado' : `Aluguel válido: ${remainingDays} dias`)
+        : 'Comprado (Permanente)',
+      licenseLabel: isRent
+        ? (isExpired ? 'Aluguel Expirado' : `Aluguel (${remainingDays}d)`)
+        : 'Comprada',
+      companyId: track.company_id,
+      companyName: company?.name || 'DevSongs Gravadora'
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Retorna todas as aquisições do usuário (incluindo aluguéis)
+ * Utilizado estritamente para autorização de reprodução (checkPlaybackAccess)
+ */
+async function getUserAcquisitions(userId) {
+  const uId = Number(userId);
+  if (!uId) return [];
+
+  const now = new Date();
+  const purchases = readJson(PURCHASES_FILE, []);
+  const tracks = readJson(TRACKS_FILE, []);
+  const companies = readJson(COMPANIES_FILE, []);
+
+  const userPurchases = purchases
+    .filter(p => Number(p.user_id) === uId)
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  const byTrack = new Map();
+  for (const p of userPurchases) {
+    if (p.item_type === 'album') continue;
+    const tid = Number(p.track_id);
+    if (!byTrack.has(tid)) {
+      byTrack.set(tid, p);
+    } else {
+      const existing = byTrack.get(tid);
+      if (existing.type !== 'buy' && p.type === 'buy') {
+        byTrack.set(tid, p);
+      }
+    }
+  }
+
+  return Array.from(byTrack.values()).map(p => {
     const track = tracks.find(t => Number(t.id) === Number(p.track_id)) || {
       id: p.track_id,
       title: 'Música Adquirida',
@@ -2186,7 +2797,6 @@ async function getUserPurchasedTracks(userId) {
       duration_sec: 210
     };
     const company = companies.find(c => Number(c.id) === Number(p.company_id || track.company_id));
-
     const min = Math.floor((track.duration_sec || 210) / 60);
     const sec = (track.duration_sec || 210) % 60;
     const isRent = p.type === 'rent';
@@ -2228,7 +2838,7 @@ async function getUserPurchasedTracks(userId) {
         : 'Comprado (Permanente)',
       licenseLabel: isRent
         ? (isExpired ? 'Aluguel Expirado' : `Aluguel (${remainingDays} dias restantes)`)
-        : 'Comprada (Permanente)',
+        : 'Comprada',
       companyId: track.company_id,
       companyName: company?.name || 'DevSongs Gravadora'
     };
@@ -2352,7 +2962,7 @@ async function recordPurchase(userId, { trackId, companyId = 1, type = 'buy' }) 
 // =========================================================================
 
 async function checkPlaybackAccess(userId, trackId) {
-  const uId = Number(userId);
+  const uId = userId ? Number(userId) : null;
   const cleanId = typeof trackId === 'string' ? trackId.replace('ct-', '') : trackId;
   const tId = Number(cleanId);
 
@@ -2363,37 +2973,31 @@ async function checkPlaybackAccess(userId, trackId) {
     throw err;
   }
 
-  // Se a faixa for explicitamente gratuita ou streaming aberto com valor zerado
-  if (track.available_for_stream && (!track.sale_price || track.sale_price === 0)) {
-    return {
-      allowed: true,
-      reason: 'public_stream',
-      status: 'free',
-      track
-    };
-  }
+  const access = await evaluateTrackAccess(track, uId);
 
-  if (!uId) {
-    const err = new Error('Acesso não autorizado. Faça login para ouvir esta música.');
-    err.statusCode = 401;
-    err.status = 'unauthenticated';
-    throw err;
-  }
+  if (!access.can_play) {
+    if (!uId) {
+      const err = new Error('Acesso não autorizado. Faça login para ouvir esta música.');
+      err.statusCode = 401;
+      err.status = 'unauthenticated';
+      throw err;
+    }
 
-  // 1. Verificar se existe pedido criado sem pagamento ou com pagamento pendente
-  const orders = readJson(ORDERS_FILE, []);
-  const pendingOrder = orders.find(o => Number(o.user_id) === uId && Number(o.track_id) === tId && o.payment_status === 'pending');
-
-  const userTracks = await getUserPurchasedTracks(uId);
-  const userTrack = userTracks.find(t => Number(t.dbTrackId) === tId || Number(String(t.id).replace('ct-', '')) === tId);
-
-  if (!userTrack) {
-    if (pendingOrder) {
+    if (access.access_status === 'payment_pending') {
       const err = new Error('Pagamento pendente. A reprodução da música só é liberada após a confirmação válida do pagamento.');
       err.statusCode = 403;
       err.status = 'payment_pending';
       err.pending = true;
       err.track = track;
+      throw err;
+    }
+
+    if (access.access_status === 'rent_expired') {
+      const err = new Error('O período de aluguel desta música terminou. Renove o aluguel ou compre definitivamente para continuar ouvindo.');
+      err.statusCode = 403;
+      err.status = 'rent_expired';
+      err.expired = true;
+      err.track = access.userTrack || track;
       throw err;
     }
 
@@ -2404,40 +3008,15 @@ async function checkPlaybackAccess(userId, trackId) {
     throw err;
   }
 
-  if (userTrack.type === 'buy') {
-    return {
-      allowed: true,
-      reason: 'purchased',
-      status: 'purchased',
-      track: userTrack
-    };
-  }
-
-  if (userTrack.type === 'rent') {
-    if (!userTrack.isExpired && userTrack.canPlay) {
-      return {
-        allowed: true,
-        reason: 'rent_active',
-        status: 'rent_active',
-        remainingDays: userTrack.remainingDays,
-        expiresAt: userTrack.expiresAt,
-        rentedAt: userTrack.rentedAt,
-        track: userTrack
-      };
-    } else {
-      const err = new Error('O período de aluguel desta música terminou. Renove o aluguel ou compre definitivamente para continuar ouvindo.');
-      err.statusCode = 403;
-      err.status = 'rent_expired';
-      err.expired = true;
-      err.track = userTrack;
-      throw err;
-    }
-  }
-
-  const err = new Error('Acesso negado para esta faixa.');
-  err.statusCode = 403;
-  err.status = 'forbidden';
-  throw err;
+  return {
+    allowed: true,
+    reason: access.reason,
+    status: access.access_status,
+    remainingDays: access.remaining_days,
+    expiresAt: access.expires_at,
+    rentedAt: access.rented_at,
+    track: access.userTrack || track
+  };
 }
 
 // =========================================================================
@@ -2733,7 +3312,12 @@ module.exports = {
   updateTrack,
   deleteTrack,
   getUserPurchasedTracks,
+  getUserLibraryTracks,
+  getUserPurchasedAlbums,
+  purchaseAlbum,
+  getUserAcquisitions,
   recordPurchase,
+  evaluateTrackAccess,
   checkPlaybackAccess,
   createRentalOrder,
   confirmPayment,

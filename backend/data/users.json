@@ -19,7 +19,7 @@
   },
   {
     "id": 2,
-    "full_name": "Super Administrador",
+    "full_name": "Superadmin",
     "email": "admin@bookhub.com",
     "avatar_url": null,
     "password_hash": "$2b$10$./JttA.Z.LWfS/l3BRwZNu5qVK1pu7Yt2c3pJKEtimbjfoZcm/st2",
