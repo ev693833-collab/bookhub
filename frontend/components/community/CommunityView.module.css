@@ -1,0 +1,1223 @@
+/* =========================================================================
+   COMUNIDADE DEVSONGS — DESIGN SYSTEM MODERNO INSPIRADO NO AIRBUDS
+   Dark theme, cantos arredondados (18px), microinterações táteis e responsivo
+   ========================================================================= */
+
+.communityContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100vh - 100px);
+  padding: 1.5rem 2.5rem 6rem;
+  color: #ffffff;
+  box-sizing: border-box;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   1. HEADER DA COMUNIDADE
+   ───────────────────────────────────────────────────────────── */
+.communityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.headerIconBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1db954 0%, #0d7334 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(29, 185, 84, 0.38);
+}
+
+.headerTitle {
+  font-size: 1.95rem;
+  font-weight: 850;
+  margin: 0;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.headerSubtitle {
+  font-size: 0.9rem;
+  color: #a8a8a8;
+  margin: 0.25rem 0 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  position: relative;
+}
+
+.headerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1.2rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6e6e6;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.88rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.headerBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px);
+}
+
+.notifBtn {
+  position: relative;
+  padding: 0.65rem 0.85rem;
+}
+
+.notifBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ff4757;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(255, 71, 87, 0.55);
+  animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* Dropdown Notificações */
+.notifDropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 380px;
+  max-width: 92vw;
+  background: #161616;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+  z-index: 9999;
+  overflow: hidden;
+  animation: fadeInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.notifHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 750;
+  font-size: 0.98rem;
+}
+
+.markAllBtn {
+  background: none;
+  border: none;
+  color: #1db954;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.markAllBtn:hover {
+  text-decoration: underline;
+}
+
+.notifList {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.notifItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.notifItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.notifUnread {
+  background: rgba(29, 185, 84, 0.1);
+  border-left: 3px solid #1db954;
+}
+
+.notifAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.notifContent {
+  flex: 1;
+}
+
+.notifText {
+  font-size: 0.86rem;
+  color: #ddd;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.notifTime {
+  font-size: 0.74rem;
+  color: #888;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.emptyNotifs {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   2. BARRA DE NAVEGAÇÃO HORIZONTAL — INSPIRAÇÃO TUNEIN & AIRBUDS
+   Segmented bar sofisticada, minimalista e 100% alinhada
+   ───────────────────────────────────────────────────────────── */
+.communityNavTrack {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 60px;
+  height: 60px;
+  flex-shrink: 0 !important;
+  margin-top: 0.25rem;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 4px 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  box-sizing: border-box;
+}
+
+.communityNavTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.navInnerPills {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0 !important;
+  min-height: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 24px;
+  padding: 4px 6px;
+  gap: 6px;
+  box-sizing: border-box;
+  backdrop-filter: blur(16px);
+}
+
+.navTabItem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0 1.25rem;
+  height: 40px;
+  min-height: 40px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #a0a0a0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0 !important;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.navTabItem:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Aba selecionada — Verde DevSongs sofisticado com alto contraste e elegância TuneIn/Airbuds */
+.navTabItemActive {
+  background: #1db954 !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(29, 185, 84, 0.35) !important;
+}
+
+.navTabIcon {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.navTabItem:hover .navTabIcon {
+  transform: scale(1.08);
+}
+
+.navTabItemActive .navTabIcon {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  transform: scale(1.05);
+}
+
+.navTabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #ff4757;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 20px;
+  margin-left: 0.25rem;
+  box-sizing: border-box;
+  box-shadow: 0 2px 6px rgba(255, 71, 87, 0.4);
+  animation: pulseBadge 2.2s infinite;
+}
+
+.navTabItemActive .navTabBadge {
+  background: #000000;
+  color: #1db954;
+  box-shadow: none;
+}
+
+.navTabCount {
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.75;
+  margin-left: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   3. SEÇÃO AO VIVO: AIRBUDS LIVE LISTENING SHELF
+   ───────────────────────────────────────────────────────────── */
+.airbudsLiveShelf {
+  background: linear-gradient(180deg, rgba(29, 185, 84, 0.08) 0%, rgba(20, 20, 20, 0.6) 100%);
+  border: 1px solid rgba(29, 185, 84, 0.22);
+  border-radius: 22px;
+  padding: 1.35rem 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.shelfTopHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.15rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.shelfTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.shelfTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.livePulseDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1db954;
+  box-shadow: 0 0 10px #1db954;
+  animation: pulseDot 1.6s infinite;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.75; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.liveCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.25rem;
+}
+
+/* Card individual do Airbuds */
+.airbudsFriendCard {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.airbudsFriendCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(29, 185, 84, 0.45);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+
+.friendTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.friendUserBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.friendUserAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #1db954;
+}
+
+.friendNameText {
+  font-size: 0.88rem;
+  font-weight: 750;
+  color: #ffffff;
+  display: block;
+}
+
+.friendStatusLabel {
+  font-size: 0.74rem;
+  color: #1db954;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+/* Caixa com a Capa e Detalhes da Música (Airbuds Track Box) */
+.musicDisplayBox {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 0.75rem;
+  position: relative;
+}
+
+.musicCoverWrap {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+}
+
+.musicCover {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.spinningVinylDisc {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #222 20%, #111 60%, #000 100%);
+  border: 2px solid #333;
+  z-index: -1;
+  animation: spinDisc 6s linear infinite;
+}
+
+@keyframes spinDisc {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.musicDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.trackTitle {
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: #ffffff;
+  margin: 0 0 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.artistTitle {
+  font-size: 0.82rem;
+  color: #a0a0a0;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardPlayBtn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #1db954;
+  border: none;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cardPlayBtn:hover {
+  background: #1ed760;
+  transform: scale(1.1);
+  box-shadow: 0 0 16px rgba(29, 185, 84, 0.65);
+}
+
+/* Barra de Reações Rápidas do Airbuds (Emoji Reactions Dock) */
+.airbudsReactionsDock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 0.35rem 0.65rem;
+}
+
+.emojiBtn {
+  background: none;
+  border: none;
+  font-size: 1.15rem;
+  cursor: pointer;
+  padding: 0.2rem 0.45rem;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.emojiBtn:hover {
+  transform: scale(1.3);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.emojiCount {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #bbb;
+}
+
+.emojiBtnActive {
+  background: rgba(29, 185, 84, 0.2) !important;
+  transform: scale(1.15);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   4. LAYOUT DO FEED (AIRBUDS TIMELINE)
+   ───────────────────────────────────────────────────────────── */
+.feedLayout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 2.25rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 1080px) {
+  .feedLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feedMain {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* Card: "Compartilhe o som que você está ouvindo" */
+.airbudsShareBox {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 1.35rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.shareBoxHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.userAvatarSelf {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #1db954;
+}
+
+.shareTextarea {
+  width: 100%;
+  min-height: 75px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  color: #fff;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.shareTextarea:focus {
+  outline: none;
+  border-color: #1db954;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nowPlayingPill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.95rem;
+  background: rgba(29, 185, 84, 0.1);
+  border: 1px solid rgba(29, 185, 84, 0.3);
+  border-radius: 12px;
+  margin-top: 0.85rem;
+}
+
+.nowPlayingInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.nowPlayingCover {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.shareBoxFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.attachButtonsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.attachTagBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.attachTagBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.publishShareBtn {
+  padding: 0.65rem 1.6rem;
+  border-radius: 22px;
+  background: #1db954;
+  color: #000;
+  border: none;
+  font-weight: 800;
+  font-size: 0.94rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.publishShareBtn:hover:not(:disabled) {
+  background: #1ed760;
+  transform: scale(1.04);
+  box-shadow: 0 4px 16px rgba(29, 185, 84, 0.45);
+}
+
+.publishShareBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Post do Feed (Airbuds Activity Post) */
+.feedPostCard {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  padding: 1.35rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.2s;
+}
+
+.feedPostCard:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.postHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.postAuthorProfile {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+}
+
+.postAuthorAvatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.postAuthorName {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.postAuthorName:hover {
+  color: #1db954;
+}
+
+.postAuthorHandle {
+  font-size: 0.82rem;
+  color: #888;
+}
+
+.postTimeAgo {
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.postCaption {
+  font-size: 0.96rem;
+  line-height: 1.55;
+  color: #eaeaea;
+  margin: 0 0 1.1rem;
+}
+
+/* Embed de Música Grande no Post */
+.postMusicEmbed {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  margin-bottom: 1.1rem;
+  transition: all 0.2s;
+}
+
+.postMusicEmbed:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(29, 185, 84, 0.35);
+}
+
+.postMusicCover {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+.postMusicMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.postMusicTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.postMusicArtist {
+  font-size: 0.88rem;
+  color: #aaa;
+  margin: 0;
+}
+
+/* Barra de Reações do Post */
+.postActionsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
+.reactionGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.actionBtnSubtle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 0.88rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.actionBtnSubtle:hover {
+  color: #fff;
+}
+
+/* Comentários */
+.commentsContainer {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.singleComment {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.commentBubble {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   5. SIDEBAR SOCIAL DO FEED
+   ───────────────────────────────────────────────────────────── */
+.feedSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.sidebarCard {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  padding: 1.35rem;
+}
+
+.sidebarCardTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   6. ABA DESCOBRIR PESSOAS (MATCH MUSICAL AIRBUDS)
+   ───────────────────────────────────────────────────────────── */
+.matchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 1.5rem;
+}
+
+.matchCard {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.matchCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(29, 185, 84, 0.5);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+}
+
+.matchBadgeCorner {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: linear-gradient(135deg, #1db954 0%, #0d6e2e 100%);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 850;
+  padding: 0.3rem 0.65rem;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.matchAvatar {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 0.95rem;
+  border: 3px solid rgba(29, 185, 84, 0.4);
+}
+
+.matchName {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+
+.matchHandle {
+  font-size: 0.84rem;
+  color: #888;
+  margin: 0.2rem 0 0.75rem;
+}
+
+.matchBio {
+  font-size: 0.86rem;
+  color: #b8b8b8;
+  margin: 0 0 1.1rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tasteTags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-bottom: 1.35rem;
+}
+
+.tasteTag {
+  background: rgba(255, 255, 255, 0.06);
+  color: #1db954;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  border-radius: 14px;
+}
+
+.matchActions {
+  display: flex;
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   7. ABA ESTATÍSTICAS (AIRBUDS RECAP)
+   ───────────────────────────────────────────────────────────── */
+.statsHeroGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 900px) {
+  .statsHeroGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.statsKpiCard {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.kpiValue {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #1db954;
+  margin: 0.25rem 0;
+}
+
+.kpiLabel {
+  font-size: 0.82rem;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+}
+
+/* Pódio dos Top 3 Artistas (Airbuds Podium) */
+.podiumContainer {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  padding: 1.75rem;
+  margin-bottom: 2rem;
+}
+
+.podiumRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.podiumSpot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 150px;
+}
+
+.podiumAvatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #ffd700;
+  margin-bottom: 0.75rem;
+}
+
+.podiumPillar {
+  width: 100%;
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.25rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   8. MODAL DE COMPARAÇÃO MUSICAL AIRBUDS (TASTE MATCH)
+   ───────────────────────────────────────────────────────────── */
+.compareModalContent {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  width: 600px;
+  max-width: 95vw;
+  padding: 2rem;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+}
+
+.versusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin: 1.5rem 0 2rem;
+}
+
+.versusUser {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.versusAvatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #1db954;
+}
+
+.versusScoreBadge {
+  background: linear-gradient(135deg, #1db954 0%, #108538 100%);
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 900;
+  padding: 0.6rem 1.4rem;
+  border-radius: 20px;
+  box-shadow: 0 6px 20px rgba(29, 185, 84, 0.4);
+}
+
+/* Modais gerais */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.closeModalBtn {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.closeModalBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4.5rem 1.5rem;
+  color: #888;
+}
+
+.emptyStateIcon {
+  width: 68px;
+  height: 68px;
+  color: #444;
+  margin-bottom: 1.15rem;
+}

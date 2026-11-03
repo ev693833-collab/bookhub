@@ -1,0 +1,86 @@
+[
+  {
+    "userId": 2,
+    "username": "@admin",
+    "bio": "Apaixonado por música e novidades no DevSongs! 🎧",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Superadmin&background=1db954&color=fff",
+    "headerUrl": null,
+    "favoriteTrackIds": [],
+    "favoriteArtistIds": [],
+    "favoriteAlbumIds": [],
+    "privacy": {
+      "profile": "public",
+      "friendRequests": "everyone",
+      "listeningActivity": "everyone",
+      "hideCurrentListening": false,
+      "playlists": "public",
+      "messages": "everyone"
+    },
+    "blockedUserIds": [],
+    "createdAt": "2026-11-03T14:45:52.555Z",
+    "updatedAt": "2026-11-03T14:45:52.556Z"
+  },
+  {
+    "userId": 1,
+    "username": "@enzo",
+    "bio": "Apaixonado por música e novidades no DevSongs! 🎧",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Enzo+Vieira",
+    "headerUrl": null,
+    "favoriteTrackIds": [],
+    "favoriteArtistIds": [],
+    "favoriteAlbumIds": [],
+    "privacy": {
+      "profile": "public",
+      "friendRequests": "everyone",
+      "listeningActivity": "everyone",
+      "hideCurrentListening": false,
+      "playlists": "public",
+      "messages": "everyone"
+    },
+    "blockedUserIds": [],
+    "createdAt": "2026-11-03T14:45:52.581Z",
+    "updatedAt": "2026-11-03T14:45:52.581Z"
+  },
+  {
+    "userId": 99,
+    "username": "@admin",
+    "bio": "Apaixonado por música e novidades no DevSongs! 🎧",
+    "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
+    "headerUrl": null,
+    "favoriteTrackIds": [],
+    "favoriteArtistIds": [],
+    "favoriteAlbumIds": [],
+    "privacy": {
+      "profile": "public",
+      "friendRequests": "everyone",
+      "listeningActivity": "everyone",
+      "hideCurrentListening": false,
+      "playlists": "public",
+      "messages": "everyone"
+    },
+    "blockedUserIds": [],
+    "createdAt": "2026-11-03T14:45:52.586Z",
+    "updatedAt": "2026-11-03T14:45:52.586Z"
+  },
+  {
+    "userId": 100,
+    "username": "@enzovieiracontabhub",
+    "bio": "Apaixonado por música e novidades no DevSongs! 🎧",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Enzo%20vieira&background=1db954&color=fff",
+    "headerUrl": null,
+    "favoriteTrackIds": [],
+    "favoriteArtistIds": [],
+    "favoriteAlbumIds": [],
+    "privacy": {
+      "profile": "public",
+      "friendRequests": "everyone",
+      "listeningActivity": "everyone",
+      "hideCurrentListening": false,
+      "playlists": "public",
+      "messages": "everyone"
+    },
+    "blockedUserIds": [],
+    "createdAt": "2026-11-03T14:45:52.590Z",
+    "updatedAt": "2026-11-03T14:45:52.590Z"
+  }
+]

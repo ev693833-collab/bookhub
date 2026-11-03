@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import styles from '../styles/home.module.css';
 import LibraryView from '../components/library/LibraryView';
+import CommunityView from '../components/community/CommunityView';
 import { getSafeCover } from '../utils/coverHelper';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -2132,6 +2133,34 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     playedSessionHistoryRef.current = playedSessionHistory;
   }, [playedSessionHistory]);
 
+  // Sincronização em tempo real de atividade com a Comunidade ("Ouvindo agora")
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    fetch(`${API_URL}/api/community/activity/now-playing`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        track: currentTrack ? {
+          id: currentTrack.id || currentTrack.track_id,
+          title: currentTrack.title,
+          artist: currentTrack.artist,
+          album: currentTrack.album || '',
+          cover: getSafeCover(currentTrack),
+          durationSec: duration,
+          youtube_video_id: currentTrack.youtube_video_id || null,
+          audio_url: currentTrack.audio_url || currentTrack.preview_url || null
+        } : null,
+        isPlaying: !!isPlaying
+      })
+    }).catch(() => {});
+  }, [currentTrack, isPlaying, duration]);
+
   const [activeTrackMenu, setActiveTrackMenu] = useState(null); // { track, x, y }
   const [queueToast, setQueueToast] = useState(null);
   const queueToastTimeoutRef = useRef(null);
@@ -3885,16 +3914,16 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       } else if (typeof window !== 'undefined') {
         window.history.pushState({ devsongsView: 'home', tab: 'inicio' }, '', '/home');
       }
-    } else if (path === '/explore') {
+    } else if (path === '/community' || path === '/explore') {
       setViewMode('home');
-      setActiveTab('explorar');
+      setActiveTab('comunidade');
       setSelectedAlbum(null);
       setSelectedCompany(null);
       setActiveArtist(null);
       if (router.pathname && (router.pathname.startsWith('/artist') || router.pathname.startsWith('/album') || router.pathname.startsWith('/playlist'))) {
-        router.push('/explore');
+        router.push('/community');
       } else if (typeof window !== 'undefined') {
-        window.history.pushState({ devsongsView: 'home', tab: 'explorar' }, '', '/explore');
+        window.history.pushState({ devsongsView: 'home', tab: 'comunidade' }, '', '/community');
       }
     } else if (path === '/library') {
       setViewMode('home');
@@ -4474,12 +4503,12 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 <span>Início</span>
               </button>
               <button
-                onClick={() => navigateTo('/explore')}
-                className={`${styles.navItem} ${viewMode === 'home' && activeTab === 'explorar' ? styles.navItemActive : ''}`}
-                title="Explorar"
+                onClick={() => navigateTo('/community')}
+                className={`${styles.navItem} ${viewMode === 'home' && (activeTab === 'comunidade' || activeTab === 'community') ? styles.navItemActive : ''}`}
+                title="Comunidade"
               >
-                <Compass size={22} />
-                <span>Explorar</span>
+                <Users size={22} />
+                <span>Comunidade</span>
               </button>
               <button
                 onClick={() => navigateTo('/library')}
@@ -4802,6 +4831,19 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                   </div>
                 </div>
               </div>
+            ) : (activeTab === 'comunidade' || activeTab === 'community') ? (
+              /* ─── TELA DEDICADA DA COMUNIDADE (/community) ─── */
+              <CommunityView
+                user={user}
+                currentTrack={currentTrack}
+                isPlaying={isPlaying}
+                onPlayTrack={(track) => playTrack(track, false)}
+                onOpenArtist={(artistName) => navigateTo(`/artist/${slugify(artistName)}`, { artistName })}
+                onOpenAlbum={(album) => {
+                  setSelectedAlbum(album);
+                  setViewMode('album');
+                }}
+              />
             ) : activeTab === 'explorar' ? (
               /* ─── TELA DEDICADA DE EXPLORAR (/explore) ─── */
               <div className={styles.exploreViewWrapper}>

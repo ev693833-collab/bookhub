@@ -8,6 +8,7 @@ const musicRoutes = require('./music');
 const companiesRoutes = require('./companies');
 const adminRoutes = require('./admin');
 const libraryRoutes = require('./library');
+const communityRoutes = require('./community');
 
 router.use('/auth', authRoutes);
 router.use('/spotify', spotifyRoutes);
@@ -16,6 +17,7 @@ router.use('/music', musicRoutes);
 router.use('/companies', companiesRoutes);
 router.use('/admin', adminRoutes);
 router.use('/library', libraryRoutes);
+router.use('/community', communityRoutes);
 
 router.get("/", (req, res) => {
   res.json({ message: "API DevSongs rodando com sucesso!", status: "online" });

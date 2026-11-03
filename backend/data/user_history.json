@@ -1104,5 +1104,33 @@
     "durationSec": 223,
     "duration_sec": 223,
     "played_at": "2026-11-03T14:22:04.719Z"
+  },
+  {
+    "id": 81,
+    "user_id": 2,
+    "track_id": "rec-26",
+    "title": "SOLTO",
+    "artist": "Djonga",
+    "album": "O MENINO QUE QUERIA SER DEUS",
+    "genre": "Variado",
+    "cover": "https://cdn-images.dzcdn.net/images/cover/10ba01b01c2e8517166d7f2270a7d454/500x500-000000-80-0-0.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/10ba01b01c2e8517166d7f2270a7d454/500x500-000000-80-0-0.jpg",
+    "durationSec": 219,
+    "duration_sec": 219,
+    "played_at": "2026-11-03T15:27:05.633Z"
+  },
+  {
+    "id": 82,
+    "user_id": 2,
+    "track_id": "rec-26",
+    "title": "SOLTO",
+    "artist": "Djonga",
+    "album": "O MENINO QUE QUERIA SER DEUS",
+    "genre": "Variado",
+    "cover": "https://cdn-images.dzcdn.net/images/cover/10ba01b01c2e8517166d7f2270a7d454/500x500-000000-80-0-0.jpg",
+    "cover_url": "https://cdn-images.dzcdn.net/images/cover/10ba01b01c2e8517166d7f2270a7d454/500x500-000000-80-0-0.jpg",
+    "durationSec": 219,
+    "duration_sec": 219,
+    "played_at": "2026-11-03T15:42:47.885Z"
   }
 ]
