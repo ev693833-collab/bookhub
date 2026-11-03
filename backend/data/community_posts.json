@@ -1,0 +1,43 @@
+[
+  {
+    "id": "post_1793717164152_pnzc5s",
+    "userId": 2,
+    "type": "status",
+    "text": "Bem-vindos à nova Comunidade DevSongs! Conecte-se com amigos, compartilhe o que está ouvindo e descubra novas músicas todos os dias. 🚀🎵",
+    "mediaItem": null,
+    "likes": [],
+    "comments": [],
+    "sharesCount": 0,
+    "createdAt": "2026-11-03T14:46:04.152Z",
+    "reactions": {
+      "🔥": [
+        2
+      ],
+      "❤️": [],
+      "🎧": [],
+      "⚡": [],
+      "🤯": []
+    }
+  },
+  {
+    "id": "post_1793717164149_0pbs00",
+    "userId": 100,
+    "type": "track",
+    "text": "Ouvindo esse clássico do BK sem parar hoje! Produção impecável. 🔥🎧",
+    "mediaItem": {
+      "id": "rec-rec-nu-1",
+      "title": "Amanhecer",
+      "artist": "BK, Nansy Silvwz e Gigantes",
+      "album": "ICARUS",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/3b/2e/21/3b2e21b4-57f7-f735-16b1-2a622626e3a0/8445162776523.jpg/600x600bb.jpg",
+      "type": "track",
+      "duration": 195,
+      "youtube_video_id": "Z3H5aL7vNqA",
+      "audio_url": null
+    },
+    "likes": [],
+    "comments": [],
+    "sharesCount": 0,
+    "createdAt": "2026-11-03T14:46:04.150Z"
+  }
+]

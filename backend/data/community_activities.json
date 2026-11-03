@@ -1,0 +1,23 @@
+[
+  {
+    "userId": 100,
+    "track": {
+      "id": "rec-26",
+      "title": "SOLTO",
+      "artist": "Djonga",
+      "album": "O MENINO QUE QUERIA SER DEUS",
+      "cover": "https://cdn-images.dzcdn.net/images/cover/10ba01b01c2e8517166d7f2270a7d454/500x500-000000-80-0-0.jpg",
+      "durationSec": 219,
+      "youtube_video_id": "Jv8s7qU9A20",
+      "audio_url": null
+    },
+    "isPlaying": true,
+    "updatedAt": "2026-11-03T14:46:04.154Z"
+  },
+  {
+    "userId": 2,
+    "track": null,
+    "isPlaying": false,
+    "updatedAt": "2026-11-03T15:42:57.286Z"
+  }
+]
