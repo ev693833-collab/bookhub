@@ -3,77 +3,70 @@
     "id": 2,
     "playlist_id": 1,
     "track_id": 1,
-    "position": 3,
+    "position": 1,
     "added_at": "2026-10-30T12:43:26.982Z"
-  },
-  {
-    "id": 3,
-    "playlist_id": 1,
-    "track_id": 11,
-    "position": 4,
-    "added_at": "2026-10-30T13:11:58.087Z"
   },
   {
     "id": 4,
     "playlist_id": 1,
     "track_id": 4,
-    "position": 1,
+    "position": 2,
     "added_at": "2026-10-30T13:12:02.720Z"
   },
   {
     "id": 5,
     "playlist_id": 1,
     "track_id": 10,
-    "position": 5,
+    "position": 6,
     "added_at": "2026-10-30T13:32:24.797Z"
   },
   {
     "id": 6,
     "playlist_id": 1,
     "track_id": 23,
-    "position": 6,
+    "position": 4,
     "added_at": "2026-10-30T14:20:34.621Z"
   },
   {
     "id": 7,
     "playlist_id": 1,
     "track_id": 32,
-    "position": 7,
+    "position": 5,
     "added_at": "2026-10-30T19:59:18.598Z"
   },
   {
     "id": 8,
     "playlist_id": 1,
     "track_id": 34,
-    "position": 8,
+    "position": 7,
     "added_at": "2026-10-30T19:59:21.761Z"
   },
   {
     "id": 9,
     "playlist_id": 1,
     "track_id": 36,
-    "position": 9,
+    "position": 8,
     "added_at": "2026-10-30T19:59:24.525Z"
   },
   {
     "id": 10,
     "playlist_id": 1,
     "track_id": 37,
-    "position": 10,
+    "position": 9,
     "added_at": "2026-10-30T19:59:27.501Z"
   },
   {
     "id": 11,
     "playlist_id": 1,
     "track_id": 5,
-    "position": 11,
+    "position": 10,
     "added_at": "2026-10-30T19:59:30.641Z"
   },
   {
     "id": 12,
     "playlist_id": 1,
     "track_id": 7,
-    "position": 2,
+    "position": 11,
     "added_at": "2026-10-30T19:59:33.200Z"
   },
   {
@@ -87,21 +80,126 @@
     "id": 14,
     "playlist_id": 1,
     "track_id": 2,
-    "position": 14,
+    "position": 13,
     "added_at": "2026-10-30T19:59:37.779Z"
   },
   {
     "id": 15,
     "playlist_id": 1,
     "track_id": 3,
-    "position": 13,
+    "position": 14,
     "added_at": "2026-10-30T20:39:18.384Z"
   },
   {
     "id": 16,
     "playlist_id": 1,
     "track_id": 27,
-    "position": 15,
+    "position": 3,
     "added_at": "2026-10-31T22:47:00.954Z"
+  },
+  {
+    "id": 17,
+    "playlist_id": 1,
+    "track_id": 28,
+    "position": 15,
+    "added_at": "2026-11-01T20:09:39.523Z"
+  },
+  {
+    "id": 18,
+    "playlist_id": 1,
+    "track_id": 31,
+    "position": 16,
+    "added_at": "2026-11-01T20:09:43.311Z"
+  },
+  {
+    "id": 19,
+    "playlist_id": 1,
+    "track_id": 39,
+    "position": 17,
+    "added_at": "2026-11-01T20:54:20.841Z"
+  },
+  {
+    "id": 20,
+    "playlist_id": 1,
+    "track_id": 40,
+    "position": 18,
+    "added_at": "2026-11-01T22:22:47.607Z"
+  },
+  {
+    "id": 21,
+    "playlist_id": 2,
+    "track_id": 42,
+    "position": 1,
+    "added_at": "2026-11-01T22:33:46.213Z"
+  },
+  {
+    "id": 22,
+    "playlist_id": 2,
+    "track_id": 41,
+    "position": 2,
+    "added_at": "2026-11-01T22:33:52.098Z"
+  },
+  {
+    "id": 23,
+    "playlist_id": 2,
+    "track_id": 44,
+    "position": 3,
+    "added_at": "2026-11-01T22:41:28.794Z"
+  },
+  {
+    "id": 24,
+    "playlist_id": 2,
+    "track_id": 46,
+    "position": 4,
+    "added_at": "2026-11-01T22:57:47.747Z"
+  },
+  {
+    "id": 25,
+    "playlist_id": 2,
+    "track_id": 47,
+    "position": 5,
+    "added_at": "2026-11-01T23:00:21.774Z"
+  },
+  {
+    "id": 26,
+    "playlist_id": 2,
+    "track_id": 48,
+    "position": 6,
+    "added_at": "2026-11-01T23:01:22.047Z"
+  },
+  {
+    "id": 27,
+    "playlist_id": 2,
+    "track_id": 49,
+    "position": 7,
+    "added_at": "2026-11-01T23:01:58.938Z"
+  },
+  {
+    "id": 28,
+    "playlist_id": 1,
+    "track_id": 53,
+    "position": 19,
+    "added_at": "2026-11-02T20:27:36.536Z"
+  },
+  {
+    "id": 29,
+    "playlist_id": 1,
+    "track_id": 55,
+    "position": 20,
+    "added_at": "2026-11-02T21:15:39.231Z"
+  },
+  {
+    "id": 30,
+    "playlist_id": 2,
+    "track_id": 56,
+    "position": 8,
+    "added_at": "2026-11-02T21:27:55.892Z"
+  },
+  {
+    "id": 31,
+    "playlist_id": 2,
+    "track_id": 57,
+    "position": 9,
+    "added_at": "2026-11-02T21:28:30.145Z"
   }
 ]

@@ -7,33 +7,65 @@ const ytCache = new Map();
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || process.env.NEXT_PUBLIC_YOUTUBE_API_KEY || 'AIzaSyAaarHsdvH2lcJu2tPQPQmGkrrkHGpIbAU';
 
+function parseIsoDuration(iso) {
+  if (!iso) return 0;
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const hours = parseInt(match[1] || 0, 10);
+  const minutes = parseInt(match[2] || 0, 10);
+  const seconds = parseInt(match[3] || 0, 10);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
 async function fetchFromOfficialYouTubeApi(query) {
   if (!YOUTUBE_API_KEY) return null;
   return new Promise((resolve) => {
-    const url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=5&q=' + encodeURIComponent(query) + '&key=' + YOUTUBE_API_KEY;
+    const url = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=8&q=" + encodeURIComponent(query) + "&key=" + YOUTUBE_API_KEY;
     https.get(url, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => {
         try {
           const json = JSON.parse(data);
           if (json.items && json.items.length > 0) {
             const vids = json.items.map(it => ({
               videoId: it.id?.videoId,
-              title: it.snippet?.title || '',
-              channel: it.snippet?.channelTitle || ''
+              title: it.snippet?.title || "",
+              channel: it.snippet?.channelTitle || "",
+              durationSec: 0
             })).filter(it => it.videoId);
-            return resolve(vids);
+
+            const ids = vids.map(v => v.videoId).join(",");
+            const detailsUrl = "https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=" + ids + "&key=" + YOUTUBE_API_KEY;
+            https.get(detailsUrl, (res2) => {
+              let d2 = "";
+              res2.on("data", chunk => d2 += chunk);
+              res2.on("end", () => {
+                try {
+                  const j2 = JSON.parse(d2);
+                  const durMap = {};
+                  j2.items?.forEach(item => {
+                    durMap[item.id] = parseIsoDuration(item.contentDetails?.duration);
+                  });
+                  vids.forEach(v => {
+                    v.durationSec = durMap[v.videoId] || 0;
+                  });
+                  resolve(vids);
+                } catch (_) {
+                  resolve(vids);
+                }
+              });
+            }).on("error", () => resolve(vids));
+            return;
           }
           resolve(null);
         } catch (_) {
           resolve(null);
         }
       });
-    }).on('error', () => resolve(null));
+    }).on("error", () => resolve(null));
   });
 }
-
 function parseTime(timeStr) {
   if (!timeStr) return 0;
   const parts = timeStr.split(':').map(Number);
@@ -134,173 +166,152 @@ function fetchYoutubeCandidates(searchUrl) {
  */
 function scoreCandidate(cand, target) {
   const cTitle = cleanStr(cand.title);
-  const cOwner = cleanStr(cand.owner);
+  const cOwner = cleanStr(cand.owner || cand.channel);
   const tTitle = cleanStr(target.title);
   const tArtist = cleanStr(target.artist);
+  const tAlbum = cleanStr(target.album);
 
   // 1. DESQUALIFICAÇÃO ABSOLUTA
-  // Compilações de álbum inteiro
   if (/álbum completo|album completo|full album|disco completo|discografia|todas as faixas|todas as musicas/i.test(cTitle)) {
     return -999;
   }
-  // Vídeos excessivamente longos (>12min) quando a música é normal (<10min)
+  // Vídeos excessivamente longos (>12min) quando a faixa é normal (<10min)
   if (cand.durationSec > 720 && target.durationSec < 600) {
     return -999;
   }
   // Desqualifica shorts e vídeos muito curtos (<50s) quando a música dura mais de 1min
-  if (/shorts|#shorts/i.test(cTitle) || (cand.lengthStr && !cand.lengthStr.includes(':')) || (cand.durationSec > 0 && cand.durationSec < 50 && target.durationSec >= 60)) {
+  if (/shorts|#shorts/i.test(cTitle) || (cand.durationSec > 0 && cand.durationSec < 50 && target.durationSec >= 60)) {
     return -999;
   }
 
-  // O vídeo precisa conter pelo menos o nome da música ou termos principais
-  const titleWords = tTitle.replace(/[()[\]{}]/g, ' ').split(/\s+/).filter(w => w.length >= 3);
+  // Título da música
+  const mainTitle = tTitle.replace(/\([^)]*\)/g, "").replace(/\[[^\]]*\]/g, "").trim();
+  const titleWords = mainTitle.split(/\s+/).filter(w => w.length >= 3 && !["ao", "vivo", "live"].includes(w));
   if (titleWords.length > 0 && !titleWords.some(w => cTitle.includes(w))) {
     return -999;
   }
 
-  // REQUISITO FUNDAMENTAL: O artista PRECISA estar presente no canal ou no título do vídeo!
-  // Se nem o título nem o canal mencionam o artista, trata-se de cover por outra banda (ex: 'The Classic Soul Choir')
+  // Artista presente
   const hasArtistInTitle = cTitle.includes(tArtist) || (tArtist.split(/\s+/).filter(w => w.length >= 3).some(w => cTitle.includes(w)));
   const hasArtistInOwner = cOwner.includes(tArtist) || tArtist.includes(cOwner) || (tArtist.split(/\s+/).filter(w => w.length >= 3).some(w => cOwner.includes(w)));
-
   if (!hasArtistInTitle && !hasArtistInOwner) {
-    return -999; // Rejeição imediata de tributos/covers gravados por outros artistas
-  }
-
-  // Se for canal auto-gerado '- Topic', o canal TEM que pertencer ao próprio artista!
-  if (cOwner.includes('- topic') && !hasArtistInOwner) {
     return -999;
   }
 
-  // Rejeita versões cover temáticas (ex: 'Soul Version', 'Choir Version', 'Lofi Version', etc.)
-  if (/soul version|piano version|tribute|cover|choir version|lofi version|guitar version|8-bit version|orchestra version|samba version|pagode version|forro version/i.test(cTitle)) {
+  if (/tribute|karaoke|guitar cover|drum cover|parodia|parody/i.test(cTitle)) {
     return -999;
-  }
-
-  // Rejeita adaptações não autorizadas de Pagode, Samba, Forró, Piseiro, anos 2000, 2006, etc. quando a música não for desse gênero
-  const targetIsPagode = /pagode|samba/i.test(`${tTitle} ${tArtist} ${target.genre || ''}`);
-  if (!targetIsPagode) {
-    if (/\bpagode\b|\bsamba\b|\b2006\b|\bn4mex\b|vers[aã]o anos|anos 2000|roda de samba|no pagode|em pagode/i.test(`${cTitle} ${cOwner}`)) {
-      return -999;
-    }
-  }
-
-  const targetIsForro = /forr[oó]|piseiro|pisadinha/i.test(`${tTitle} ${tArtist} ${target.genre || ''}`);
-  if (!targetIsForro) {
-    if (/\bforr[oó]\b|\bpiseiro\b|\bpisadinha\b/i.test(`${cTitle} ${cOwner}`)) {
-      return -999;
-    }
   }
 
   let score = 0;
 
-  // 2. Fidelidade ao título
-  if (cTitle.includes(tTitle)) {
-    score += 50;
-  }
-
-  // 3. Detecção e proteção contra versões 'Ao Vivo' / 'Live' indesejadas (ex: Numb em São Paulo)
-  const targetIsLive = /ao vivo|\[live\]|\(live\)|live in|live at|live show|en vivo/i.test(tTitle);
-  const candIsLive = /ao vivo|\[live\]|\(live\)|live in|live at|live show|en vivo|visualizador oficial|visualizer/i.test(cTitle);
-  if (!targetIsLive && candIsLive) {
-    score -= 300;
-  } else if (targetIsLive && candIsLive) {
-    score += 70;
-  }
-
-  // 4. Detecção e proteção contra versões acústicas
-  const targetIsAcoustic = /ac[uú]stico|acoustic|unplugged/i.test(tTitle);
-  const candIsAcoustic = /ac[uú]stico|acoustic|unplugged/i.test(cTitle);
-  if (!targetIsAcoustic && candIsAcoustic) {
-    score -= 200;
-  } else if (targetIsAcoustic && candIsAcoustic) {
+  if (cTitle.includes(mainTitle)) {
     score += 60;
   }
 
-  // 5. Proteção contra remixes, mashups, covers e paródias
-  const targetIsRemix = /remix|mix/i.test(tTitle);
-  const candIsMashupOrCover = /mashup|\bvs\b|\bcover\b|karaoke|instrumental|react|reaction|guitar cover|drum cover|tutorial|par[oó]dia|parody|speed up|slowed|bass boosted|nightcore|remake/i.test(cTitle);
-  if (candIsMashupOrCover) {
-    score -= 350;
-  }
-  const candIsRemix = /\bremix\b|\bmix\b|\bedit\b/i.test(cTitle);
-  if (!targetIsRemix && candIsRemix) {
-    score -= 150;
+  // Detecção e Alinhamento Rigoroso de AO VIVO vs ESTÚDIO:
+  const targetIsLive = /ao vivo|\[live\]|\(live\)|live in|live at|live show|en vivo|canec[aã]o/i.test(`${tTitle} ${tAlbum}`);
+  const candIsLive = /ao vivo|\[live\]|\(live\)|live in|live at|live show|en vivo|especial|show|turn[eê]|canec[aã]o/i.test(cTitle);
+  const candIsExplicitStudio = /vers[aã]o (de )?est[uú]dio|studio version|original studio/i.test(cTitle);
+
+  if (!targetIsLive && candIsLive) {
+    score -= 300; // Queremos estúdio, mas o vídeo é ao vivo
+  } else if (targetIsLive && candIsExplicitStudio) {
+    score -= 300; // Queremos ao vivo, mas o vídeo é explicitamente de estúdio
+  } else if (targetIsLive && candIsLive) {
+    score += 80;
   }
 
-  // 6. Autoridade do Canal / Artista
-  // Canal '- Topic' do próprio artista tem o áudio de estúdio oficial licenciado pelas gravadoras!
-  if (cOwner.includes('- topic') && hasArtistInOwner) {
-    score += 70;
+  // Se álbum mencionar Canecão, ano (ex: 1988), etc.
+  if (targetIsLive) {
+    if (tAlbum && cTitle.includes(cleanStr(tAlbum))) score += 70;
+    if (/1988/.test(tTitle + " " + tAlbum) && /1988/.test(cTitle)) score += 60;
+    if (/canec[aã]o/.test(tTitle + " " + tAlbum) && /canec[aã]o/.test(cTitle)) score += 60;
+  }
+
+  // Autoridade do canal
+  if (cOwner.includes("- topic") && hasArtistInOwner) {
+    score += 60;
   } else if (hasArtistInOwner) {
-    score += 50;
+    score += 40;
   }
   if (hasArtistInTitle) {
     score += 25;
   }
 
-  // 7. Selo de faixa oficial
   if (/official music video|official video|clipe oficial|video oficial|official audio|[aá]udio oficial/i.test(cTitle)) {
     score += 35;
   }
 
-  // 8. Comparação com a duração esperada da faixa
+  // COMPARAÇÃO RIGOROSA DE DURAÇÃO
   if (target.durationSec > 0 && cand.durationSec > 0) {
     const diff = Math.abs(cand.durationSec - target.durationSec);
-    if (diff <= 5) score += 40;
-    else if (diff <= 15) score += 25;
-    else if (diff <= 35) score += 15;
-    else if (diff > 60) score -= 30;
-    else if (diff > 120) score -= 80;
+    if (diff <= 3) score += 80;
+    else if (diff <= 8) score += 50;
+    else if (diff <= 15) score += 30;
+    else if (diff <= 25) score += 10;
+    else if (diff <= 40) score -= 40;
+    else if (diff <= 60) score -= 150;
+    else if (diff <= 90) score -= 300;
+    else score -= 999; // Mais de 90s de diferença desqualifica (versão diferente/especial com fala)
   }
 
   return score;
 }
 
 async function searchYouTubeVideoId(input) {
-  let query = '';
-  let title = '';
-  let artist = '';
-  let album = '';
+  let query = "";
+  let title = "";
+  let artist = "";
+  let album = "";
   let durationSec = 0;
+  let explicitVideoId = null;
 
-  if (typeof input === 'object' && input !== null) {
-    title = (input.title || '').trim();
-    artist = (input.artist || '').trim();
-    album = (input.album || '').trim();
+  if (typeof input === "object" && input !== null) {
+    title = (input.title || "").trim();
+    artist = (input.artist || "").trim();
+    album = (input.album || "").trim();
     durationSec = Number(input.durationSec || input.duration) || 0;
+    explicitVideoId = (input.youtubeVideoId || input.youtube_video_id || "").trim();
     query = (input.q || `${artist} ${title}`).trim();
   } else {
-    query = (input || '').trim();
+    query = (input || "").trim();
+  }
+
+  // Se já veio com ID pré-vinculado verificado no banco de dados, retorna diretamente com 0ms de latência
+  if (explicitVideoId && /^[a-zA-Z0-9_-]{11}$/.test(explicitVideoId)) {
+    return {
+      videoId: explicitVideoId,
+      altVideoId: null
+    };
   }
 
   if (!query && !title) return null;
 
   // Remove extensões de arquivos de áudio do artista (ex: .wav1, .mp3, etc.)
-  artist = artist.replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, '').trim();
+  artist = artist.replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, "").trim();
 
   // Curadoria oficial prioritária: LUZ, CAMA E AÇÃO (Alee & MC Cabelinho - CAOS DLX)
   if (/luz[, ]+cama e a[cç][aã]o/i.test(title) && (/alee|cabelinho/i.test(artist) || !artist)) {
     return {
-      videoId: 'LC_y6kEJ69g',
-      altVideoId: '3u9yVQElPks' // Versão oficial de estúdio em trap (áudio alternativo original)
+      videoId: "LC_y6kEJ69g",
+      altVideoId: "3u9yVQElPks"
     };
   }
 
   // Normaliza título removendo ruídos de reedição e tags genéricas
   const cleanTitle = title
-    .replace(/\[remastered\]/gi, '')
-    .replace(/\(remastered[^)]*\)/gi, '')
-    .replace(/\(bonus[^)]*\)/gi, '')
-    .replace(/\[explicit\]/gi, '')
-    .replace(/\(explicit\)/gi, '')
+    .replace(/\[remastered\]/gi, "")
+    .replace(/\(remastered[^)]*\)/gi, "")
+    .replace(/\(bonus[^)]*\)/gi, "")
+    .replace(/\[explicit\]/gi, "")
+    .replace(/\(explicit\)/gi, "")
     .trim();
 
-  const isLive = /ao vivo|live|show|concerto|apoteose/i.test(`${title} ${album}`);
+  const isLive = /ao vivo|live|show|concerto|apoteose|canec[aã]o/i.test(`${title} ${album}`);
   const isAcoustic = /ac[uú]stico|acoustic|unplugged/i.test(`${title} ${album}`);
   const isRemix = /remix|mix|edit/i.test(`${title} ${album}`);
 
-  const cacheKey = `v3__${cleanStr(artist)}__${cleanStr(cleanTitle)}__${isLive ? 'live' : isAcoustic ? 'acoustic' : 'studio'}`;
+  const cacheKey = `v4__${cleanStr(artist)}__${cleanStr(cleanTitle)}__${isLive ? "live" : isAcoustic ? "acoustic" : "studio"}__${durationSec}`;
   if (ytCache.has(cacheKey)) {
     return ytCache.get(cacheKey);
   }
@@ -312,10 +323,10 @@ async function searchYouTubeVideoId(input) {
     durationSec
   };
 
-  // 1. Prioridade Máxima: API Oficial do YouTube com videoEmbeddable=true (0ms de bloqueio, vídeos 100% incorporáveis)
+  // 1. Prioridade Máxima: API Oficial do YouTube com videoEmbeddable=true e durações reais
   try {
     const apiQuery = isLive
-      ? `${artist} ${cleanTitle} ao vivo`
+      ? (album && /ao vivo|live/i.test(album) ? `${artist} ${cleanTitle} ${album}` : `${artist} ${cleanTitle} ao vivo`)
       : isAcoustic
         ? `${artist} ${cleanTitle} acustico`
         : isRemix
@@ -330,8 +341,8 @@ async function searchYouTubeVideoId(input) {
           videoId: it.videoId,
           title: it.title,
           owner: it.channel,
-          durationSec,
-          lengthStr: ''
+          durationSec: it.durationSec,
+          lengthStr: ""
         }, target)
       })).filter(c => c.score > 0).sort((a, b) => b.score - a.score);
 
@@ -349,15 +360,20 @@ async function searchYouTubeVideoId(input) {
   // 2. Fallback via busca tradicional com parser HTML ytInitialData
   const searchQueries = [];
   if (isLive) {
+    if (album && /ao vivo|live/i.test(album)) {
+      searchQueries.push(`${artist} ${cleanTitle} ${album}`);
+    }
     searchQueries.push(`${artist} ${cleanTitle} ao vivo`);
     searchQueries.push(`${artist} ${cleanTitle} live`);
+    if (/1988/.test(`${title} ${album}`)) {
+      searchQueries.push(`${artist} ${cleanTitle} ao vivo 1988`);
+    }
   } else if (isAcoustic) {
     searchQueries.push(`${artist} ${cleanTitle} acustico`);
     searchQueries.push(`${artist} ${cleanTitle} acoustic`);
   } else if (isRemix) {
     searchQueries.push(`${artist} ${cleanTitle} remix`);
   } else {
-    // Versão de estúdio original
     searchQueries.push(`${artist} ${cleanTitle} official audio`);
     searchQueries.push(`${artist} ${cleanTitle}`);
     searchQueries.push(`${artist} ${cleanTitle} clipe oficial`);
@@ -368,15 +384,14 @@ async function searchYouTubeVideoId(input) {
   const allCandidates = [];
 
   for (const q of searchQueries) {
-    const cands = await fetchYoutubeCandidates('https://www.youtube.com/results?search_query=' + encodeURIComponent(q));
+    const cands = await fetchYoutubeCandidates("https://www.youtube.com/results?search_query=" + encodeURIComponent(q));
     for (const c of cands) {
       if (!seenIds.has(c.videoId)) {
         seenIds.add(c.videoId);
         allCandidates.push(c);
       }
     }
-    // Para assim que acumular candidatos suficientes de qualidade
-    if (allCandidates.length >= 6) break;
+    if (allCandidates.length >= 8) break;
   }
 
   let bestVideoId = null;
@@ -392,7 +407,6 @@ async function searchYouTubeVideoId(input) {
       bestVideoId = scored[0].videoId;
       altVideoId = scored.length > 1 ? scored[1].videoId : null;
     } else {
-      // Fallback: se nenhum atingiu score positivo, pega o primeiro não desqualificado
       const notDisqualified = allCandidates.filter(c => scoreCandidate(c, target) > -500);
       if (notDisqualified.length > 0) {
         bestVideoId = notDisqualified[0].videoId;
@@ -401,7 +415,6 @@ async function searchYouTubeVideoId(input) {
     }
   }
 
-  // Fallback final estrito (apenas se tiver score mínimo válido)
   if (!bestVideoId) {
     const notDisqualified = allCandidates.filter(c => scoreCandidate(c, target) >= 0);
     if (notDisqualified.length > 0) {
@@ -421,11 +434,10 @@ async function searchYouTubeVideoId(input) {
 }
 
 /**
- * GET /api/youtube/search?q=Linkin+Park+Numb&title=Numb&artist=Linkin+Park&durationSec=187
  * Retorna o videoId do YouTube da versão exata e oficial (estúdio, clipe original, sem visualizers indesejados)
  */
 router.get('/search', async (req, res) => {
-  const { q, title, artist, album, durationSec, duration } = req.query;
+  const { q, title, artist, album, durationSec, duration, youtubeVideoId, youtube_video_id } = req.query;
   if (!q && !title) {
     return res.status(400).json({ error: 'Parâmetro "q" ou "title" é obrigatório' });
   }
@@ -436,7 +448,8 @@ router.get('/search', async (req, res) => {
       title,
       artist,
       album,
-      durationSec: durationSec || duration
+      durationSec: durationSec || duration,
+      youtubeVideoId: youtubeVideoId || youtube_video_id
     });
 
     const videoId = typeof searchRes === 'object' && searchRes !== null ? searchRes.videoId : searchRes;

@@ -1,0 +1,50 @@
+[
+  {
+    "id": 2,
+    "user_id": 2,
+    "artist_id": 9,
+    "artist_name": "Djonga",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
+    "genre": "Rap Nacional & Hip-Hop",
+    "tracks_count": 6,
+    "albums_count": 11,
+    "subscribers": "968 mil",
+    "created_at": "2026-11-02T18:03:02.185Z"
+  },
+  {
+    "id": 3,
+    "user_id": 2,
+    "artist_id": 35,
+    "artist_name": "50 Cent",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/58da3cca2d598e43c7a7823cf75277e5/1000x1000-000000-80-0-0.jpg",
+    "genre": "Hip-Hop & Rap",
+    "tracks_count": 0,
+    "albums_count": 0,
+    "subscribers": "7,9 mi",
+    "created_at": "2026-11-02T18:03:23.189Z"
+  },
+  {
+    "id": 4,
+    "user_id": 2,
+    "artist_id": 1,
+    "artist_name": "BK",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg",
+    "genre": "Rap Nacional & Hip-Hop",
+    "tracks_count": 3,
+    "albums_count": 7,
+    "subscribers": "428 mil",
+    "created_at": "2026-11-02T20:26:43.821Z"
+  },
+  {
+    "id": 5,
+    "user_id": 2,
+    "artist_id": 14,
+    "artist_name": "Matuê",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/c42fcb920963cca4d195b939e51f19d1/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap",
+    "tracks_count": 2,
+    "albums_count": 3,
+    "subscribers": "2,6 mi",
+    "created_at": "2026-11-02T21:46:35.409Z"
+  }
+]

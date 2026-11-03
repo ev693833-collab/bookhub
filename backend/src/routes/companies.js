@@ -25,6 +25,25 @@ router.get('/', async (req, res) => {
     `);
     res.json(companies);
   } catch (err) {
+    // Fallback JSON resiliente caso o MySQL esteja offline
+    try {
+      const compsFile = path.join(__dirname, '../../data/companies.json');
+      const tracksFile = path.join(__dirname, '../../data/company_tracks.json');
+      if (fs.existsSync(compsFile)) {
+        const comps = JSON.parse(fs.readFileSync(compsFile, 'utf8') || '[]');
+        const tracks = fs.existsSync(tracksFile) ? JSON.parse(fs.readFileSync(tracksFile, 'utf8') || '[]') : [];
+        const result = comps.filter(c => c.status === 'active').map(c => {
+          const cTracks = tracks.filter(t => t.company_id === c.id && t.status === 'active');
+          const totalStock = cTracks.reduce((sum, t) => sum + (Number(t.stock_quantity) || 0), 0);
+          return {
+            ...c,
+            total_tracks: cTracks.length,
+            total_stock: totalStock
+          };
+        });
+        return res.json(result);
+      }
+    } catch (_) {}
     console.error('Erro ao listar empresas:', err);
     res.status(500).json({ error: 'Erro ao carregar bases/empresas' });
   }
@@ -50,6 +69,7 @@ function mapTrackRecord(t, userPurchasesMap = new Map()) {
     album: t.album || 'Single',
     genre: t.genre || 'Variado',
     cover: t.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+    cover_url: t.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
     preview: t.preview_url,
     durationSec: t.duration_sec || 210,
     duration: `${min}:${String(sec).padStart(2, '0')}`,
@@ -73,12 +93,32 @@ function mapTrackRecord(t, userPurchasesMap = new Map()) {
 }
 
 /**
- * Helper: Carrega e formata a lista de músicas compradas individualmente pelo usuário autenticado
- * Respeita a regra de separação da Biblioteca: não exibe aluguéis nem faixas de álbuns comprados integralmente.
+ * Helper: Carrega e formata a lista completa de compras e aluguéis (faixas e álbuns) do usuário autenticado.
+ * Inclui os álbuns adquiridos integralmente com item_type = 'album' para conferência e validação de propriedade.
  */
 async function getUserPurchasesList(targetUserId, filter = 'all') {
   const libraryStorage = require('../services/libraryStorage');
-  return libraryStorage.getUserLibraryTracks(targetUserId, filter);
+  const tracks = await libraryStorage.getUserLibraryTracks(targetUserId, filter);
+  const albums = await libraryStorage.getUserPurchasedAlbums(targetUserId);
+
+  const mappedAlbums = (albums || []).map(a => ({
+    id: `alb-${a.id}`,
+    album_id: a.id,
+    item_type: 'album',
+    title: a.title,
+    artist: a.artist || a.artist_name,
+    cover: a.cover || a.cover_url,
+    cover_url: a.cover_url || a.cover,
+    type: a.type || 'buy',
+    price: a.price,
+    payment_status: 'confirmed',
+    expires_at: a.expiresAt || null,
+    is_expired: a.isExpired || false,
+    remaining_days: a.remainingDays || null,
+    created_at: a.purchasedAt || null
+  }));
+
+  return [...tracks, ...mappedAlbums];
 }
 
 /**
@@ -132,22 +172,68 @@ router.get('/multibase/tracks', verifyToken.optional, async (req, res) => {
 
     sql += ' ORDER BY ct.id ASC';
 
-    const [tracks] = await db.query(sql, params);
+    let tracks = [];
+    try {
+      const [dbTracks] = await db.query(sql, params);
+      tracks = dbTracks;
+    } catch (dbErr) {
+      // Fallback JSON resiliente caso o MySQL esteja offline
+      const compsFile = path.join(__dirname, '../../data/companies.json');
+      const tracksFile = path.join(__dirname, '../../data/company_tracks.json');
+      const comps = fs.existsSync(compsFile) ? JSON.parse(fs.readFileSync(compsFile, 'utf8') || '[]') : [];
+      const allTracks = fs.existsSync(tracksFile) ? JSON.parse(fs.readFileSync(tracksFile, 'utf8') || '[]') : [];
+      tracks = allTracks.filter(t => t.status === 'active').map(t => {
+        const c = comps.find(comp => comp.id === t.company_id);
+        return {
+          ...t,
+          company_name: c ? c.name : 'DevSongs Records',
+          company_logo: c ? c.logo_url : null,
+          company_slug: c ? c.slug : 'devsongs'
+        };
+      });
+      if (companyId && companyId !== 'all') {
+        tracks = tracks.filter(t => String(t.company_id) === String(companyId) || t.company_slug === companyId);
+      }
+      if (mode === 'streaming') {
+        tracks = tracks.filter(t => t.available_for_stream);
+      } else if (mode === 'buy') {
+        tracks = tracks.filter(t => t.stock_quantity > 0 && t.sale_price > 0);
+      } else if (mode === 'rent') {
+        tracks = tracks.filter(t => t.stock_quantity > 0 && t.rent_price > 0);
+      }
+    }
 
     // Mapeia compras EXCLUSIVAMENTE se houver usuário autenticado comprovado pelo JWT
     const userPurchasesMap = new Map();
     if (authenticatedUserId) {
-      const [purchases] = await db.query(`
-        SELECT track_id, type, expires_at 
-        FROM company_purchases 
-        WHERE user_id = ?
-        ORDER BY id DESC
-      `, [authenticatedUserId]);
+      try {
+        const [purchases] = await db.query(`
+          SELECT track_id, type, expires_at 
+          FROM company_purchases 
+          WHERE user_id = ?
+          ORDER BY id DESC
+        `, [authenticatedUserId]);
 
-      for (const p of purchases) {
-        if (!userPurchasesMap.has(p.track_id)) {
-          userPurchasesMap.set(p.track_id, p);
+        for (const p of purchases) {
+          if (!userPurchasesMap.has(p.track_id)) {
+            userPurchasesMap.set(p.track_id, p);
+          }
         }
+      } catch (dbErr) {
+        // Fallback para persistência local JSON
+        try {
+          const purchasesJsonPath = path.join(__dirname, '../../data/company_purchases.json');
+          if (fs.existsSync(purchasesJsonPath)) {
+            const allP = JSON.parse(fs.readFileSync(purchasesJsonPath, 'utf8'));
+            const userP = allP.filter(p => Number(p.user_id) === Number(authenticatedUserId));
+            for (const p of userP) {
+              const tid = p.track_id ? Number(p.track_id) : null;
+              if (tid && !userPurchasesMap.has(tid)) {
+                userPurchasesMap.set(tid, p);
+              }
+            }
+          }
+        } catch (_) {}
       }
     }
 

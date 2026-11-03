@@ -202,6 +202,74 @@ router.delete('/artists/:id', verifyToken, async (req, res) => {
 });
 
 // =========================================================================
+// =========================================================================
+// 2.1 ARTIST SUBSCRIPTIONS ROUTES (INSCRIÇÃO EM ARTISTAS)
+// =========================================================================
+
+// GET /api/library/my-artists - Listar artistas inscritos pelo usuário logado
+router.get('/my-artists', verifyToken, async (req, res) => {
+  try {
+    const artists = await libraryStorage.getUserSubscribedArtists(req.user.id);
+    res.json({ success: true, count: artists.length, artists });
+  } catch (err) {
+    console.error('Erro ao listar artistas inscritos:', err);
+    res.status(500).json({ error: 'Erro ao carregar artistas da sua biblioteca.' });
+  }
+});
+
+// GET /api/library/subscriptions/check - Verificar status de inscrição
+router.get('/subscriptions/check', optionalAuth, async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.json({ success: true, subscribed: false });
+    }
+    const { artistName, artistId } = req.query;
+    const subscribed = await libraryStorage.isUserSubscribed(req.user.id, artistName, artistId);
+    res.json({ success: true, subscribed });
+  } catch (err) {
+    console.error('Erro ao verificar status de inscrição:', err);
+    res.status(500).json({ error: 'Erro ao verificar inscrição.' });
+  }
+});
+
+// POST /api/library/subscriptions - Inscrever-se em um artista
+router.post('/subscriptions', verifyToken, async (req, res) => {
+  try {
+    const { artistId, name, avatar_url, genre, subscribers } = req.body;
+    if (!name && !artistId) {
+      return res.status(400).json({ error: 'Nome ou identificador do artista é obrigatório.' });
+    }
+    const result = await libraryStorage.subscribeArtist(req.user.id, {
+      artistId,
+      name,
+      avatar_url,
+      genre,
+      subscribers
+    });
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('Erro ao inscrever-se no artista:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao realizar inscrição.' });
+  }
+});
+
+// DELETE /api/library/subscriptions - Cancelar inscrição
+router.delete('/subscriptions', verifyToken, async (req, res) => {
+  try {
+    const artistName = req.body?.artistName || req.query?.artistName;
+    const artistId = req.body?.artistId || req.query?.artistId;
+    if (!artistName && !artistId) {
+      return res.status(400).json({ error: 'Identificador do artista é obrigatório.' });
+    }
+    const result = await libraryStorage.unsubscribeArtist(req.user.id, artistName, artistId);
+    res.json(result);
+  } catch (err) {
+    console.error('Erro ao cancelar inscrição:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao cancelar inscrição.' });
+  }
+});
+
+// =========================================================================
 // 3. ALBUMS ROUTES
 // =========================================================================
 
@@ -219,12 +287,15 @@ router.get('/my-albums', verifyToken, async (req, res) => {
 // POST /api/library/albums/:id/buy - Comprar álbum integralmente
 router.post('/albums/:id/buy', verifyToken, async (req, res) => {
   try {
-    const { price, companyId, title, artist_name, cover_url, release_date, genre } = req.body;
+    const { price, companyId, title, artist_name, cover_url, release_date, genre, original_price, discount_applied, tracks_count } = req.body;
     const result = await libraryStorage.purchaseAlbum(req.user.id, {
       albumId: req.params.id,
       companyId,
       type: 'buy',
       price,
+      original_price,
+      discount_applied,
+      tracks_count,
       title,
       artist_name,
       cover_url,
@@ -241,12 +312,15 @@ router.post('/albums/:id/buy', verifyToken, async (req, res) => {
 // POST /api/library/albums/:id/rent - Alugar álbum por 30 dias
 router.post('/albums/:id/rent', verifyToken, async (req, res) => {
   try {
-    const { price, companyId, title, artist_name, cover_url, release_date, genre } = req.body;
+    const { price, companyId, title, artist_name, cover_url, release_date, genre, original_price, discount_applied, tracks_count } = req.body;
     const result = await libraryStorage.purchaseAlbum(req.user.id, {
       albumId: req.params.id,
       companyId,
       type: 'rent',
       price,
+      original_price,
+      discount_applied,
+      tracks_count,
       title,
       artist_name,
       cover_url,

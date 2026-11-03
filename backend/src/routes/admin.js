@@ -1,10 +1,35 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
+const path = require("path");
+const fs = require("fs");
 const pool = require("../config/database");
 const verifyAdmin = require("../middlewares/admin");
 
 const router = express.Router();
 const saltRounds = 10;
+
+const DATA_DIR = path.join(__dirname, "../../data");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+const COMPANIES_FILE = path.join(DATA_DIR, "companies.json");
+const TRACKS_FILE = path.join(DATA_DIR, "company_tracks.json");
+const PURCHASES_FILE = path.join(DATA_DIR, "company_purchases.json");
+
+function readJsonFile(filePath, defaultVal = []) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, "utf8") || "[]");
+    }
+  } catch (_) {}
+  return defaultVal;
+}
+
+function writeJsonFile(filePath, data) {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+  } catch (err) {
+    console.error("Erro ao salvar " + filePath + ":", err);
+  }
+}
 
 // Todas as rotas deste arquivo exigem permissão de Superadmin
 router.use(verifyAdmin);
@@ -146,16 +171,16 @@ router.get("/metrics", async (req, res) => {
         buyRevenue: Number(stats.buy_revenue || 0),
         rentCount: Number(stats.rent_count || 0),
         rentRevenue: Number(stats.rent_revenue || 0),
-        receivedRevenue: totalRev, // Valores 100% recebidos e confirmados
-        pendingRevenue: pendingAmount, // Valores em carrinho/intenção
+        receivedRevenue: totalRev,
+        pendingRevenue: pendingAmount,
       },
       financial: {
         totalRevenue: totalRev,
         receivedAmount: totalRev,
         pendingAmount: pendingAmount,
-        registeredExpenses: 0.0, // Nenhuma despesa registrada no schema atual
-        calculatedBalance: totalRev, // Saldo apurado das entradas confirmadas
-        hasExpenseModule: false, // Indicador transparente para a UI
+        registeredExpenses: 0.0,
+        calculatedBalance: totalRev,
+        hasExpenseModule: false,
       },
       users: {
         total: Number(userStats[0]?.total_users || 0),
@@ -177,8 +202,78 @@ router.get("/metrics", async (req, res) => {
       recentMovements,
     });
   } catch (err) {
-    console.error("[AdminMetrics] Erro ao consolidar métricas:", err);
-    return res.status(500).json({ error: "Erro ao consolidar métricas administrativas." });
+    console.warn("[AdminMetrics] MySQL indisponível, usando fallback JSON:", err.message);
+    try {
+      const users = readJsonFile(USERS_FILE, []);
+      const companies = readJsonFile(COMPANIES_FILE, []);
+      const tracks = readJsonFile(TRACKS_FILE, []);
+      const purchases = readJsonFile(PURCHASES_FILE, []);
+
+      const totalRev = purchases.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
+      const buyP = purchases.filter(p => p.type === 'buy');
+      const rentP = purchases.filter(p => p.type === 'rent');
+
+      const recentMovements = purchases.slice().reverse().slice(0, 8).map(p => {
+        const tr = tracks.find(t => t.id === p.track_id);
+        const comp = companies.find(c => c.id === p.company_id);
+        const u = users.find(x => x.id === p.user_id);
+        return {
+          id: p.id,
+          type: p.type,
+          price: Number(p.price) || 0,
+          created_at: p.created_at,
+          track_title: tr?.title || 'Faixa ' + p.track_id,
+          track_artist: tr?.artist || 'Artista',
+          track_cover: tr?.cover_url || null,
+          company_name: comp?.name || 'Base',
+          buyer_name: u?.full_name || u?.name || 'Usuário #' + p.user_id,
+          buyer_email: u?.email || 'usuario@devsongs.com'
+        };
+      });
+
+      return res.json({
+        period,
+        sales: {
+          totalRevenue: totalRev,
+          totalSalesCount: purchases.length,
+          buyCount: buyP.length,
+          buyRevenue: buyP.reduce((acc, p) => acc + (Number(p.price) || 0), 0),
+          rentCount: rentP.length,
+          rentRevenue: rentP.reduce((acc, p) => acc + (Number(p.price) || 0), 0),
+          receivedRevenue: totalRev,
+          pendingRevenue: 0,
+        },
+        financial: {
+          totalRevenue: totalRev,
+          receivedAmount: totalRev,
+          pendingAmount: 0,
+          registeredExpenses: 0.0,
+          calculatedBalance: totalRev,
+          hasExpenseModule: false,
+        },
+        users: {
+          total: users.length,
+          active: users.filter(u => (u.status || 'active') === 'active').length,
+          inactive: users.filter(u => u.status === 'inactive').length,
+          blocked: users.filter(u => u.status === 'blocked').length,
+          admins: users.filter(u => u.role === 'admin').length,
+        },
+        stock: {
+          totalTracks: tracks.length,
+          totalLicenses: tracks.reduce((acc, t) => acc + (Number(t.stock_quantity) || 0), 0),
+          lowStockTracks: tracks.filter(t => (Number(t.stock_quantity) || 0) <= 15 && (Number(t.stock_quantity) || 0) > 0).length,
+          outOfStockTracks: tracks.filter(t => (Number(t.stock_quantity) || 0) === 0).length,
+        },
+        companies: {
+          total: companies.length,
+          active: companies.filter(c => (c.status || 'active') === 'active').length,
+        },
+        recentMovements,
+      });
+    } catch (fallbackErr) {
+      console.error("[AdminMetrics] Erro no fallback:", fallbackErr);
+      return res.status(500).json({ error: "Erro ao consolidar métricas administrativas." });
+    }
   }
 });
 
@@ -566,8 +661,33 @@ router.get("/companies", async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error("[AdminCompanies] Erro ao listar gravadoras:", err);
-    return res.status(500).json({ error: "Erro ao consultar gravadoras." });
+    console.warn("[AdminCompanies] MySQL indisponível, usando fallback JSON:", err.message);
+    try {
+      const companies = readJsonFile(COMPANIES_FILE, []);
+      const tracks = readJsonFile(TRACKS_FILE, []);
+      const purchases = readJsonFile(PURCHASES_FILE, []);
+
+      const list = companies.map(c => {
+        const cTracks = tracks.filter(t => t.company_id === c.id);
+        const cPurchases = purchases.filter(p => p.company_id === c.id);
+        return {
+          ...c,
+          total_tracks: cTracks.length,
+          active_tracks: cTracks.filter(t => t.status === 'active').length,
+          total_stock: cTracks.reduce((acc, t) => acc + (Number(t.stock_quantity) || 0), 0),
+          total_revenue: cPurchases.reduce((acc, p) => acc + (Number(p.price) || 0), 0),
+          total_sales_count: cPurchases.length,
+        };
+      });
+
+      return res.json({
+        total: list.length,
+        companies: list,
+      });
+    } catch (fallbackErr) {
+      console.error("[AdminCompanies] Erro no fallback:", fallbackErr);
+      return res.status(500).json({ error: "Erro ao consultar gravadoras." });
+    }
   }
 });
 
@@ -847,14 +967,59 @@ router.get("/users", async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error("[AdminUsers] Erro ao listar usuários:", err);
-    return res.status(500).json({ error: "Erro ao consultar usuários." });
+    console.warn("[AdminUsers] MySQL indisponível, usando fallback users.json:", err.message);
+    try {
+      const users = readJsonFile(USERS_FILE, []);
+      const purchases = readJsonFile(PURCHASES_FILE, []);
+
+      let filtered = users;
+      if (role && role !== "all") {
+        filtered = filtered.filter(u => (u.role || 'user') === role);
+      }
+      if (status && status !== "all") {
+        filtered = filtered.filter(u => (u.status || 'active') === status);
+      }
+      if (search && search.trim() !== "") {
+        const term = search.toLowerCase().trim();
+        filtered = filtered.filter(u =>
+          (u.full_name || u.name || '').toLowerCase().includes(term) ||
+          (u.email || '').toLowerCase().includes(term)
+        );
+      }
+
+      const mapped = filtered.map(u => {
+        const userPurchases = purchases.filter(p => p.user_id === u.id);
+        const totalSpent = userPurchases.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
+        return {
+          id: u.id,
+          full_name: u.full_name || u.name,
+          email: u.email,
+          role: u.role || 'user',
+          status: u.status || 'active',
+          avatar_url: u.avatar_url || null,
+          phone: u.phone || null,
+          city: u.city || null,
+          state: u.state || null,
+          created_at: u.created_at || new Date().toISOString(),
+          total_purchases: userPurchases.length,
+          total_spent: totalSpent
+        };
+      });
+
+      return res.json({
+        total: mapped.length,
+        users: mapped
+      });
+    } catch (fallbackErr) {
+      console.error("[AdminUsers] Erro no fallback:", fallbackErr);
+      return res.status(500).json({ error: "Erro ao consultar usuários." });
+    }
   }
 });
 
 /**
  * POST /api/admin/users
- * Criação segura de novo usuário pelo Superadmin.
+ * Criação segura de novo usuário pelo Superadmin (com suporte a MySQL + Fallback JSON)
  */
 router.post("/users", async (req, res) => {
   const { full_name, email, password, role = "user", status = "active" } = req.body;
@@ -864,34 +1029,61 @@ router.post("/users", async (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  const validRole = role === "admin" ? "admin" : "user";
+  const validStatus = ["active", "inactive", "blocked"].includes(status) ? status : "active";
 
   try {
-    // 1. Verifica se e-mail já existe
-    const [existing] = await pool.query(
-      "SELECT id FROM users WHERE LOWER(TRIM(email)) = ? LIMIT 1",
-      [normalizedEmail]
-    );
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    let newUserId = null;
 
-    if (existing && existing.length > 0) {
+    // 1. Tenta persistir no MySQL
+    try {
+      const [existing] = await pool.query(
+        "SELECT id FROM users WHERE LOWER(TRIM(email)) = ? LIMIT 1",
+        [normalizedEmail]
+      );
+      if (existing && existing.length > 0) {
+        return res.status(400).json({ error: "Este endereço de e-mail já está em uso por outro usuário." });
+      }
+
+      const [result] = await pool.query(
+        "INSERT INTO users (full_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)",
+        [full_name.trim(), normalizedEmail, hashedPassword, validRole, validStatus]
+      );
+      newUserId = result.insertId;
+    } catch (dbErr) {
+      console.warn("[AdminUsers] MySQL indisponível, usando persistência local JSON:", dbErr.message);
+    }
+
+    // 2. Sempre sincroniza e garante persistência em users.json
+    const users = readJsonFile(USERS_FILE, []);
+    const localConflict = users.find(u => (u.email || '').toLowerCase().trim() === normalizedEmail);
+    if (localConflict) {
       return res.status(400).json({ error: "Este endereço de e-mail já está em uso por outro usuário." });
     }
 
-    // 2. Hash da senha
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    if (!newUserId) {
+      newUserId = Math.max(...users.map(u => Number(u.id) || 0), 0) + 1;
+    }
 
-    const validRole = role === "admin" ? "admin" : "user";
-    const validStatus = ["active", "inactive", "blocked"].includes(status) ? status : "active";
-
-    const [result] = await pool.query(
-      "INSERT INTO users (full_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)",
-      [full_name.trim(), normalizedEmail, hashedPassword, validRole, validStatus]
-    );
+    const newUserObj = {
+      id: newUserId,
+      name: full_name.trim(),
+      full_name: full_name.trim(),
+      email: normalizedEmail,
+      password_hash: hashedPassword,
+      role: validRole,
+      status: validStatus,
+      created_at: new Date().toISOString()
+    };
+    users.push(newUserObj);
+    writeJsonFile(USERS_FILE, users);
 
     return res.status(201).json({
       success: true,
       message: `Usuário ${full_name} criado com sucesso!`,
       user: {
-        id: result.insertId,
+        id: newUserId,
         full_name: full_name.trim(),
         email: normalizedEmail,
         role: validRole,
@@ -907,80 +1099,101 @@ router.post("/users", async (req, res) => {
 /**
  * PUT /api/admin/users/:id
  * Edição de dados do usuário (nome, e-mail, função, status).
- * Previne que o admin remova seu próprio privilégio de admin.
  */
 router.put("/users/:id", async (req, res) => {
   const { id } = req.params;
   const targetId = parseInt(id, 10);
   const { full_name, email, role, status, password } = req.body;
 
+  // Se o admin logado estiver editando a si mesmo, não pode tirar sua própria role de admin
+  if (req.user.id === targetId && role && role !== "admin") {
+    return res.status(400).json({
+      error: "Você não pode revogar seu próprio privilégio de Superadmin.",
+    });
+  }
+
+  // Se o admin logado estiver editando a si mesmo, não pode desativar sua própria conta
+  if (req.user.id === targetId && status && status !== "active") {
+    return res.status(400).json({
+      error: "Você não pode desativar ou bloquear sua própria conta de administrador.",
+    });
+  }
+
   try {
-    // Busca usuário atual
-    const [targetUsers] = await pool.query("SELECT * FROM users WHERE id = ?", [targetId]);
-    if (targetUsers.length === 0) {
-      return res.status(404).json({ error: "Usuário não encontrado." });
-    }
-    const current = targetUsers[0];
-
-    // Se o admin logado estiver editando a si mesmo, não pode tirar sua própria role de admin
-    if (req.user.id === targetId && role && role !== "admin") {
-      return res.status(400).json({
-        error: "Você não pode revogar seu próprio privilégio de Superadmin.",
-      });
+    let hashedPassword = null;
+    if (password && password.trim().length >= 6) {
+      hashedPassword = await bcrypt.hash(password.trim(), saltRounds);
     }
 
-    // Se o admin logado estiver editando a si mesmo, não pode desativar sua própria conta
-    if (req.user.id === targetId && status && status !== "active") {
-      return res.status(400).json({
-        error: "Você não pode desativar ou bloquear sua própria conta de administrador.",
-      });
+    // 1. Tenta atualizar no MySQL
+    try {
+      const [targetUsers] = await pool.query("SELECT * FROM users WHERE id = ?", [targetId]);
+      if (targetUsers.length > 0) {
+        const current = targetUsers[0];
+        const updates = [];
+        const params = [];
+
+        if (full_name) {
+          updates.push("full_name = ?");
+          params.push(full_name.trim());
+        }
+        if (email) {
+          const normalizedEmail = email.toLowerCase().trim();
+          if (normalizedEmail !== current.email.toLowerCase().trim()) {
+            const [conflict] = await pool.query(
+              "SELECT id FROM users WHERE LOWER(TRIM(email)) = ? AND id != ? LIMIT 1",
+              [normalizedEmail, targetId]
+            );
+            if (conflict && conflict.length > 0) {
+              return res.status(400).json({ error: "Este e-mail já está sendo utilizado por outro usuário." });
+            }
+            updates.push("email = ?");
+            params.push(normalizedEmail);
+          }
+        }
+        if (role && ["user", "admin"].includes(role)) {
+          updates.push("role = ?");
+          params.push(role);
+        }
+        if (status && ["active", "inactive", "blocked"].includes(status)) {
+          updates.push("status = ?");
+          params.push(status);
+        }
+        if (hashedPassword) {
+          updates.push("password_hash = ?");
+          params.push(hashedPassword);
+        }
+
+        if (updates.length > 0) {
+          params.push(targetId);
+          await pool.query(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`, params);
+        }
+      }
+    } catch (dbErr) {
+      console.warn("[AdminUsers] MySQL indisponível, sincronizando no fallback JSON:", dbErr.message);
     }
 
-    const updates = [];
-    const params = [];
-
-    if (full_name) {
-      updates.push("full_name = ?");
-      params.push(full_name.trim());
-    }
-
-    if (email) {
-      const normalizedEmail = email.toLowerCase().trim();
-      if (normalizedEmail !== current.email.toLowerCase().trim()) {
-        const [conflict] = await pool.query(
-          "SELECT id FROM users WHERE LOWER(TRIM(email)) = ? AND id != ? LIMIT 1",
-          [normalizedEmail, targetId]
-        );
-        if (conflict && conflict.length > 0) {
+    // 2. Atualiza no users.json
+    const users = readJsonFile(USERS_FILE, []);
+    const userIdx = users.findIndex(u => Number(u.id) === targetId);
+    if (userIdx !== -1) {
+      if (email) {
+        const normEmail = email.toLowerCase().trim();
+        const conf = users.find(u => Number(u.id) !== targetId && (u.email || '').toLowerCase().trim() === normEmail);
+        if (conf) {
           return res.status(400).json({ error: "Este e-mail já está sendo utilizado por outro usuário." });
         }
-        updates.push("email = ?");
-        params.push(normalizedEmail);
+        users[userIdx].email = normEmail;
       }
+      if (full_name) {
+        users[userIdx].full_name = full_name.trim();
+        users[userIdx].name = full_name.trim();
+      }
+      if (role && ["user", "admin"].includes(role)) users[userIdx].role = role;
+      if (status && ["active", "inactive", "blocked"].includes(status)) users[userIdx].status = status;
+      if (hashedPassword) users[userIdx].password_hash = hashedPassword;
+      writeJsonFile(USERS_FILE, users);
     }
-
-    if (role && ["user", "admin"].includes(role)) {
-      updates.push("role = ?");
-      params.push(role);
-    }
-
-    if (status && ["active", "inactive", "blocked"].includes(status)) {
-      updates.push("status = ?");
-      params.push(status);
-    }
-
-    if (password && password.trim().length >= 6) {
-      const hashedPassword = await bcrypt.hash(password.trim(), saltRounds);
-      updates.push("password_hash = ?");
-      params.push(hashedPassword);
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json({ error: "Nenhuma alteração enviada." });
-    }
-
-    params.push(targetId);
-    await pool.query(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`, params);
 
     return res.json({
       success: true,
@@ -995,8 +1208,6 @@ router.put("/users/:id", async (req, res) => {
 /**
  * PATCH /api/admin/users/:id/status
  * Inativação ou Reativação segura de conta (SOFT DISABLE).
- * REGRA DO USUÁRIO: Não faz hard delete; apenas inativa para preservar integridade
- * e histórico financeiro de compras e movimentações.
  */
 router.patch("/users/:id/status", async (req, res) => {
   const { id } = req.params;
@@ -1007,7 +1218,6 @@ router.patch("/users/:id/status", async (req, res) => {
     return res.status(400).json({ error: "Status inválido. Escolha 'active', 'inactive' ou 'blocked'." });
   }
 
-  // Prevenção estrita de auto-bloqueio / auto-inativação
   if (req.user.id === targetId && status !== "active") {
     return res.status(400).json({
       error: "Ação bloqueada por segurança: Você não pode inativar ou bloquear sua própria conta de administrador.",
@@ -1015,10 +1225,17 @@ router.patch("/users/:id/status", async (req, res) => {
   }
 
   try {
-    const [result] = await pool.query("UPDATE users SET status = ? WHERE id = ?", [status, targetId]);
+    try {
+      await pool.query("UPDATE users SET status = ? WHERE id = ?", [status, targetId]);
+    } catch (dbErr) {
+      console.warn("[AdminUsers] MySQL indisponível, atualizando status em users.json:", dbErr.message);
+    }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Usuário não encontrado." });
+    const users = readJsonFile(USERS_FILE, []);
+    const userIdx = users.findIndex(u => Number(u.id) === targetId);
+    if (userIdx !== -1) {
+      users[userIdx].status = status;
+      writeJsonFile(USERS_FILE, users);
     }
 
     const actionText = status === "active" ? "reativada" : status === "inactive" ? "inativada" : "bloqueada";

@@ -45,10 +45,13 @@ if (require.main === module) {
 
     server.on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
-            console.log(`Porta ${port} em uso, tentando outra...`);
-            app.listen(0, () => {
-                console.log(`Servidor rodando em uma porta aleatória`);
-            });
+            console.log(`Porta ${port} em uso, aguardando liberação para reconectar na porta ${port}...`);
+            setTimeout(() => {
+                try {
+                    server.close();
+                    server.listen(port);
+                } catch (_) {}
+            }, 1000);
         } else {
             console.error(err);
         }

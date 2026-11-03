@@ -7,6 +7,7 @@ import {
   Camera, Upload, Image as ImageIcon, MoreVertical, ListPlus, User, Disc3
 } from 'lucide-react';
 import styles from './LibraryView.module.css';
+import { getSafeCover } from '../../utils/coverHelper';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -15,6 +16,7 @@ export default function LibraryView({
   user,
   onPlayTrack,
   onPlayQueue,
+  onAddToQueue = null,
   currentTrack,
   isPlaying,
   initialTab = 'playlists',
@@ -25,7 +27,8 @@ export default function LibraryView({
   onPlaylistsUpdated = null,
   onExploreCatalog = null,
   onSelectAlbum = null,
-  onOpenArtistProfile = null
+  onOpenArtistProfile = null,
+  refreshKey = 0
 }) {
   const [activeCategory, setActiveCategory] = useState(initialTab); // 'playlists' | 'tracks' | 'albums' | 'artists'
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,6 +41,7 @@ export default function LibraryView({
   const [albums, setAlbums] = useState([]);
   const [catalogAlbums, setCatalogAlbums] = useState([]);
   const [artists, setArtists] = useState([]);
+  const [catalogArtists, setCatalogArtists] = useState([]);
 
   // Loading & error
   const [loading, setLoading] = useState(false);
@@ -79,12 +83,18 @@ export default function LibraryView({
     setTimeout(() => setFeedback(null), 4000);
   };
 
-  // Helper de headers autenticados
+  // Helper de headers autenticados com fallback para localStorage garantindo persistência no reload
+  const effectiveToken = useMemo(() => {
+    if (token) return token;
+    if (typeof window !== 'undefined') return localStorage.getItem('token');
+    return null;
+  }, [token]);
+
   const authHeaders = useMemo(() => {
     const h = { 'Content-Type': 'application/json' };
-    if (token) h['Authorization'] = `Bearer ${token}`;
+    if (effectiveToken) h['Authorization'] = `Bearer ${effectiveToken}`;
     return h;
-  }, [token]);
+  }, [effectiveToken]);
 
   // Carregar dados de playlists
   const fetchPlaylists = useCallback(async () => {
@@ -201,16 +211,40 @@ export default function LibraryView({
     }
   }, []);
 
-  // Carregar artistas
+  // Carregar artistas inscritos na biblioteca pessoal do usuário
   const fetchArtists = useCallback(async () => {
+    const activeTok = effectiveToken || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    try {
+      if (activeTok) {
+        const res = await fetch(`${API_URL}/api/library/my-artists`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${activeTok}`
+          }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setArtists(data.artists || []);
+          return;
+        }
+      }
+      setArtists([]);
+    } catch (err) {
+      console.error('Erro ao buscar artistas inscritos:', err);
+      setArtists([]);
+    }
+  }, [effectiveToken]);
+
+  // Carregar catálogo geral de artistas para resolução de faixas e formulários
+  const fetchCatalogArtists = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/library/artists`);
       const data = await res.json();
       if (res.ok) {
-        setArtists(data.artists || []);
+        setCatalogArtists(data.artists || []);
       }
     } catch (err) {
-      console.error('Erro ao buscar artistas:', err);
+      console.error('Erro ao buscar catálogo de artistas:', err);
     }
   }, []);
 
@@ -236,9 +270,24 @@ export default function LibraryView({
       fetchCatalogTracks(),
       fetchAlbums(),
       fetchCatalogAlbums(),
-      fetchArtists()
+      fetchArtists(),
+      fetchCatalogArtists()
     ]).finally(() => setLoading(false));
-  }, [fetchPlaylists, fetchTracks, fetchCatalogTracks, fetchAlbums, fetchCatalogAlbums, fetchArtists]);
+  }, [fetchPlaylists, fetchTracks, fetchCatalogTracks, fetchAlbums, fetchCatalogAlbums, fetchArtists, fetchCatalogArtists, refreshKey]);
+
+  // Recarga reativa de artistas quando houver nova inscrição/cancelamento
+  useEffect(() => {
+    if (refreshKey > 0) {
+      fetchArtists();
+    }
+  }, [refreshKey, fetchArtists]);
+
+  // Recarga reativa de artistas ao alternar para a aba de artistas
+  useEffect(() => {
+    if (activeCategory === 'artists') {
+      fetchArtists();
+    }
+  }, [activeCategory, fetchArtists]);
 
   // Ref para controlar última playlist carregada e evitar loop de re-abertura ao clicar em "Voltar"
   const lastTargetIdRef = useRef(null);
@@ -268,59 +317,106 @@ export default function LibraryView({
     fetchAlbumDetails(albumId);
   }, [handleClosePlaylist, fetchAlbumDetails]);
 
+  // Dicionário de aliases e variações canônicas de escrita dos artistas
+  const KNOWN_ARTIST_ALIASES = useMemo(() => ({
+    'bk': ['bk', "bk'", 'abebe bikila', 'abebe'],
+    'pricila areba': ['pricila areba', 'priscila areba', 'priscila', 'pricila'],
+    'priscila areba': ['pricila areba', 'priscila areba', 'priscila', 'pricila'],
+    'jovem dex': ['jovem dex', 'joven dex', 'dex'],
+    'mc gp': ['mc gp', 'mcgp', 'gp'],
+    'mc cabelinho': ['mc cabelinho', 'mccabelinho', 'cabelinho'],
+    'brandao85': ['brandao85', 'brandao 85', 'brandão85', 'brandão 85', 'brandao', 'brandão'],
+    'forrozao tropykalia': ['forrozao tropykalia', 'forrozão tropykália', 'forrozao tropikalia', 'tropykalia', 'tropykália', 'tropikalia'],
+    'justin bieber': ['justin bieber', 'justin', 'bieber'],
+    'baco exu do blues': ['baco exu do blues', 'baco exu', 'baco'],
+    'teto': ['teto'],
+    'matue': ['matue', 'matuê'],
+    'djonga': ['djonga'],
+    'veigh': ['veigh'],
+    'leviano': ['leviano'],
+    'wiu': ['wiu'],
+    'vmz': ['vmz'],
+    'alee': ['alee'],
+    'qualy': ['qualy'],
+    'leall': ['leall'],
+    'scalene': ['scalene'],
+    '2zdiniz': ['2zdiniz', '2zdinizz', '2z diniz'],
+    'matchola': ['matchola'],
+    'link do zap': ['link do zap', 'linkdozap'],
+    'pluglip': ['pluglip']
+  }), []);
+
+  const isSafeArtistMatch = useCallback((target, candidate) => {
+    if (!target || !candidate) return false;
+    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['"`.,\s-]/g, '');
+    const phoneticNorm = (s) => cleanSimple(s).replace(/sc/g, 'c');
+    const stripMC = (s) => cleanSimple(s).replace(/^mc/, '');
+    const tClean = cleanSimple(target);
+    const cClean = cleanSimple(candidate);
+    if (!tClean || !cClean) return false;
+    if (tClean === cClean) return true;
+    if (phoneticNorm(target) === phoneticNorm(candidate)) return true;
+    if (stripMC(target) === stripMC(candidate) && stripMC(target).length >= 2) return true;
+
+    for (const [key, aliases] of Object.entries(KNOWN_ARTIST_ALIASES)) {
+      const keyClean = cleanSimple(key);
+      const inTarget = tClean === keyClean || aliases.some(a => cleanSimple(a) === tClean);
+      const inCandidate = cClean === keyClean || aliases.some(a => cleanSimple(a) === cClean);
+      if (inTarget && inCandidate) return true;
+    }
+    return false;
+  }, [KNOWN_ARTIST_ALIASES]);
+
   // Identificar participantes de uma faixa (artistas principais e colaborações/participações)
   const getTrackParticipants = useCallback((track, artistList) => {
     if (!track) return [];
-    const list = (artistList && artistList.length > 0) ? artistList : (artists || []);
+    const list = (artistList && artistList.length > 0) ? artistList : (catalogArtists.length > 0 ? catalogArtists : (artists || []));
 
-    // 1. Se a faixa já possuir lista explícita de participantes no acervo
+    // 1. Se a faixa já possuir lista explícita de participantes no acervo,
+    //    re-resolve SEMPRE contra o catálogo atual para garantir que artistas
+    //    cadastrados depois da faixa sejam reconhecidos (corrige cache desatualizado).
     if (Array.isArray(track.participants) && track.participants.length > 0) {
-      return track.participants.map(p => {
-        const found = list.find(a => Number(a.id) === Number(p.artistId || p.artist_id || p.id) || a.name?.toLowerCase() === p.name?.toLowerCase());
-        return {
-          name: p.name || (found ? found.name : 'Artista'),
-          artistId: found ? found.id : (p.artistId || p.artist_id || null),
-          hasProfile: Boolean(found && found.id)
-        };
-      });
+      // Filtra participantes inválidos (ex: strings mal serializadas)
+      const validParts = track.participants.filter(p => typeof p === 'object' && p !== null);
+      if (validParts.length > 0) {
+        return validParts.map(p => {
+          const pId = p.artistId || p.artist_id || p.id;
+          // Busca por ID primeiro (resolução direta), depois por nome (com aliases)
+          const byId = (pId && Number(pId) > 0) ? list.find(a => Number(a.id) === Number(pId)) : null;
+          const found = byId || list.find(a => isSafeArtistMatch(a.name, p.name));
+          return {
+            name: (found ? found.name : p.name) || 'Artista',
+            artistId: found ? found.id : (pId ? Number(pId) : null),
+            hasProfile: Boolean(found && found.id)
+          };
+        });
+      }
+      // Se todos eram inválidos, cai na resolução textual abaixo
     }
 
     if (!track.artist) return [];
 
-    const parts = String(track.artist)
-      .split(/[,&/]|(?:\s+e\s+)|\s+feat\.?\s+|\s+ft\.?\s+/i)
-      .map(p => p.trim())
+    const cleanSource = String(track.artist).replace(/\.(wav|mp3|m4a|flac|aac)\d*$/i, '');
+    const parts = cleanSource
+      .split(/[,&/+]|(?:\s+e\s+)|\s+feat\.?\s+|\s+ft\.?\s+|\s+part\.?\s+/i)
+      .map(p => p.trim().replace(/\.(wav|mp3|m4a|flac|aac)\d*$/i, ''))
       .filter(Boolean);
 
     const participants = [];
     const seenNames = new Set();
-    const norm = str => str.toLowerCase().replace(/sc/g, 'c').replace(/[^a-z0-9]/g, '');
+    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['"`.,\s-]/g, '');
 
     parts.forEach(part => {
-      const pNorm = norm(part);
-      const found = list.find(a => a.name && (norm(a.name) === pNorm || a.name.toLowerCase() === part.toLowerCase()));
+      const found = list.find(a => isSafeArtistMatch(a.name, part));
       const displayName = found ? found.name : part;
-      if (!seenNames.has(norm(displayName))) {
-        seenNames.add(norm(displayName));
+      const normKey = cleanSimple(displayName);
+      if (!seenNames.has(normKey)) {
+        seenNames.add(normKey);
         participants.push({
           name: displayName,
           artistId: found ? found.id : null,
-          hasProfile: Boolean(found)
+          hasProfile: Boolean(found && found.id)
         });
-      }
-    });
-
-    list.forEach(a => {
-      if (a.name && track.artist.toLowerCase().includes(a.name.toLowerCase())) {
-        const aNorm = norm(a.name);
-        if (!seenNames.has(aNorm)) {
-          seenNames.add(aNorm);
-          participants.push({
-            name: a.name,
-            artistId: a.id,
-            hasProfile: true
-          });
-        }
       }
     });
 
@@ -344,7 +440,7 @@ export default function LibraryView({
     }
 
     return participants;
-  }, [artists]);
+  }, [artists, isSafeArtistMatch]);
 
   // Identificar álbum associado a uma faixa (excluindo faixas avulsas ou 'Single')
   const getTrackAssociatedAlbum = useCallback((track, albumList) => {
@@ -968,6 +1064,36 @@ export default function LibraryView({
       };
     }
 
+    // 3. Checagem de Álbum Comprado/Alugado: se a faixa pertence a um álbum adquirido integralmente pelo usuário
+    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const trackAlbum = cleanSimple(typeof trackOrId === 'object' ? (trackOrId.album || selectedAlbum?.title || '') : (selectedAlbum?.title || ''));
+    const trackAlbumId = typeof trackOrId === 'object' ? (trackOrId.album_id || trackOrId.albumId || selectedAlbum?.id) : selectedAlbum?.id;
+
+    const matchedPurchasedAlbum = (albums || []).find(alb => {
+      const albTitle = cleanSimple(alb.title);
+      const titleMatch = trackAlbum && albTitle && (trackAlbum === albTitle || trackAlbum.includes(albTitle) || albTitle.includes(trackAlbum));
+      const idMatch = trackAlbumId && alb.id && (String(trackAlbumId) === String(alb.id) || String(trackAlbumId) === String(alb.album_id));
+      return titleMatch || idMatch;
+    });
+
+    if (matchedPurchasedAlbum) {
+      const isRent = matchedPurchasedAlbum.type === 'rent';
+      const isExpired = Boolean(matchedPurchasedAlbum.isExpired || matchedPurchasedAlbum.is_expired);
+      const canPlay = !isRent || !isExpired;
+      return {
+        isExpired,
+        canPlay,
+        isLocked: !canPlay,
+        accessStatus: isRent ? (isExpired ? 'rent_expired' : 'rent_active') : 'purchased',
+        type: isRent ? 'rent' : 'buy',
+        rent_price: Number(matchedPurchasedAlbum.rent_price) || 1.90,
+        sale_price: Number(matchedPurchasedAlbum.sale_price) || 4.90,
+        remainingDays: matchedPurchasedAlbum.remainingDays,
+        expiresAt: matchedPurchasedAlbum.expiresAt,
+        userTrack: trackOrId
+      };
+    }
+
     // 3. Objeto com propriedades no formato camelCase (se já avaliado anteriormente)
     if (typeof trackOrId === 'object' && trackOrId.canPlay !== undefined) {
       const canPlay = Boolean(trackOrId.canPlay);
@@ -1424,7 +1550,7 @@ export default function LibraryView({
             </button>
             <button
               className={`${styles.chipBtn} ${activeCategory === 'artists' ? styles.chipBtnActive : ''}`}
-              onClick={() => { setActiveCategory('artists'); handleClosePlaylist(); setSelectedAlbum(null); setSelectedArtist(null); }}
+              onClick={() => { setActiveCategory('artists'); handleClosePlaylist(); setSelectedAlbum(null); setSelectedArtist(null); fetchArtists(); }}
             >
               <Mic2 size={16} /> Artistas ({artists.length})
             </button>
@@ -1567,12 +1693,17 @@ export default function LibraryView({
                         ...t,
                         ...getTrackAccessInfo(t)
                       }));
-                      const playable = playlistTracksWithAccess.filter(t => !t.isExpired && t.canPlay && !t.isLocked);
+                      const playable = playlistTracksWithAccess.filter(t => {
+                        if (t.isExpired || t.is_expired) return false;
+                        if (t.isLocked || t.is_locked) return false;
+                        if (t.canPlay === false || t.can_play === false) return false;
+                        return true;
+                      });
                       if (playable.length === 0) {
                         showNotice('Todas as músicas desta playlist estão bloqueadas ou com aluguel expirado. Adquira o acesso para ouvir.', 'error');
                         return;
                       }
-                      onPlayQueue && onPlayQueue(playable, 0);
+                      onPlayQueue && onPlayQueue(playable, 0, selectedPlaylist?.name || 'Playlist');
                     }}
                   >
                     <Play size={22} fill="#0f0f0f" color="#0f0f0f" style={{ marginLeft: '2px' }} />
@@ -1648,7 +1779,26 @@ export default function LibraryView({
                           if (isLocked) {
                             setExpiredModalTrack({ ...t, ...access, isNotAcquired, isPendingPayment });
                           } else {
-                            onPlayTrack && onPlayTrack(t);
+                            const playlistTracksWithAccess = selectedPlaylist.tracks.map(trk => ({
+                              ...trk,
+                              ...getTrackAccessInfo(trk)
+                            }));
+                            const playable = playlistTracksWithAccess.filter(trk => {
+                              if (trk.isExpired || trk.is_expired) return false;
+                              if (trk.isLocked || trk.is_locked) return false;
+                              if (trk.canPlay === false || trk.can_play === false) return false;
+                              return true;
+                            });
+                            const targetIdx = playable.findIndex(trk => {
+                              if (trk.id && t.id && String(trk.id) === String(t.id)) return true;
+                              if (trk.title && t.title && trk.title.trim().toLowerCase() === t.title.trim().toLowerCase()) return true;
+                              return false;
+                            });
+                            if (onPlayQueue && playable.length > 0) {
+                              onPlayQueue(playable, targetIdx >= 0 ? targetIdx : 0, selectedPlaylist?.name || 'Playlist');
+                            } else if (onPlayTrack) {
+                              onPlayTrack(t);
+                            }
                           }
                         }}
                       >
@@ -1669,7 +1819,7 @@ export default function LibraryView({
 
                         <div className={`${styles.playlistTrackThumbWrap} ${isLocked ? styles.playlistTrackThumbWrapLocked : ''}`}>
                           <img
-                            src={t.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                            src={getSafeCover(t)}
                             alt={t.title}
                             className={`${styles.playlistTrackThumb} ${isLocked ? styles.playlistTrackThumbLocked : ''}`}
                             onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
@@ -1798,7 +1948,7 @@ export default function LibraryView({
                   <div key={sugTrack.id} className={styles.suggestionCard}>
                     <div className={styles.suggestionCoverWrap}>
                       <img
-                        src={sugTrack.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                        src={getSafeCover(sugTrack)}
                         alt={sugTrack.title}
                         className={styles.suggestionCover}
                         onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
@@ -1846,7 +1996,7 @@ export default function LibraryView({
           <div className={styles.detailHeader}>
             <Image
               unoptimized
-              src={selectedAlbum.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+              src={getSafeCover(selectedAlbum)}
               alt={selectedAlbum.title}
               width={220}
               height={220}
@@ -1868,7 +2018,7 @@ export default function LibraryView({
                 {selectedAlbum.tracks && selectedAlbum.tracks.length > 0 && (
                   <button
                     className={styles.playBigBtn}
-                    onClick={() => onPlayQueue && onPlayQueue(selectedAlbum.tracks, 0)}
+                    onClick={() => onPlayQueue && onPlayQueue(selectedAlbum.tracks, 0, selectedAlbum?.title || selectedAlbum?.name || 'Álbum')}
                   >
                     <Play size={18} fill="currentColor" /> Reproduzir Álbum
                   </button>
@@ -1929,7 +2079,7 @@ export default function LibraryView({
                         <div className={styles.trackTitleCell}>
                           <Image
                             unoptimized
-                            src={t.cover_url || selectedAlbum.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                            src={getSafeCover(t) !== 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png' ? getSafeCover(t) : getSafeCover(selectedAlbum)}
                             alt={t.title}
                             width={42}
                             height={42}
@@ -1969,7 +2119,11 @@ export default function LibraryView({
                               title="Reproduzir"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onPlayTrack && onPlayTrack(t);
+                                if (onPlayQueue && selectedAlbum?.tracks && selectedAlbum.tracks.length > 0) {
+                                  onPlayQueue(selectedAlbum.tracks, idx, selectedAlbum?.title || selectedAlbum?.name || 'Álbum');
+                                } else if (onPlayTrack) {
+                                  onPlayTrack(t);
+                                }
                               }}
                             >
                               <Play size={16} fill="currentColor" />
@@ -2035,7 +2189,7 @@ export default function LibraryView({
                 {selectedArtist.tracks && selectedArtist.tracks.length > 0 && (
                   <button
                     className={styles.playBigBtn}
-                    onClick={() => onPlayQueue && onPlayQueue(selectedArtist.tracks, 0)}
+                    onClick={() => onPlayQueue && onPlayQueue(selectedArtist.tracks, 0, selectedArtist?.name || 'Artista')}
                   >
                     <Play size={18} fill="currentColor" /> Ouvir Músicas do Artista
                   </button>
@@ -2135,7 +2289,11 @@ export default function LibraryView({
                               title="Reproduzir"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onPlayTrack && onPlayTrack(t);
+                                if (onPlayQueue && selectedAlbum?.tracks && selectedAlbum.tracks.length > 0) {
+                                  onPlayQueue(selectedAlbum.tracks, idx, selectedAlbum?.title || selectedAlbum?.name || 'Álbum');
+                                } else if (onPlayTrack) {
+                                  onPlayTrack(t);
+                                }
                               }}
                             >
                               <Play size={16} fill="currentColor" />
@@ -2278,7 +2436,7 @@ export default function LibraryView({
                           <div className={styles.trackTitleCell}>
                             <Image
                               unoptimized
-                              src={t.cover_url || t.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                              src={getSafeCover(t)}
                               alt={t.title}
                               width={42}
                               height={42}
@@ -2332,7 +2490,11 @@ export default function LibraryView({
                                 title="Reproduzir"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onPlayTrack && onPlayTrack(t);
+                                  if (onPlayQueue && selectedAlbum.tracks && selectedAlbum.tracks.length > 0) {
+                                    onPlayQueue(selectedAlbum.tracks, idx, selectedAlbum?.title || selectedAlbum?.name || 'Álbum');
+                                  } else if (onPlayTrack) {
+                                    onPlayTrack(t);
+                                  }
                                 }}
                               >
                                 <Play size={16} fill="currentColor" />
@@ -2393,12 +2555,18 @@ export default function LibraryView({
                     <div
                       key={alb.id}
                       className={styles.card}
-                      onClick={() => fetchAlbumDetails(alb.id)}
+                      onClick={() => {
+                        if (onSelectAlbum) {
+                          onSelectAlbum(alb);
+                        } else {
+                          fetchAlbumDetails(alb.id);
+                        }
+                      }}
                     >
                       <div className={styles.cardMedia}>
                         <Image
                           unoptimized
-                          src={alb.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                          src={getSafeCover(alb)}
                           alt={alb.title}
                           width={180}
                           height={180}
@@ -2409,7 +2577,11 @@ export default function LibraryView({
                           title="Abrir álbum"
                           onClick={(e) => {
                             e.stopPropagation();
-                            fetchAlbumDetails(alb.id);
+                            if (onSelectAlbum) {
+                              onSelectAlbum(alb);
+                            } else {
+                              fetchAlbumDetails(alb.id);
+                            }
                           }}
                         >
                           <Play size={20} fill="currentColor" />
@@ -2417,10 +2589,34 @@ export default function LibraryView({
                       </div>
                       <div className={styles.cardInfo}>
                         <h4 className={styles.cardTitle}>{alb.title}</h4>
-                        <span className={styles.cardSubtitle}>{alb.artist_name}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#888888' }}>
-                          {alb.release_date ? String(alb.release_date).substring(0, 4) : 'Álbum'} • {alb.tracks_count || 0} faixas
-                        </span>
+                        <span className={styles.cardSubtitle}>{alb.artist_name || alb.artist}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#888888' }}>
+                            {alb.year || (alb.release_date ? String(alb.release_date).substring(0, 4) : 'Álbum')} • {alb.tracks_count || (alb.tracks ? alb.tracks.length : 0) || 12} faixas
+                          </span>
+                        </div>
+                        <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          {alb.type === 'buy' || !alb.type ? (
+                            <span className={styles.licenseBadgeBuy} title="Acesso permanente ao álbum completo">
+                              <Check size={11} style={{ marginRight: 3 }} /> Comprado
+                            </span>
+                          ) : alb.isExpired ? (
+                            <span className={styles.licenseBadgeExpired} title="Período de aluguel terminado">
+                              <Lock size={11} style={{ marginRight: 3 }} /> Aluguel Expirado
+                            </span>
+                          ) : (
+                            <span className={styles.licenseBadgeRent} title={`Válido até ${alb.expiresAt ? new Date(alb.expiresAt).toLocaleDateString('pt-BR') : ''}`}>
+                              <Clock size={11} style={{ marginRight: 3 }} /> Alugado ({alb.remainingDays !== null ? `${alb.remainingDays}d` : '30d'})
+                            </span>
+                          )}
+                          {alb.purchasedAt && (
+                            <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                              {alb.type === 'rent' && alb.expiresAt
+                                ? `Vence: ${new Date(alb.expiresAt).toLocaleDateString('pt-BR')}`
+                                : `Desde ${new Date(alb.purchasedAt).toLocaleDateString('pt-BR')}`}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -2428,11 +2624,11 @@ export default function LibraryView({
               ) : (
                 <div className={styles.emptyState}>
                   <div className={styles.emptyIcon}><Disc size={32} /></div>
-                  <h3 className={styles.emptyTitle}>Nenhum álbum comprado integralmente</h3>
+                  <h3 className={styles.emptyTitle}>Nenhum álbum adquirido</h3>
                   <p className={styles.emptyDesc}>
                     {searchQuery
                       ? 'Nenhum álbum adquirido corresponde aos termos pesquisados.'
-                      : 'Os álbuns que você comprar por completo aparecerão aqui com acesso à sua discografia integral.'}
+                      : 'Os álbuns que você comprar ou alugar aparecerão aqui com acesso à sua discografia integral.'}
                   </p>
                 </div>
               )}
@@ -2446,9 +2642,15 @@ export default function LibraryView({
                 <div className={styles.grid}>
                   {filteredArtists.map((art) => (
                     <div
-                      key={art.id}
+                      key={art.id || art.subscription_id}
                       className={styles.card}
-                      onClick={() => fetchArtistDetails(art.id)}
+                      onClick={() => {
+                        if (onOpenArtistProfile) {
+                          onOpenArtistProfile(art.name, art.id);
+                        } else {
+                          fetchArtistDetails(art.id);
+                        }
+                      }}
                     >
                       <div className={`${styles.cardMedia} ${styles.cardMediaCircle}`}>
                         <Image
@@ -2461,21 +2663,24 @@ export default function LibraryView({
                         />
                         <button
                           className={styles.playOverlay}
-                          title="Ver artista"
+                          title={`Ver perfil de ${art.name}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            fetchArtistDetails(art.id);
+                            if (onOpenArtistProfile) {
+                              onOpenArtistProfile(art.name, art.id);
+                            } else {
+                              fetchArtistDetails(art.id);
+                            }
                           }}
                         >
                           <ChevronRight size={20} />
                         </button>
                       </div>
-                      <div className={styles.cardInfo} style={{ textAlign: 'center', alignItems: 'center' }}>
-                        <h4 className={styles.cardTitle}>{art.name}</h4>
-                        <span className={styles.cardSubtitle}>{art.genre || 'Artista'}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#888888' }}>
-                          {art.tracks_count || 0} faixas • {art.albums_count || 0} álbuns
-                        </span>
+                      <div className={styles.artistCardInfo}>
+                        <h4 className={styles.artistCardTitle}>{art.name}</h4>
+                        {art.genre ? (
+                          <span className={styles.artistCardGenre}>{art.genre}</span>
+                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -2483,8 +2688,12 @@ export default function LibraryView({
               ) : (
                 <div className={styles.emptyState}>
                   <div className={styles.emptyIcon}><Mic2 size={32} /></div>
-                  <h3 className={styles.emptyTitle}>Nenhum artista cadastrado</h3>
-                  <p className={styles.emptyDesc}>Cadastre artistas para associá-los a músicas e álbuns.</p>
+                  <h3 className={styles.emptyTitle}>Nenhum artista na sua biblioteca</h3>
+                  <p className={styles.emptyDesc}>
+                    {searchQuery
+                      ? 'Nenhum artista inscrito corresponde aos termos pesquisados.'
+                      : 'Inscreva-se nos seus artistas favoritos para acompanhar suas músicas e lançamentos aqui.'}
+                  </p>
                 </div>
               )}
             </div>
@@ -2744,7 +2953,7 @@ export default function LibraryView({
                         >
                           <Image
                             unoptimized
-                            src={t.cover_url || t.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                            src={getSafeCover(t)}
                             alt={t.title}
                             width={36}
                             height={36}
@@ -3131,7 +3340,7 @@ export default function LibraryView({
             <div className={styles.expiredTrackInfoBox}>
               <Image
                 unoptimized
-                src={expiredModalTrack.cover_url || expiredModalTrack.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                src={getSafeCover(expiredModalTrack)}
                 alt={expiredModalTrack.title}
                 width={52}
                 height={52}
@@ -3218,7 +3427,7 @@ export default function LibraryView({
           {/* Cabeçalho do menu com informações da música */}
           <div className={styles.trackMenuHeader}>
             <img
-              src={trackMenuState.track.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+              src={getSafeCover(trackMenuState.track)}
               alt={trackMenuState.track.title}
               className={styles.trackMenuThumb}
               onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
@@ -3234,6 +3443,22 @@ export default function LibraryView({
           </div>
 
           <div className={styles.trackMenuDivider} />
+
+          {/* Adicionar à fila de reprodução */}
+          {onAddToQueue && (
+            <button
+              type="button"
+              className={styles.trackMenuItem}
+              onClick={() => {
+                const trk = trackMenuState.track;
+                setTrackMenuState(null);
+                onAddToQueue(trk);
+              }}
+            >
+              <ListMusic size={16} />
+              <span>Adicionar à fila</span>
+            </button>
+          )}
 
           {/* 1. Adicionar a outra playlist */}
           <button

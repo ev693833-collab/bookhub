@@ -12,10 +12,11 @@ import {
   Radio, X, PlayCircle, ListMusic, Building2, ChevronDown, CheckCircle2,
   Lock, CreditCard, QrCode, ShoppingBag, ShoppingCart, Trash2, ArrowRight, ArrowLeft,
   Check, Mail, Copy, Sparkles, Clock, Tag, Percent, Ticket,
-  User, Shield
+  User, Shield, Headphones, Users, Disc, Zap
 } from 'lucide-react';
 import styles from '../styles/home.module.css';
 import LibraryView from '../components/library/LibraryView';
+import { getSafeCover } from '../utils/coverHelper';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -109,7 +110,7 @@ const HOME_ESCOLHA_A_DEDO = [
     title: 'Superpowers',
     artist: 'Daniel Caesar',
     album: 'NEVER ENOUGH',
-    cover: 'https://cdn-images.dzcdn.net/images/cover/0d571082af7c78114321031d7f84d331/500x500-000000-80-0-0.jpg',
+    cover: 'https://cdn-images.dzcdn.net/images/cover/0d571082af7c78114321031d7f84d331/1000x1000-000000-80-0-0.jpg',
     plays: 'Tocou 85 mi vezes • NEVER ENOUGH',
     durationSec: 174,
     duration: '2:54',
@@ -827,77 +828,128 @@ function generatePixBrCode({ pixKey, merchantName = 'DEVSONGS', merchantCity = '
   return `${rawPayload}${crcHex}`;
 }
 
+export const slugify = (text) => {
+  if (!text) return '';
+  return String(text)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
 export default function HomeUnifiedYouTubeMusic(props = {}) {
   const router = useRouter();
 
   const [user, setUser] = useState(null);
+  const [exploreFilter, setExploreFilter] = useState('all');
+
+  const openArtistProfileRef = useRef(null);
+  const handleSelectAlbumRef = useRef(null);
+  const navigateToRef = useRef(null);
 
   useEffect(() => {
     if (!router.isReady) return;
-    if (props.forcedTab) {
+    if (props.forcedViewMode === 'artist' || props.forcedArtist) {
+      const artName = props.forcedArtist || router.query.id;
+      if (artName && openArtistProfileRef.current) {
+        const cleanName = String(artName).replace(/-/g, ' ');
+        openArtistProfileRef.current(cleanName, artName);
+      }
+    } else if (props.forcedViewMode === 'album' || props.forcedAlbumId) {
+      const albId = props.forcedAlbumId || router.query.id;
+      if (albId && handleSelectAlbumRef.current) {
+        handleSelectAlbumRef.current({ id: albId, albumId: albId });
+      }
+    } else if (props.forcedPlaylistId) {
+      setSelectedSidebarPlaylistId(props.forcedPlaylistId);
+      setActiveTab('biblioteca');
+      setViewMode('home');
+    } else if (props.forcedTab) {
       setActiveTab(props.forcedTab);
       setViewMode('home');
     } else if (router.query.tab === 'biblioteca' || router.query.playlist) {
       setActiveTab('biblioteca');
       setViewMode('home');
+    } else if (router.query.artist) {
+      if (openArtistProfileRef.current) {
+        openArtistProfileRef.current(router.query.artist);
+      }
     }
-  }, [router.isReady, router.query, props.forcedTab]);
+  }, [router.isReady, router.query, props.forcedTab, props.forcedArtist, props.forcedAlbumId, props.forcedPlaylistId, props.forcedViewMode]);
 
-  const handlePlayLibraryTrack = (track) => {
+  const handlePlayLibraryTrack = (track, contextQueue = null, contextName = null) => {
     if (!track) return;
-    if (track.isExpired || track.canPlay === false || track.isLocked) {
+    if (track.isExpired || track.is_expired || track.isLocked || track.is_locked || track.canPlay === false || track.can_play === false) {
       console.warn('Faixa com aluguel expirado ou bloqueada:', track.title);
       return;
     }
-    const isStreamAllowed = track.available_for_stream !== false && !track.isExpired && track.canPlay === true && !track.isLocked;
+    const isStreamAllowed = track.available_for_stream !== false;
     const playObj = {
       id: track.id ? (String(track.id).startsWith('ct-') ? track.id : `ct-${track.id}`) : track.dbTrackId,
       dbTrackId: track.dbTrackId || Number(String(track.id).replace('ct-', '')),
       title: track.title,
-      artist: track.artist,
-      album: track.album || 'Single',
-      genre: track.genre || 'Variado',
-      cover: track.cover_url || track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      artist: track.artist || track.artist_name || selectedAlbum?.artist_name || 'Artista',
+      album: track.album || track.album_title || selectedAlbum?.title || 'Single',
+      album_id: track.album_id || track.albumId || selectedAlbum?.id || null,
+      albumId: track.album_id || track.albumId || selectedAlbum?.id || null,
+      genre: track.genre || selectedAlbum?.genre || 'Variado',
+      cover: track.cover_url || track.cover || selectedAlbum?.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
       preview: track.preview_url || track.preview,
-      youtubeVideoId: track.youtube_video_id || null,
-      durationSec: track.duration_sec || 210,
-      duration: `${Math.floor((track.duration_sec || 210)/60)}:${String((track.duration_sec || 210)%60).padStart(2, '0')}`,
+      youtubeVideoId: track.youtube_video_id || track.youtubeVideoId || null,
+      durationSec: track.duration_sec || track.durationSec || 210,
+      duration: track.duration || `${Math.floor((track.duration_sec || 210)/60)}:${String((track.duration_sec || 210)%60).padStart(2, '0')}`,
       available_for_stream: isStreamAllowed,
-      canPlay: isStreamAllowed,
-      isExpired: Boolean(track.isExpired),
-      isLocked: Boolean(track.isLocked)
+      canPlay: true,
+      can_play: true,
+      isExpired: false,
+      isLocked: false
     };
-    playTrack(playObj, false);
+    playTrack(playObj, true, contextQueue, contextName || playObj.album || 'Sua Biblioteca');
   };
 
-  const handlePlayLibraryQueue = (tracksList, startIndex = 0) => {
+  const handlePlayLibraryQueue = (tracksList, startIndex = 0, contextName = null) => {
     if (!tracksList || tracksList.length === 0) return;
-    // Exclui automaticamente músicas com aluguel expirado, não adquiridas ou bloqueadas da fila
-    const playableTracks = tracksList.filter(t => !t.isExpired && t.canPlay === true && !t.isLocked);
+    // Exclui automaticamente músicas com aluguel expirado ou bloqueadas da fila
+    const playableTracks = tracksList.filter(t => {
+      if (t.isExpired || t.is_expired) return false;
+      if (t.isLocked || t.is_locked) return false;
+      if (t.canPlay === false || t.can_play === false) return false;
+      return true;
+    });
     if (playableTracks.length === 0) {
       console.warn('Nenhuma faixa com reprodução autorizada disponível na lista.');
       return;
     }
-    const mapped = playableTracks.map(t => ({
-      id: t.id ? (String(t.id).startsWith('ct-') ? t.id : `ct-${t.id}`) : t.dbTrackId,
-      dbTrackId: t.dbTrackId || Number(String(t.id).replace('ct-', '')),
+    const mapped = playableTracks.map((t, idx) => ({
+      ...t,
+      id: t.id ? (String(t.id).startsWith('ct-') ? t.id : `ct-${t.id}`) : (t.dbTrackId ? `ct-${t.dbTrackId}` : `trk-${idx}`),
+      dbTrackId: t.dbTrackId || Number(String(t.id || '').replace('ct-', '')) || null,
       title: t.title,
-      artist: t.artist,
-      album: t.album || 'Single',
+      artist: t.artist || t.artist_name || 'Artista',
+      album: t.album || t.album_title || 'Single',
       genre: t.genre || 'Variado',
       cover: t.cover_url || t.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
       preview: t.preview_url || t.preview,
-      youtubeVideoId: t.youtube_video_id || null,
-      durationSec: t.duration_sec || 210,
-      duration: `${Math.floor((t.duration_sec || 210)/60)}:${String((t.duration_sec || 210)%60).padStart(2, '0')}`,
+      youtubeVideoId: t.youtube_video_id || t.youtubeVideoId || null,
+      durationSec: t.duration_sec || t.durationSec || 210,
+      duration: t.duration || `${Math.floor((t.duration_sec || 210)/60)}:${String((t.duration_sec || 210)%60).padStart(2, '0')}`,
       available_for_stream: true,
       canPlay: true,
+      can_play: true,
       isExpired: false,
       isLocked: false
     }));
-    const safeIndex = startIndex < mapped.length ? startIndex : 0;
+
+    let safeIndex = startIndex >= 0 && startIndex < mapped.length ? startIndex : 0;
+    // Se o modo aleatório estiver ativo e o usuário clicou no botão principal (startIndex === 0), sorteia a faixa inicial
+    if (isShuffle && startIndex === 0 && mapped.length > 1) {
+      safeIndex = Math.floor(Math.random() * mapped.length);
+    }
     const startTrack = mapped[safeIndex] || mapped[0];
-    playTrack(startTrack, false);
+
+    // Carrega TODAS as músicas da playlist na fila contextual ("Próximas de: [Contexto]")!
+    playTrack(startTrack, true, mapped, contextName || startTrack.album || 'Sua Biblioteca');
   };
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -957,7 +1009,10 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     setViewMode('home');
     setSelectedAlbum(null);
     setSelectedCompany(null);
-    router.push({ pathname: '/home', query: { tab: 'biblioteca', playlist: pl.id } }, undefined, { shallow: true });
+    setActiveArtist(null);
+    if (typeof window !== 'undefined' && window.location.pathname !== `/playlist/${pl.id}`) {
+      window.history.pushState({ devsongsView: 'home', playlistId: pl.id }, '', `/playlist/${pl.id}`);
+    }
   };
 
   const handlePlaySidebarPlaylist = async (pl) => {
@@ -979,13 +1034,16 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
         return;
       }
       setPlayingPlaylistId(pl.id);
-      handlePlayLibraryQueue(pTracks, 0);
+      handlePlayLibraryQueue(pTracks, 0, pl.name);
     } catch (err) {
       console.error('Erro ao reproduzir playlist pela sidebar:', err);
     }
   };
   const [selectedPill, setSelectedPill] = useState('Energia');
   const [tracks, setTracks] = useState(HOME_ESCOLHA_A_DEDO);
+  const [escolhaADedo, setEscolhaADedo] = useState(HOME_ESCOLHA_A_DEDO);
+  const [albunsParaVoce, setAlbunsParaVoce] = useState(HOME_ALBUNS_PARA_VOCE);
+  const [recsSource, setRecsSource] = useState(null);
   const [showAllTopTracks, setShowAllTopTracks] = useState(false);
   const [showAllAlbums, setShowAllAlbums] = useState(false);
   const [showAllSingles, setShowAllSingles] = useState(false);
@@ -1307,9 +1365,16 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     const updated = cartItems.map(item => {
       if (item.cartId !== cartId) return item;
       const nextType = item.type === 'buy' ? 'rent' : 'buy';
-      const nextPrice = nextType === 'buy'
-        ? Number(String(item.rawTrack?.salePrice || item.rawTrack?.priceSale || '4.90').replace('R$', '').replace(',', '.').trim() || 4.90)
-        : Number(String(item.rawTrack?.rentPrice || item.rawTrack?.priceRent || '1.90').replace('R$', '').replace(',', '.').trim() || 1.90);
+      let nextPrice;
+      if (item.isAlbum || item.itemType === 'album') {
+        nextPrice = nextType === 'buy'
+          ? Math.max(0, Math.round((29.90 - (item.discount || 0)) * 100) / 100)
+          : 9.90;
+      } else {
+        nextPrice = nextType === 'buy'
+          ? Number(String(item.rawTrack?.salePrice || item.rawTrack?.priceSale || '4.90').replace('R$', '').replace(',', '.').trim() || 4.90)
+          : Number(String(item.rawTrack?.rentPrice || item.rawTrack?.priceRent || '1.90').replace('R$', '').replace(',', '.').trim() || 1.90);
+      }
       return {
         ...item,
         type: nextType,
@@ -1380,29 +1445,62 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       for (const item of purchasedList) {
         try {
           const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-          const res = await fetch(`${API_URL}/api/companies/purchase-any`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({
-              title: item.title,
-              artist: item.artist,
-              album: item.album || 'Single',
-              genre: item.genre || 'Variado',
-              companyId: item.companyId || undefined,
-              coverUrl: item.cover || null,
-              durationSec: item.durationSec || 210,
-              type: item.type,
-              price: item.price,
-              paymentMethod,
-              email: emailToSend
-            })
-          });
-          const d = await res.json();
-          if (d.success && d.emailSent) {
-            emailSuccessCount++;
+          if (item.isAlbum || item.itemType === 'album') {
+            let cleanAlbId = item.albumId || item.id || 0;
+            if (typeof cleanAlbId === 'string' && cleanAlbId.startsWith('dz-alb-')) {
+              cleanAlbId = cleanAlbId.replace('dz-alb-', '');
+            } else if (typeof cleanAlbId === 'string' && cleanAlbId.startsWith('it-alb-')) {
+              cleanAlbId = cleanAlbId.replace('it-alb-', '');
+            }
+            const res = await fetch(`${API_URL}/api/library/albums/${cleanAlbId}/${item.type}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify({
+                title: item.title,
+                artist_name: item.artist,
+                cover_url: item.cover,
+                release_date: item.year ? `${item.year}-01-01` : null,
+                genre: item.genre || 'Variado',
+                price: item.price,
+                original_price: item.originalPrice,
+                discount_applied: item.discount || 0,
+                tracks_count: item.tracksCount || 12,
+                paymentMethod,
+                email: emailToSend
+              })
+            });
+            const d = await res.json();
+            if (d.success) {
+              emailSuccessCount++;
+            }
+          } else {
+            const res = await fetch(`${API_URL}/api/companies/purchase-any`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify({
+                title: item.title,
+                artist: item.artist,
+                album: item.album || 'Single',
+                genre: item.genre || 'Variado',
+                companyId: item.companyId || undefined,
+                coverUrl: item.cover || null,
+                durationSec: item.durationSec || 210,
+                type: item.type,
+                price: item.price,
+                paymentMethod,
+                email: emailToSend
+              })
+            });
+            const d = await res.json();
+            if (d.success && d.emailSent) {
+              emailSuccessCount++;
+            }
           }
         } catch (itemErr) {
           console.error('Erro ao processar item do carrinho:', item.title, itemErr);
@@ -1421,6 +1519,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
       try {
         await fetchUserPurchases();
+        setLibraryRefreshKey(k => k + 1);
       } catch (_) {}
 
       // Se utilizou cupom, marca-o como UTILIZADO para não poder usar de novo
@@ -1445,7 +1544,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
       setPurchaseNotice({
         type: 'success',
-        text: `🎉 Compra de ${purchasedList.length} faixa(s) confirmada com sucesso! Liberadas na sua Biblioteca.${emailSuccessCount > 0 ? ` Comprovante enviado para ${emailToSend}.` : ''}`
+        text: `🎉 Pagamento confirmado com sucesso! Itens liberados imediatamente na sua Biblioteca.${emailSuccessCount > 0 ? ` Comprovante enviado para ${emailToSend}.` : ''}`
       });
       setTimeout(() => setPurchaseNotice(null), 7000);
     } catch (err) {
@@ -1488,14 +1587,41 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       if (!token) return;
-      const res = await fetch(`${API_URL}/api/companies/my-purchases`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data && data.purchases) {
-        setUserPurchases(data.purchases);
+      const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+      const [resPurchases, resAlbums] = await Promise.all([
+        fetch(`${API_URL}/api/companies/my-purchases`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => (r.ok ? r.json() : null)).catch(() => null),
+        fetch(`${API_URL}/api/library/my-albums`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+      ]);
+
+      const purchasesList = (resPurchases && resPurchases.purchases) || [];
+      const albumsList = ((resAlbums && resAlbums.albums) || []).map(a => ({
+        id: `alb-${a.id}`,
+        album_id: a.id,
+        item_type: 'album',
+        title: a.title,
+        artist: a.artist || a.artist_name,
+        cover: a.cover || a.cover_url,
+        cover_url: a.cover_url || a.cover,
+        type: a.type || 'buy',
+        payment_status: 'confirmed',
+        expires_at: a.expiresAt || null,
+        created_at: a.purchasedAt || null
+      }));
+
+      // Combina compras de faixas e compras integrais de álbuns
+      const combined = [...purchasesList];
+      for (const alb of albumsList) {
+        if (!combined.some(p => p.item_type === 'album' && (String(p.album_id) === String(alb.album_id) || cleanSimple(p.title) === cleanSimple(alb.title)))) {
+          combined.push(alb);
+        }
       }
+
+      setUserPurchases(combined);
     } catch (err) {
       console.warn('Erro ao carregar compras do usuário:', err?.message || err);
     } finally {
@@ -1623,7 +1749,140 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     }
   };
 
-  const handleBuyOrRentAlbum = async (album, type = 'buy') => {
+  // View Mode: 'home' (Tela de Início YouTube Music) | 'artist' (Perfil) | 'search' (Resultados) | 'album' (Álbum dedicado)
+  const [viewMode, setViewMode] = useState('home');
+  const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [albumTracks, setAlbumTracks] = useState([]);
+  const [relatedAlbums, setRelatedAlbums] = useState([]);
+  const [isAlbumLoading, setIsAlbumLoading] = useState(false);
+  const [activeArtist, setActiveArtist] = useState(null);
+  const [isArtistSubscribed, setIsArtistSubscribed] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [unsubscribeModalOpen, setUnsubscribeModalOpen] = useState(false);
+  const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
+  const [searchArtists, setSearchArtists] = useState([]);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Cálculo inteligente de preços e descontos para o álbum selecionado
+  const currentAlbumPricing = useMemo(() => {
+    const baseBuyPrice = 29.90;
+    const baseRentPrice = 9.90;
+
+    if (!selectedAlbum) {
+      return {
+        originalPrice: baseBuyPrice,
+        discount: 0,
+        finalPrice: baseBuyPrice,
+        rentPrice: baseRentPrice,
+        purchasedTracksCount: 0,
+        isOwned: false,
+        isRented: false,
+        isRentExpired: false,
+        remainingDays: null,
+        expiresAt: null
+      };
+    }
+
+    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const cleanStr = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const albumTitleClean = cleanSimple(selectedAlbum.title);
+    const albumIdStr = String(selectedAlbum.id || selectedAlbum.albumId || '').replace('dz-alb-', '').replace('it-alb-', '');
+
+    const now = new Date();
+
+    // 1. Verificar se o álbum integral já foi adquirido pelo usuário
+    const albumBuyPurchase = (userPurchases || []).find(p => {
+      if (p.payment_status === 'pending') return false;
+      const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
+      if (!isAlb) return false;
+      const pAlbId = String(p.album_id || '').replace('dz-alb-', '').replace('it-alb-', '');
+      const matchId = pAlbId && (pAlbId === albumIdStr || pAlbId === String(selectedAlbum.id));
+      const pTitle = cleanSimple(p.title);
+      const matchTitle = pTitle && albumTitleClean && (
+        pTitle === albumTitleClean ||
+        pTitle.includes(albumTitleClean) ||
+        albumTitleClean.includes(pTitle)
+      );
+      return (matchId || matchTitle) && p.type === 'buy';
+    });
+
+    const albumRentPurchase = (userPurchases || []).find(p => {
+      if (p.payment_status === 'pending') return false;
+      const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
+      if (!isAlb) return false;
+      const pAlbId = String(p.album_id || '').replace('dz-alb-', '').replace('it-alb-', '');
+      const matchId = pAlbId && (pAlbId === albumIdStr || pAlbId === String(selectedAlbum.id));
+      const pTitle = cleanSimple(p.title);
+      const matchTitle = pTitle && albumTitleClean && (
+        pTitle === albumTitleClean ||
+        pTitle.includes(albumTitleClean) ||
+        albumTitleClean.includes(pTitle)
+      );
+      return (matchId || matchTitle) && p.type === 'rent';
+    });
+
+    const isOwned = Boolean(albumBuyPurchase);
+    const isRented = Boolean(albumRentPurchase);
+    const isRentExpired = isRented ? (albumRentPurchase.expires_at ? new Date(albumRentPurchase.expires_at) < now : false) : false;
+    const remainingDays = isRented && !isRentExpired && albumRentPurchase.expires_at
+      ? Math.max(0, Math.ceil((new Date(albumRentPurchase.expires_at) - now) / (1000 * 60 * 60 * 24)))
+      : null;
+
+    // 2. Sistema Inteligente de Descontos:
+    // Identificar faixas pertencentes ao álbum que o usuário JÁ COMPROU INDIVIDUALMENTE (type === 'buy' confirmada)
+    // Regra: Músicas apenas reproduzidas, adicionadas a playlists, em histórico ou alugadas NÃO geram desconto na compra permanente.
+    const confirmedBuyTrackPurchases = (userPurchases || []).filter(p => 
+      p.type === 'buy' && 
+      p.payment_status !== 'pending' && 
+      (p.track_id || p.item_type !== 'album')
+    );
+
+    let discount = 0;
+    let purchasedTracksCount = 0;
+    const matchedPurchaseIds = new Set();
+
+    if (Array.isArray(albumTracks) && albumTracks.length > 0) {
+      for (const track of albumTracks) {
+        const trackTitleClean = cleanStr(track.title);
+        const trackId = track.id ? String(track.id).replace('track-', '').replace('dz-track-', '').replace('it-track-', '') : null;
+        const trackDbId = track.dbTrackId ? String(track.dbTrackId) : null;
+
+        const matchedP = confirmedBuyTrackPurchases.find(p => {
+          if (matchedPurchaseIds.has(p.id)) return false;
+          const pTitleClean = cleanStr(p.title);
+          const pTrackId = p.track_id ? String(p.track_id).replace('ct-', '') : null;
+
+          const idMatch = (trackId && pTrackId && trackId === pTrackId) || (trackDbId && pTrackId && trackDbId === pTrackId);
+          const titleMatch = trackTitleClean && pTitleClean && trackTitleClean === pTitleClean;
+          return idMatch || titleMatch;
+        });
+
+        if (matchedP) {
+          matchedPurchaseIds.add(matchedP.id);
+          purchasedTracksCount++;
+          const pPrice = Number(matchedP.price) || 4.90;
+          discount += pPrice;
+        }
+      }
+    }
+
+    const finalBuyPrice = Math.max(0, Math.round((baseBuyPrice - discount) * 100) / 100);
+
+    return {
+      originalPrice: baseBuyPrice,
+      discount: Math.round(discount * 100) / 100,
+      finalPrice: finalBuyPrice,
+      rentPrice: baseRentPrice,
+      purchasedTracksCount,
+      isOwned,
+      isRented,
+      isRentExpired,
+      remainingDays,
+      expiresAt: albumRentPurchase?.expires_at || null
+    };
+  }, [selectedAlbum, albumTracks, userPurchases]);
+
+  const handleBuyOrRentAlbum = (album, type = 'buy', pricing = null) => {
     if (!album) return;
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
@@ -1635,65 +1894,65 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       return;
     }
 
-    try {
-      let albumId = album.id || album.albumId || 0;
-      if (typeof albumId === 'string' && albumId.startsWith('dz-alb-')) {
-        albumId = albumId.replace('dz-alb-', '');
-      }
+    const p = pricing || currentAlbumPricing;
 
-      const res = await fetch(`${API_URL}/api/library/albums/${albumId}/${type}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title: album.title,
-          artist_name: album.artist || album.artistName || activeArtist?.name,
-          cover_url: album.cover || album.cover_url,
-          release_date: album.year ? `${album.year}-01-01` : null,
-          genre: album.genre || 'Variado',
-          price: type === 'buy' ? 29.90 : 9.90
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setPurchaseNotice({
-          type: 'success',
-          text: type === 'buy'
-            ? `🎉 Compra integral do álbum "${album.title}" confirmada com sucesso! Liberado exclusivamente na sua aba Álbuns.`
-            : `⏳ Aluguel do álbum "${album.title}" por 30 dias ativado!`
-        });
-        try {
-          await fetchUserPurchases();
-        } catch (_) {}
-      } else {
-        setPurchaseNotice({
-          type: 'error',
-          text: data.error || data.message || 'Não foi possível adquirir este álbum.'
-        });
-      }
-      setTimeout(() => setPurchaseNotice(null), 6000);
-    } catch (err) {
-      console.error('Erro ao processar aquisição de álbum:', err);
+    // Se já comprou integralmente
+    if (type === 'buy' && p.isOwned) {
       setPurchaseNotice({
-        type: 'error',
-        text: 'Erro de conexão ao processar compra do álbum.'
+        type: 'success',
+        text: `Você já possui o álbum "${album.title}" comprado permanentemente na sua biblioteca!`
       });
       setTimeout(() => setPurchaseNotice(null), 4000);
+      return;
     }
-  };
 
-  // View Mode: 'home' (Tela de Início YouTube Music) | 'artist' (Perfil) | 'search' (Resultados) | 'album' (Álbum dedicado)
-  const [viewMode, setViewMode] = useState('home');
-  const [selectedAlbum, setSelectedAlbum] = useState(null);
-  const [albumTracks, setAlbumTracks] = useState([]);
-  const [relatedAlbums, setRelatedAlbums] = useState([]);
-  const [isAlbumLoading, setIsAlbumLoading] = useState(false);
-  const [activeArtist, setActiveArtist] = useState(null);
-  const [searchArtists, setSearchArtists] = useState([]);
-  const [isScrolled, setIsScrolled] = useState(false);
+    // Se já alugou e está ativo
+    if (type === 'rent' && p.isRented && !p.isRentExpired) {
+      setPurchaseNotice({
+        type: 'success',
+        text: `O aluguel do álbum "${album.title}" já está ativo (${p.remainingDays} dias restantes).`
+      });
+      setTimeout(() => setPurchaseNotice(null), 4000);
+      return;
+    }
+
+    const priceNum = type === 'buy' ? p.finalPrice : p.rentPrice;
+    const albumTitle = album.title || 'Álbum';
+
+    const albumCartItem = {
+      cartId: `album-${album.id || album.albumId || '0'}-${type}-${Date.now()}`,
+      id: album.id || album.albumId,
+      dbTrackId: null,
+      albumId: album.id || album.albumId,
+      itemType: 'album',
+      isAlbum: true,
+      title: albumTitle,
+      artist: album.artist || album.artistName || activeArtist?.name || 'Artista',
+      album: albumTitle,
+      companyName: 'Catálogo Oficial DevSongs',
+      cover: album.cover || album.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      type, // 'buy' | 'rent'
+      price: priceNum,
+      originalPrice: p.originalPrice,
+      discount: type === 'buy' ? p.discount : 0,
+      purchasedTracksCount: p.purchasedTracksCount,
+      tracksCount: album.nbTracks || albumTracks.length || 12,
+      year: album.year || null,
+      genre: album.genre || 'Variado'
+    };
+
+    // Remove do carrinho se já existisse item deste mesmo álbum para não duplicar
+    const filtered = cartItems.filter(it => !(it.isAlbum && it.title?.toLowerCase() === albumTitle.toLowerCase()));
+    const updated = [...filtered, albumCartItem];
+    saveCartToStorage(updated);
+    setCartStep('cart');
+    setIsCartOpen(true);
+    setPurchaseNotice({
+      type: 'success',
+      text: `🛒 Álbum "${albumTitle}" (${type === 'buy' ? 'Compra Permanente' : 'Aluguel por 30 dias'}) adicionado ao Carrinho!`
+    });
+    setTimeout(() => setPurchaseNotice(null), 4000);
+  };
 
   // Álbuns extraídos das faixas encontradas na busca
   const searchAlbums = useMemo(() => {
@@ -1762,8 +2021,12 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
         })
         .catch(() => {});
 
-      // 2. Músicas reais e artista correspondentes pesquisados no catálogo
-      fetch(`${API_URL}/api/music/search?q=${encodeURIComponent(searchQuery)}`, { signal })
+      // 2. Músicas reais e artista correspondentes pesquisados no catálogo e biblioteca pessoal
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      fetch(`${API_URL}/api/music/search?q=${encodeURIComponent(searchQuery)}`, {
+        signal,
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
         .then(r => r.json())
         .then(d => {
           if (!isMounted) return;
@@ -1775,7 +2038,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             if (cleanA === 'bk' || qTrim === 'bk' || qTrim === "bk'") {
               artistName = 'BK';
               if (!artistCover || artistCover.includes('default') || artistCover.includes('/images/artist//')) {
-                artistCover = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png';
+                artistCover = 'https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg';
               }
             } else if (cleanA === 'justinbieber') {
               if (!artistCover || artistCover.includes('default') || artistCover.includes('/images/artist//')) {
@@ -1801,7 +2064,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             });
           }
           if (d.tracks && d.tracks.length > 0) {
-            list.push(...d.tracks.slice(0, 4));
+            list.push(...d.tracks.slice(0, 5));
           }
           fetchedEntities = list;
           setSuggestEntities(list);
@@ -1826,6 +2089,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(214); // Real duration in seconds
+  const [showRemainingTime, setShowRemainingTime] = useState(false);
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
@@ -1841,39 +2105,490 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     return (userPurchases || []).filter(p => p.type === 'buy' || (!p.isExpired && p.canPlay !== false));
   }, [userPurchases]);
 
-  // Fila de reprodução exclusiva para faixas compradas e alugadas ativas da biblioteca
-  const displayQueue = useMemo(() => {
-    if (!currentTrack) return validPurchases;
-    return validPurchases.filter(p => {
+  // Sistema Inteligente de Fila de Reprodução (Referência Spotify)
+  const [manualQueue, setManualQueue] = useState([]); // Músicas adicionadas manualmente ("A seguir")
+  const [contextQueue, setContextQueue] = useState([]); // Músicas do álbum, playlist ou biblioteca ("Próximas de: [Contexto]")
+  const [playbackContextName, setPlaybackContextName] = useState(''); // Nome dinâmico do contexto (ex: 'Little Love', 'Esú', 'teste')
+  const [playedSessionHistory, setPlayedSessionHistory] = useState([]);
+
+  const manualQueueRef = useRef([]);
+  const contextQueueRef = useRef([]);
+  const playbackContextNameRef = useRef('');
+  const playedSessionHistoryRef = useRef([]);
+
+  useEffect(() => {
+    manualQueueRef.current = manualQueue;
+  }, [manualQueue]);
+
+  useEffect(() => {
+    contextQueueRef.current = contextQueue;
+  }, [contextQueue]);
+
+  useEffect(() => {
+    playbackContextNameRef.current = playbackContextName;
+  }, [playbackContextName]);
+
+  useEffect(() => {
+    playedSessionHistoryRef.current = playedSessionHistory;
+  }, [playedSessionHistory]);
+
+  const [activeTrackMenu, setActiveTrackMenu] = useState(null); // { track, x, y }
+  const [queueToast, setQueueToast] = useState(null);
+  const queueToastTimeoutRef = useRef(null);
+
+  const showQueueToast = useCallback((msg) => {
+    if (queueToastTimeoutRef.current) clearTimeout(queueToastTimeoutRef.current);
+    setQueueToast(msg);
+    queueToastTimeoutRef.current = setTimeout(() => {
+      setQueueToast(null);
+    }, 2800);
+  }, []);
+
+  // Validador universal de permissão de reprodução da faixa
+  const isTrackPlayable = useCallback((track) => {
+    if (!track) return false;
+    // Se a faixa já possui flag de autorização avaliada pelo backend/biblioteca
+    if (track.canPlay === true || track.can_play === true) {
+      if (!track.isExpired && !track.is_expired && !track.isLocked && !track.is_locked) {
+        return true;
+      }
+    }
+    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const trackKey = (track.title || '').trim().toLowerCase();
+    const trackTitleClean = cleanSimple(track.title);
+    const trackAlbumClean = cleanSimple(track.album);
+    const trackIdStr = String(track.dbTrackId || track.id || '').replace('ct-', '').replace('dz-track-', '').replace('it-track-', '');
+    const trackAlbumIdStr = String(track.album_id || track.albumId || '').replace('dz-alb-', '').replace('it-alb-', '');
+
+    const isLocallyUnlocked = Boolean(unlockedTrackMap[trackKey] || unlockedTrackMap[trackTitleClean] || (track.id && unlockedTrackMap[track.id]));
+
+    const isAlbumOwned = (userPurchases || []).some(p => {
+      if (p.payment_status === 'pending') return false;
+      const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
+      if (!isAlb || p.type !== 'buy') return false;
+      const pTitleClean = cleanSimple(p.title);
+      const pAlbId = String(p.album_id || '').replace('dz-alb-', '').replace('it-alb-', '');
+      const titleMatch = trackAlbumClean && pTitleClean && (
+        trackAlbumClean === pTitleClean || trackAlbumClean.includes(pTitleClean) || pTitleClean.includes(trackAlbumClean)
+      );
+      const idMatch = (trackAlbumIdStr && pAlbId && (trackAlbumIdStr === pAlbId || String(track.album_id) === String(p.album_id)));
+      return titleMatch || idMatch;
+    });
+
+    const isAlbumRentedActive = (userPurchases || []).some(p => {
+      if (p.payment_status === 'pending') return false;
+      const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
+      if (!isAlb || p.type !== 'rent' || p.isExpired) return false;
+      const pTitleClean = cleanSimple(p.title);
+      const pAlbId = String(p.album_id || '').replace('dz-alb-', '').replace('it-alb-', '');
+      const titleMatch = trackAlbumClean && pTitleClean && (
+        trackAlbumClean === pTitleClean || trackAlbumClean.includes(pTitleClean) || pTitleClean.includes(trackAlbumClean)
+      );
+      const idMatch = (trackAlbumIdStr && pAlbId && (trackAlbumIdStr === pAlbId || String(track.album_id) === String(p.album_id)));
+      return titleMatch || idMatch;
+    });
+
+    const isOwned = isLocallyUnlocked || track.isPurchased || isAlbumOwned || (userPurchases || []).some(p => {
+      if (p.payment_status === 'pending' || p.type !== 'buy') return false;
+      const pTitleClean = cleanSimple(p.title);
+      const pTrackId = String(p.track_id || p.dbTrackId || p.id || '').replace('ct-', '');
+      const titleMatch = pTitleClean && trackTitleClean && pTitleClean === trackTitleClean;
+      const idMatch = pTrackId && trackIdStr && pTrackId === trackIdStr;
+      return titleMatch || idMatch;
+    });
+
+    const isRentedActive = isLocallyUnlocked || (track.isRented && !track.isExpired) || isAlbumRentedActive || (userPurchases || []).some(p => {
+      if (p.payment_status === 'pending' || p.type !== 'rent' || p.isExpired) return false;
+      const pTitleClean = cleanSimple(p.title);
+      const pTrackId = String(p.track_id || p.dbTrackId || p.id || '').replace('ct-', '');
+      const titleMatch = pTitleClean && trackTitleClean && pTitleClean === trackTitleClean;
+      const idMatch = pTrackId && trackIdStr && pTrackId === trackIdStr;
+      return titleMatch || idMatch;
+    });
+
+    return Boolean(isOwned || isRentedActive);
+  }, [unlockedTrackMap, userPurchases]);
+
+  // Identificador formal de propriedade definitiva (Comprada)
+  const isTrackOwned = useCallback((track) => {
+    if (!track) return false;
+    if (track.isPurchased || track.is_purchased || track.badge === 'Comprada' || track.access_status === 'purchased') return true;
+    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const trackTitleClean = cleanSimple(track.title);
+    const trackArtistClean = cleanSimple(track.artist);
+    const trackAlbumClean = cleanSimple(track.album);
+    const trackIdStr = String(track.dbTrackId || track.id || '').replace(/^ct-/, '').replace(/^dz-track-/, '').replace(/^it-track-/, '');
+    const trackAlbumIdStr = String(track.album_id || track.albumId || '').replace(/^dz-alb-/, '').replace(/^it-alb-/, '');
+
+    const isAlbumOwned = (userPurchases || []).some(p => {
+      if (p.payment_status === 'pending') return false;
+      const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
+      if (!isAlb || p.type !== 'buy') return false;
+      const pTitleClean = cleanSimple(p.title);
+      const pAlbId = String(p.album_id || '').replace(/^dz-alb-/, '').replace(/^it-alb-/, '');
+      const titleMatch = trackAlbumClean && pTitleClean && (
+        trackAlbumClean === pTitleClean || trackAlbumClean.includes(pTitleClean) || pTitleClean.includes(trackAlbumClean)
+      );
+      const idMatch = (trackAlbumIdStr && pAlbId && (trackAlbumIdStr === pAlbId || String(track.album_id) === String(p.album_id)));
+      return titleMatch || idMatch;
+    });
+
+    if (isAlbumOwned) return true;
+
+    return (userPurchases || []).some(p => {
+      if (p.payment_status === 'pending' || p.type !== 'buy') return false;
+      const pTitleClean = cleanSimple(p.title);
+      const pArtistClean = cleanSimple(p.artist);
+      const pTrackId = String(p.track_id || p.dbTrackId || p.id || '').replace(/^ct-/, '');
+      if (trackIdStr && pTrackId && trackIdStr === pTrackId) return true;
+      if (trackTitleClean && pTitleClean && trackTitleClean === pTitleClean) {
+        if (!trackArtistClean || !pArtistClean) return true;
+        return trackArtistClean === pArtistClean || trackArtistClean.includes(pArtistClean) || pArtistClean.includes(trackArtistClean);
+      }
+      return false;
+    });
+  }, [userPurchases]);
+
+  // Identificador formal de aluguel ativo (Alugada)
+  const isTrackRentedActive = useCallback((track) => {
+    if (!track) return false;
+    if ((track.isRented || track.is_rented || track.badge === 'Alugada' || track.access_status === 'rent_active') && !track.isExpired) return true;
+    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const trackTitleClean = cleanSimple(track.title);
+    const trackArtistClean = cleanSimple(track.artist);
+    const trackAlbumClean = cleanSimple(track.album);
+    const trackIdStr = String(track.dbTrackId || track.id || '').replace(/^ct-/, '').replace(/^dz-track-/, '').replace(/^it-track-/, '');
+    const trackAlbumIdStr = String(track.album_id || track.albumId || '').replace(/^dz-alb-/, '').replace(/^it-alb-/, '');
+
+    const isAlbumRentedActive = (userPurchases || []).some(p => {
+      if (p.payment_status === 'pending') return false;
+      const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
+      if (!isAlb || p.type !== 'rent' || p.isExpired) return false;
+      const pTitleClean = cleanSimple(p.title);
+      const pAlbId = String(p.album_id || '').replace(/^dz-alb-/, '').replace(/^it-alb-/, '');
+      const titleMatch = trackAlbumClean && pTitleClean && (
+        trackAlbumClean === pTitleClean || trackAlbumClean.includes(pTitleClean) || pTitleClean.includes(trackAlbumClean)
+      );
+      const idMatch = (trackAlbumIdStr && pAlbId && (trackAlbumIdStr === pAlbId || String(track.album_id) === String(p.album_id)));
+      return titleMatch || idMatch;
+    });
+
+    if (isAlbumRentedActive) return true;
+
+    return (userPurchases || []).some(p => {
+      if (p.payment_status === 'pending' || p.type !== 'rent' || p.isExpired) return false;
+      const pTitleClean = cleanSimple(p.title);
+      const pArtistClean = cleanSimple(p.artist);
+      const pTrackId = String(p.track_id || p.dbTrackId || p.id || '').replace(/^ct-/, '');
+      if (trackIdStr && pTrackId && trackIdStr === pTrackId) return true;
+      if (trackTitleClean && pTitleClean && trackTitleClean === pTitleClean) {
+        if (!trackArtistClean || !pArtistClean) return true;
+        return trackArtistClean === pArtistClean || trackArtistClean.includes(pArtistClean) || pArtistClean.includes(trackArtistClean);
+      }
+      return false;
+    });
+  }, [userPurchases]);
+
+  // Fila contextual efetiva ("Próximas de: [Contexto]")
+  const effectiveContextQueue = useMemo(() => {
+    if (contextQueue && contextQueue.length > 0) {
+      return contextQueue;
+    }
+    // Contexto padrão da sessão: próximas faixas disponíveis da biblioteca/compras
+    if (!currentTrack) return validPurchases || [];
+    return (validPurchases || []).filter(p => {
       const idMatch = (p.id && currentTrack.id && p.id === currentTrack.id) ||
                       (p.dbTrackId && currentTrack.dbTrackId && p.dbTrackId === currentTrack.dbTrackId);
       const titleMatch = p.title && currentTrack.title && p.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase();
       return !idMatch && !titleMatch;
     });
-  }, [validPurchases, currentTrack]);
+  }, [contextQueue, validPurchases, currentTrack]);
 
-  // Histórico de músicas ouvidas (Estilo Spotify - Lembra última música e ouvidas recentemente)
+  const effectiveContextQueueRef = useRef([]);
+  useEffect(() => {
+    effectiveContextQueueRef.current = effectiveContextQueue;
+  }, [effectiveContextQueue]);
+
+  // Título dinâmico da seção contextual (ex: "Próximas de: Little Love", "Próximas de: Esú")
+  const displayContextTitle = useMemo(() => {
+    if (playbackContextName && playbackContextName.trim()) {
+      return `Próximas de: ${playbackContextName.trim()}`;
+    }
+    if (currentTrack && currentTrack.album && currentTrack.album !== 'Single' && currentTrack.album !== 'Variado') {
+      return `Próximas de: ${currentTrack.album}`;
+    }
+    return 'Próximas de: Sua Biblioteca';
+  }, [playbackContextName, currentTrack]);
+
+  // Adicionar música à seção "A seguir" (preserva 100% da fila de contexto e a reprodução atual)
+  const addToQueue = useCallback((track) => {
+    if (!track) return;
+    const canPlay = isTrackPlayable(track);
+    if (!canPlay) {
+      addToCart(track, 'buy');
+      showQueueToast(`"${track.title}" é exclusiva. Adicionada ao carrinho.`);
+      return;
+    }
+
+    if (!currentTrack) {
+      playTrack(track);
+      showQueueToast(`Tocando agora: ${track.title}`);
+      return;
+    }
+
+    const trackWithKey = {
+      ...track,
+      manualQueueId: `mq-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+    };
+
+    setManualQueue(prev => [...(prev || []), trackWithKey]);
+    showQueueToast(`"${track.title}" adicionada à seção A seguir`);
+  }, [isTrackPlayable, currentTrack, addToCart, showQueueToast]);
+
+  // Limpar somente as faixas adicionadas manualmente ("A seguir")
+  const clearManualQueue = useCallback(() => {
+    setManualQueue([]);
+    showQueueToast('Fila manual limpa');
+  }, [showQueueToast]);
+
+  // Remover música específica de "A seguir"
+  const removeFromManualQueue = useCallback((indexToRemove, e) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    setManualQueue(prev => (prev || []).filter((_, idx) => idx !== indexToRemove));
+  }, []);
+
+  // Remover música específica de "Próximas de: [Contexto]"
+  const removeFromContextQueue = useCallback((indexToRemove, e) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    setContextQueue(prev => {
+      const active = (prev && prev.length > 0)
+        ? prev
+        : (effectiveContextQueueRef.current && effectiveContextQueueRef.current.length > 0)
+          ? effectiveContextQueueRef.current
+          : [];
+      return active.filter((_, idx) => idx !== indexToRemove);
+    });
+  }, []);
+
+  // Tocar música clicada dentro de "A seguir"
+  const playManualQueueTrack = useCallback((idx) => {
+    const list = manualQueueRef.current;
+    if (!list || !list[idx]) return;
+    const trackToPlay = list[idx];
+    const remainingManual = list.slice(idx + 1);
+    setManualQueue(remainingManual);
+    playTrack(trackToPlay, true, null, null, true);
+  }, []);
+
+  // Tocar música clicada dentro de "Próximas de: [Contexto]"
+  const playContextQueueTrack = useCallback((idx) => {
+    const list = (contextQueueRef.current && contextQueueRef.current.length > 0)
+      ? contextQueueRef.current
+      : (effectiveContextQueueRef.current && effectiveContextQueueRef.current.length > 0)
+        ? effectiveContextQueueRef.current
+        : [];
+    if (!list || !list[idx]) return;
+    const trackToPlay = list[idx];
+    const remainingContext = list.slice(idx + 1);
+    setContextQueue(remainingContext);
+    playTrack(trackToPlay, true, null, null, true);
+  }, []);
+
+  // Alternar modo aleatório: embaralha APENAS a fila contextual, mantendo intacta a ordem de "A seguir"
+  const toggleShuffle = useCallback(() => {
+    setIsShuffle(prev => {
+      const nextVal = !prev;
+      if (nextVal) {
+        setContextQueue(currentContext => {
+          const listToShuffle = (currentContext && currentContext.length > 0)
+            ? currentContext
+            : (effectiveContextQueueRef.current && effectiveContextQueueRef.current.length > 0)
+              ? effectiveContextQueueRef.current
+              : [];
+
+          if (!listToShuffle || listToShuffle.length <= 1) return listToShuffle;
+          const shuffled = [...listToShuffle];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          return shuffled;
+        });
+        showQueueToast('Modo aleatório ativado: próximas músicas embaralhadas');
+      } else {
+        showQueueToast('Modo aleatório desativado');
+      }
+      return nextVal;
+    });
+  }, [showQueueToast]);
+
+  // Abrir menu de contexto de 3 pontinhos na música
+  const openTrackContextMenu = useCallback((track, e) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    if (!track) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuWidth = 200;
+    const menuHeight = 110;
+    let x = rect.left - 140;
+    if (x + menuWidth > window.innerWidth - 12) {
+      x = window.innerWidth - menuWidth - 12;
+    }
+    if (x < 12) x = 12;
+
+    let y = rect.bottom + 6;
+    if (y + menuHeight > window.innerHeight - 12) {
+      y = rect.top - menuHeight - 6;
+    }
+
+    setActiveTrackMenu({ track, x, y });
+  }, []);
+
+  // Histórico de músicas ouvidas (Estilo Spotify - Isolado estritamente por usuário)
   const [lastTrack, setLastTrack] = useState(null);
   const [recentHistory, setRecentHistory] = useState([]);
+  const [showAllRecent, setShowAllRecent] = useState(false);
+  const recentCarouselRef = useRef(null);
+  const [canScrollRecentLeft, setCanScrollRecentLeft] = useState(false);
+  const [canScrollRecentRight, setCanScrollRecentRight] = useState(true);
+  const [showFullHistoryModal, setShowFullHistoryModal] = useState(false);
+  const [historyVisibleCount, setHistoryVisibleCount] = useState(15);
+  const [historySearchTerm, setHistorySearchTerm] = useState('');
+
+  const scrollRecentCarousel = (direction) => {
+    if (recentCarouselRef.current) {
+      const card = recentCarouselRef.current.querySelector(`.${styles.spotifyRecentCard}`);
+      const step = card ? card.offsetWidth + 16 : 280;
+      const scrollAmount = direction === 'left' ? -step * 2 : step * 2;
+      recentCarouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const handleRecentCarouselScroll = () => {
+    if (recentCarouselRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = recentCarouselRef.current;
+      setCanScrollRecentLeft(scrollLeft > 10);
+      setCanScrollRecentRight(scrollLeft + clientWidth < scrollWidth - 10);
+    }
+  };
 
   useEffect(() => {
+    handleRecentCarouselScroll();
+  }, [recentHistory, lastTrack]);
+
+  const formatPlayedTime = (timestamp) => {
+    if (!timestamp) return 'Recentemente';
     try {
-      const storedLast = localStorage.getItem('devsongs_last_track');
-      const storedHistory = localStorage.getItem('devsongs_recent_history');
-      if (storedLast) {
-        const parsed = JSON.parse(storedLast);
-        setLastTrack(parsed);
-        // Deixa o player preparado na barra inferior com a última música, pausada
-        setCurrentTrack(parsed);
-        setDuration(parsed.durationSec || 214);
-      }
-      if (storedHistory) {
-        setRecentHistory(JSON.parse(storedHistory));
-      } else if (storedLast) {
-        setRecentHistory([JSON.parse(storedLast)]);
-      }
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) return 'Recentemente';
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffMins < 1) return 'Agora mesmo';
+      if (diffMins < 60) return `Há ${diffMins} min`;
+      if (diffHours < 24) return `Hoje às ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      if (diffDays === 1) return `Ontem às ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' às ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (_) {
+      return 'Recentemente';
+    }
+  };
+
+  // Limpa chaves não isoladas herdadas de versões antigas para impedir contaminação entre contas
+  useEffect(() => {
+    try {
+      localStorage.removeItem('devsongs_last_track');
+      localStorage.removeItem('devsongs_recent_history');
     } catch (_) {}
   }, []);
+
+  // Sincroniza histórico e recomendações personalizadas sempre que o usuário ativo mudar
+  useEffect(() => {
+    if (!user || !user.id) {
+      setLastTrack(null);
+      setRecentHistory([]);
+      return;
+    }
+
+    const userId = user.id;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    // 1. Carrega do cache local isolado por ID do usuário atual para resposta instantânea
+    try {
+      const userLast = localStorage.getItem(`devsongs_last_track_${userId}`);
+      const userHist = localStorage.getItem(`devsongs_recent_history_${userId}`);
+      if (userHist) {
+        const parsedHist = JSON.parse(userHist);
+        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+        const validRecent = Array.isArray(parsedHist)
+          ? parsedHist.filter(t => !t.playedAt || new Date(t.playedAt).getTime() >= cutoff)
+          : [];
+        setRecentHistory(validRecent);
+      } else {
+        setRecentHistory([]);
+      }
+      if (userLast) {
+        const parsedLast = JSON.parse(userLast);
+        setLastTrack(parsedLast);
+      } else {
+        setLastTrack(null);
+      }
+    } catch (_) {}
+
+    // 2. Consulta histórico oficial do usuário no backend e atualiza o estado
+    if (token) {
+      fetch(`${API_URL}/api/music/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => {
+          if (data && data.success && Array.isArray(data.history)) {
+            setRecentHistory(data.history);
+            if (data.history.length > 0) {
+              setLastTrack(data.history[0]);
+              try {
+                localStorage.setItem(`devsongs_last_track_${userId}`, JSON.stringify(data.history[0]));
+                localStorage.setItem(`devsongs_recent_history_${userId}`, JSON.stringify(data.history));
+              } catch (_) {}
+            } else {
+              setLastTrack(null);
+              try {
+                localStorage.removeItem(`devsongs_last_track_${userId}`);
+                localStorage.removeItem(`devsongs_recent_history_${userId}`);
+              } catch (_) {}
+            }
+          }
+        })
+        .catch(err => console.warn('Aviso ao carregar histórico isolado do usuário:', err));
+
+      // 3. Consulta recomendações inteligentes personalizadas da Home
+      fetch(`${API_URL}/api/music/recommendations`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => {
+          if (data && data.success) {
+            if (Array.isArray(data.escolhaADedo) && data.escolhaADedo.length > 0) {
+              setEscolhaADedo(data.escolhaADedo);
+            }
+            if (Array.isArray(data.albunsParaVoce) && data.albunsParaVoce.length > 0) {
+              setAlbunsParaVoce(data.albunsParaVoce);
+            }
+            if (data.source) {
+              setRecsSource(data.source);
+            }
+          }
+        })
+        .catch(err => console.warn('Aviso ao carregar recomendações inteligentes:', err));
+    }
+  }, [user?.id]);
 
   // Bio expand
   const [isBioExpanded, setIsBioExpanded] = useState(false);
@@ -2082,9 +2797,11 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             ...artistObj,
             name: 'BK',
             bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png',
-            avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png',
+            avatarImg: 'https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg',
             bannerPosition: 'center top',
-            bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes..."
+            bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes...",
+            subscribers: artistObj.subscribers || '428 mil',
+            listeners: artistObj.listeners || '428 mil ouvintes mensais'
           };
         } else if (qLower === 'dfideliz') {
           artistObj = {
@@ -2222,7 +2939,15 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             },
             onStateChange: (e) => {
               if (isClosingRef.current) return;
-              if (e.data === 1) setIsPlaying(true);
+              if (e.data === 1) {
+                setIsPlaying(true);
+                const realDur = ytPlayerRef.current?.getDuration?.() || 0;
+                const expectedDur = currentTrackRef.current?.durationSec || 214;
+                const isAd = realDur > 0 && realDur < 45 && expectedDur >= 60;
+                if (!isAd && realDur > 0) {
+                  setDuration(realDur);
+                }
+              }
               if (e.data === 2) setIsPlaying(false);
               if (e.data === 0) {
                 // Vídeo finalizado: verifica se foi um anúncio ou se a música realmente acabou
@@ -2233,6 +2958,8 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                   console.log('Anúncio finalizado no YouTube, aguardando início da música real...');
                   return;
                 }
+                const finalDur = ytPlayerRef.current?.getDuration?.() || expectedDur;
+                setCurrentTime(finalDur);
                 if (!isClosingRef.current && currentTrackRef.current) {
                   handleNextTrack();
                 }
@@ -2297,10 +3024,10 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             const isAd = dur > 0 && dur < 45 && expectedDur >= 60;
 
             if (!isAd && dur > 0) {
-              setCurrentTime(cur);
               setDuration(dur);
+              setCurrentTime(Math.min(cur, dur));
             } else if (!isAd && dur === 0) {
-              setCurrentTime(prev => prev + 0.5);
+              setCurrentTime(prev => Math.min(prev + 0.5, expectedDur));
             }
             // Se for anúncio pré-roll, mantém a barra na duração real da música e não acelera!
           } catch (_) {
@@ -2319,52 +3046,147 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     };
   }, [isPlaying]);
 
-  // Play full song with universal multibase lock protection
-  const playTrack = async (track, forcePlay = false) => {
+  const parseTrackDurationSec = (t) => {
+    if (!t) return 214;
+    if (typeof t.durationSec === 'number' && t.durationSec > 0) return t.durationSec;
+    if (typeof t.duration_sec === 'number' && t.duration_sec > 0) return t.duration_sec;
+    if (typeof t.duration === 'number' && t.duration > 0) return t.duration;
+    if (typeof t.duration === 'string' && t.duration.includes(':')) {
+      const parts = t.duration.split(':').map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts[0] * 60 + parts[1];
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return 214;
+  };
+
+  // Reprodução de faixa com proteção multibase e gerenciamento inteligente de fila estilo Spotify
+  const playTrack = async (track, forcePlay = false, contextQueueArg = null, contextNameArg = null, preserveExistingContext = false) => {
     if (!track) return;
 
     // Se não for reprodução forçada (ex: liberada imediatamente após checkout concluído com sucesso):
     if (!forcePlay) {
-      const trackKey = (track.title || '').trim().toLowerCase();
-      const isLocallyUnlocked = Boolean(unlockedTrackMap[trackKey] || (track.id && unlockedTrackMap[track.id]));
-
-      const isOwned = isLocallyUnlocked || track.isPurchased || userPurchases.some(p => {
-        const titleMatch = p.title && track.title && p.title.trim().toLowerCase() === track.title.trim().toLowerCase();
-        const idMatch = (p.dbTrackId && p.dbTrackId === track.dbTrackId) || (p.id && p.id === track.id);
-        return (titleMatch || idMatch) && p.type === 'buy';
-      });
-
-      const isRentedActive = isLocallyUnlocked || (track.isRented && !track.isExpired) || userPurchases.some(p => {
-        const titleMatch = p.title && track.title && p.title.trim().toLowerCase() === track.title.trim().toLowerCase();
-        const idMatch = (p.dbTrackId && p.dbTrackId === track.dbTrackId) || (p.id && p.id === track.id);
-        return (titleMatch || idMatch) && !p.isExpired && p.type === 'rent';
-      });
-
-      if (!isOwned && !isRentedActive) {
+      const canPlay = isTrackPlayable(track);
+      if (!canPlay) {
         addToCart(track, 'buy');
         return; // Faixa bloqueada: adicionada ao carrinho para compra
       }
     }
 
+    const isSame = (a, b) => {
+      if (!a || !b) return false;
+      if (a.id && b.id && String(a.id) === String(b.id)) return true;
+      if (a.dbTrackId && b.dbTrackId && Number(a.dbTrackId) === Number(b.dbTrackId)) return true;
+      if (a.title && b.title && a.title.trim().toLowerCase() === b.title.trim().toLowerCase()) return true;
+      return false;
+    };
+
+    // Só reconfigura o contexto se preserveExistingContext for falso
+    if (!preserveExistingContext) {
+      if (Array.isArray(contextQueueArg)) {
+        if (contextNameArg) {
+          setPlaybackContextName(contextNameArg);
+        } else if (track.album && track.album !== 'Single' && track.album !== 'Variado') {
+          setPlaybackContextName(track.album);
+        }
+        const idx = contextQueueArg.findIndex(t => isSame(t, track));
+        let remaining;
+        if (idx === 0) {
+          remaining = contextQueueArg.slice(1);
+        } else if (idx > 0) {
+          remaining = contextQueueArg.slice(idx + 1);
+        } else {
+          remaining = contextQueueArg.filter(t => !isSame(t, track));
+        }
+
+        if (isShuffle) {
+          const shuffled = [...remaining];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          remaining = shuffled;
+        }
+        setContextQueue(remaining);
+      } else {
+        if (contextNameArg) {
+          setPlaybackContextName(contextNameArg);
+        } else if (track.album && track.album !== 'Single' && track.album !== 'Variado') {
+          setPlaybackContextName(track.album);
+        } else {
+          setPlaybackContextName('Sua Biblioteca');
+        }
+
+        setContextQueue(prev => {
+          if (prev && prev.length > 0) {
+            const idx = prev.findIndex(t => isSame(t, track));
+            if (idx >= 0) {
+              return prev.slice(idx + 1);
+            }
+            return prev;
+          }
+          return (validPurchases || []).filter(p => !isSame(p, track));
+        });
+      }
+    }
+
+    // Registra faixa anterior no histórico de sessão para o botão Anterior
+    if (currentTrackRef.current && currentTrackRef.current.id !== track.id) {
+      setPlayedSessionHistory(prev => [...prev, currentTrackRef.current]);
+    }
+
+    const realDurationSec = parseTrackDurationSec(track);
+    const enrichedTrack = {
+      ...track,
+      durationSec: realDurationSec,
+      playedAt: new Date().toISOString()
+    };
+
     isClosingRef.current = false;
-    setCurrentTrack(track);
+    setCurrentTrack(enrichedTrack);
     setIsPlaying(true);
     setCurrentTime(0);
-    setDuration(track.durationSec || 214);
-    setLastTrack(track);
+    setDuration(realDurationSec);
+    setLastTrack(enrichedTrack);
 
-    // Salva no histórico de ouvidas recentemente (Estilo Spotify)
+    // Salva no histórico de ouvidas recentemente (Estilo Spotify - Isolado por usuário)
     try {
-      localStorage.setItem('devsongs_last_track', JSON.stringify(track));
-      setRecentHistory(prev => {
-        const filtered = (prev || []).filter(t => t.id !== track.id && t.title !== track.title);
-        const updated = [track, ...filtered].slice(0, 6);
-        localStorage.setItem('devsongs_recent_history', JSON.stringify(updated));
-        return updated;
-      });
+      localStorage.removeItem('devsongs_last_track');
+      localStorage.removeItem('devsongs_recent_history');
+
+      if (user && user.id) {
+        const userId = user.id;
+        localStorage.setItem(`devsongs_last_track_${userId}`, JSON.stringify(enrichedTrack));
+        setRecentHistory(prev => {
+          const isSameTrack = (t) => {
+            if (track.id && t.id && String(track.id) === String(t.id)) return true;
+            if (track.dbTrackId && t.dbTrackId && Number(track.dbTrackId) === Number(t.dbTrackId)) return true;
+            const tTitle = (t.title || '').toLowerCase().trim();
+            const trackTitle = (track.title || '').toLowerCase().trim();
+            const tArtist = (t.artist || '').toLowerCase().trim();
+            const trackArtist = (track.artist || '').toLowerCase().trim();
+            return Boolean(tTitle && trackTitle && tTitle === trackTitle && tArtist === trackArtist);
+          };
+          const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+          const filtered = (prev || []).filter(t => !isSameTrack(t) && (!t.playedAt || new Date(t.playedAt).getTime() >= cutoff));
+          const updated = [enrichedTrack, ...filtered].slice(0, 50);
+          localStorage.setItem(`devsongs_recent_history_${userId}`, JSON.stringify(updated));
+          return updated;
+        });
+
+        // Persiste a reprodução de forma segura no backend associada ao usuário autenticado
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (token) {
+          fetch(`${API_URL}/api/music/history`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ track: enrichedTrack })
+          }).catch(err => console.warn('Aviso ao sincronizar histórico no servidor:', err));
+        }
+      }
     } catch (_) {}
-
-
 
     try {
       const cleanArtist = (track.artist || '').replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, '').trim();
@@ -2372,7 +3194,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
         title: track.title || '',
         artist: cleanArtist,
         album: (track.album && track.album !== 'Single' && track.album !== track.title) ? track.album : '',
-        durationSec: track.durationSec || 0,
+        durationSec: realDurationSec,
         q: `${cleanArtist} ${track.title || ''}`.trim()
       });
       if (track.youtubeVideoId || track.youtube_video_id) {
@@ -2472,37 +3294,134 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
   const handleNextTrack = () => {
     if (isClosingRef.current || !currentTrackRef.current) return;
 
-    // Avança exclusivamente entre as músicas compradas ou alugadas ativas da biblioteca
-    if (validPurchases.length === 0) return;
-
-    const currentIndex = validPurchases.findIndex(t => 
-      (t.id && t.id === currentTrackRef.current?.id) || 
-      (t.dbTrackId && t.dbTrackId === currentTrackRef.current?.dbTrackId) ||
-      (t.title && currentTrackRef.current?.title && t.title.trim().toLowerCase() === currentTrackRef.current.title.trim().toLowerCase())
-    );
-
-    let nextIndex;
-    if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * validPurchases.length);
-    } else {
-      nextIndex = currentIndex >= 0 ? (currentIndex + 1) % validPurchases.length : 0;
+    // Se o modo de repetição única estiver ativo, reinicia a faixa atual
+    if (isRepeat) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
+      if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
+        ytPlayerRef.current.seekTo(0);
+      }
+      setCurrentTime(0);
+      setIsPlaying(true);
+      return;
     }
-    playTrack(validPurchases[nextIndex]);
+
+    // Salva a faixa atual no histórico da sessão (para o botão voltar)
+    if (currentTrackRef.current) {
+      setPlayedSessionHistory(prev => [...prev, currentTrackRef.current]);
+    }
+
+    // PRIORIDADE 1 (Estilo Spotify): Músicas adicionadas manualmente pelo usuário ("A seguir")
+    if (manualQueueRef.current && manualQueueRef.current.length > 0) {
+      const nextTrack = manualQueueRef.current[0];
+      const remainingManual = manualQueueRef.current.slice(1);
+      setManualQueue(remainingManual);
+      // Preserva a fila contextual intacta para ser retomada quando "A seguir" esvaziar
+      playTrack(nextTrack, true, null, null, true);
+      return;
+    }
+
+    // PRIORIDADE 2: Fila de contexto do álbum, playlist ou biblioteca ("Próximas de: [Contexto]")
+    const activeContextQueue = (contextQueueRef.current && contextQueueRef.current.length > 0)
+      ? contextQueueRef.current
+      : (effectiveContextQueueRef.current && effectiveContextQueueRef.current.length > 0)
+        ? effectiveContextQueueRef.current
+        : [];
+
+    if (activeContextQueue.length > 0) {
+      const nextTrack = activeContextQueue[0];
+      const remainingContext = activeContextQueue.slice(1);
+      setContextQueue(remainingContext);
+      playTrack(nextTrack, true, null, null, true);
+      return;
+    }
+
+    // PRIORIDADE 3: Continuidade contínua da biblioteca do usuário
+    if (validPurchases.length > 0) {
+      const playedKeys = new Set(
+        [...playedSessionHistoryRef.current, currentTrackRef.current].map(t =>
+          (t?.id || t?.title || '').toString().toLowerCase().trim()
+        )
+      );
+
+      // Evita músicas já reproduzidas na sessão atual
+      let candidates = validPurchases.filter(p => {
+        const key = (p.id || p.title || '').toString().toLowerCase().trim();
+        return !playedKeys.has(key);
+      });
+
+      // Se todas já foram ouvidas na sessão atual, reinicia o ciclo
+      if (candidates.length === 0) {
+        candidates = validPurchases.filter(p => {
+          const idMatch = (p.id && currentTrackRef.current?.id && p.id === currentTrackRef.current.id);
+          const titleMatch = p.title && currentTrackRef.current?.title && p.title.trim().toLowerCase() === currentTrackRef.current.title.trim().toLowerCase();
+          return !idMatch && !titleMatch;
+        });
+        setPlayedSessionHistory([]);
+      }
+
+      if (candidates.length === 0) candidates = validPurchases;
+
+      let nextTrack;
+      if (isShuffle) {
+        const randIdx = Math.floor(Math.random() * candidates.length);
+        nextTrack = candidates[randIdx];
+      } else {
+        const currentIndex = candidates.findIndex(t =>
+          (t.id && t.id === currentTrackRef.current?.id) ||
+          (t.title && currentTrackRef.current?.title && t.title.trim().toLowerCase() === currentTrackRef.current.title.trim().toLowerCase())
+        );
+        const nextIndex = currentIndex >= 0 && currentIndex < candidates.length - 1 ? currentIndex + 1 : 0;
+        nextTrack = candidates[nextIndex];
+      }
+
+      if (nextTrack) {
+        playTrack(nextTrack, true, null, null, true);
+      }
+    }
   };
 
   const handlePrevTrack = () => {
     if (isClosingRef.current || !currentTrackRef.current) return;
 
-    if (validPurchases.length === 0) return;
+    // Se já tocou mais de 3 segundos, o comportamento padrão dos players modernos é reiniciar a música atual
+    if (currentTime > 3) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+      }
+      if (ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
+        ytPlayerRef.current.seekTo(0);
+      }
+      setCurrentTime(0);
+      return;
+    }
 
-    const currentIndex = validPurchases.findIndex(t => 
-      (t.id && t.id === currentTrackRef.current?.id) || 
-      (t.dbTrackId && t.dbTrackId === currentTrackRef.current?.dbTrackId) ||
-      (t.title && currentTrackRef.current?.title && t.title.trim().toLowerCase() === currentTrackRef.current.title.trim().toLowerCase())
-    );
+    // Se houver histórico de reprodução nesta sessão:
+    if (playedSessionHistoryRef.current && playedSessionHistoryRef.current.length > 0) {
+      const historyList = [...playedSessionHistoryRef.current];
+      const prevTrack = historyList.pop();
+      setPlayedSessionHistory(historyList);
 
-    const prevIndex = currentIndex > 0 ? currentIndex - 1 : validPurchases.length - 1;
-    playTrack(validPurchases[prevIndex]);
+      // Coloca a faixa atual de volta no início da fila de contexto
+      if (currentTrackRef.current) {
+        setContextQueue(prev => [currentTrackRef.current, ...(prev || [])]);
+      }
+      playTrack(prevTrack, true, null, null, true);
+      return;
+    }
+
+    // Fallback: se não houver histórico de sessão, navega no catálogo de compras
+    if (validPurchases.length > 0) {
+      const currentIndex = validPurchases.findIndex(t => 
+        (t.id && t.id === currentTrackRef.current?.id) || 
+        (t.dbTrackId && t.dbTrackId === currentTrackRef.current?.dbTrackId) ||
+        (t.title && currentTrackRef.current?.title && t.title.trim().toLowerCase() === currentTrackRef.current.title.trim().toLowerCase())
+      );
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : validPurchases.length - 1;
+      playTrack(validPurchases[prevIndex], true, null, null, true);
+    }
   };
 
   const handleClosePlayer = (e) => {
@@ -2633,8 +3552,10 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
         activeArtist: activeArtist ? { ...activeArtist } : null
       };
     }
+    const slug = (artistName || artistId || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const artistUrl = `/artist/${slug}`;
     if (typeof window !== 'undefined' && window.history) {
-      window.history.pushState({ devsongsView: 'artist', artistName, artistId }, '');
+      window.history.pushState({ devsongsView: 'artist', artistName, artistId }, '', artistUrl);
     }
     setViewMode('artist');
     setSelectedAlbum(null);
@@ -2667,16 +3588,136 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       setActiveArtist({
         id: 'bk',
         name: 'BK',
-        listeners: '9,31 mi ouvintes mensais',
+        listeners: '428 mil ouvintes mensais',
         bio: "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes...",
         bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png',
-        avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png',
+        avatarImg: 'https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg',
         bannerPosition: 'center top',
-        subscribers: '1,25 mi'
+        subscribers: '428 mil'
       });
       fetchArtistTracks('BK');
     } else {
       fetchArtistTracks(artistName, artistId);
+    }
+  };
+  openArtistProfileRef.current = openArtistProfile;
+
+  // Verificar se o usuário autenticado está inscrito no artista ativo
+  useEffect(() => {
+    if (!activeArtist || !activeArtist.name) {
+      setIsArtistSubscribed(false);
+      return;
+    }
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setIsArtistSubscribed(false);
+      return;
+    }
+    let isMounted = true;
+    const checkSub = async () => {
+      try {
+        const artName = activeArtist.name || '';
+        const artId = activeArtist.id || '';
+        const res = await fetch(`${API_URL}/api/library/subscriptions/check?artistName=${encodeURIComponent(artName)}&artistId=${encodeURIComponent(artId)}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setIsArtistSubscribed(Boolean(data.subscribed));
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao verificar status de inscrição do artista:', err);
+      }
+    };
+    checkSub();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeArtist]);
+
+  // Alternar inscrição no artista (Inscrever-se / Abrir confirmação de cancelamento)
+  const handleToggleArtistSubscription = async () => {
+    if (!activeArtist) return;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      alert('Você precisa estar logado para se inscrever neste artista.');
+      return;
+    }
+
+    if (isArtistSubscribed) {
+      setUnsubscribeModalOpen(true);
+      return;
+    }
+
+    setIsSubscribing(true);
+    try {
+      const artAvatar = activeArtist.avatarImg || activeArtist.avatar_url || activeArtist.picture || (
+        activeArtist.name?.toLowerCase().includes('bk')
+          ? 'https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg'
+          : 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'
+      );
+      const res = await fetch(`${API_URL}/api/library/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          artistId: activeArtist.id,
+          name: activeArtist.name,
+          avatar_url: artAvatar,
+          genre: activeArtist.genre || 'Rap',
+          subscribers: activeArtist.subscribers || activeArtist.listeners || '428 mil'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsArtistSubscribed(true);
+        setLibraryRefreshKey(k => (k || 0) + 1);
+      } else {
+        alert(data.error || 'Erro ao se inscrever no artista.');
+      }
+    } catch (err) {
+      console.error('Erro ao registrar inscrição no artista:', err);
+      alert('Não foi possível conectar ao servidor para registrar a inscrição.');
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  // Confirmar cancelamento de inscrição
+  const handleConfirmUnsubscribe = async () => {
+    if (!activeArtist) return;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return;
+
+    setIsSubscribing(true);
+    try {
+      const artName = activeArtist.name || '';
+      const artId = activeArtist.id || '';
+      const res = await fetch(`${API_URL}/api/library/subscriptions?artistName=${encodeURIComponent(artName)}&artistId=${encodeURIComponent(artId)}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsArtistSubscribed(false);
+        setUnsubscribeModalOpen(false);
+        setLibraryRefreshKey(k => (k || 0) + 1);
+      } else {
+        alert(data.error || 'Erro ao cancelar inscrição.');
+      }
+    } catch (err) {
+      console.error('Erro ao cancelar inscrição do artista:', err);
+      alert('Não foi possível conectar ao servidor para cancelar a inscrição.');
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
@@ -2694,12 +3735,15 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     const qLower = q.toLowerCase();
 
     try {
-      const res = await fetch(`${API_URL}/api/music/search?q=${encodeURIComponent(q)}`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${API_URL}/api/music/search?q=${encodeURIComponent(q)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       const data = await res.json();
       if (data && data.artist) {
         let art = data.artist;
         if (qLower === 'bk' || qLower === "bk'") {
-          art = { ...art, name: 'BK', bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png', avatarImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png', bannerPosition: 'center top' };
+          art = { ...art, name: 'BK', bannerImg: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png', avatarImg: 'https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg', bannerPosition: 'center top' };
         } else if (qLower.includes('baco')) {
           art = { ...art, bannerPosition: 'center 16%' };
         }
@@ -2731,13 +3775,28 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
         activeArtist: activeArtist ? { ...activeArtist } : null
       };
     }
+    const albumSlug = (album.title || album.id || 'album').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const albumUrl = `/album/${album.id || albumSlug}`;
     if (typeof window !== 'undefined' && window.history) {
-      window.history.pushState({ devsongsView: 'album', albumId: album.albumId || album.id, title: album.title }, '');
+      window.history.pushState({ devsongsView: 'album', albumId: album.albumId || album.id, title: album.title }, '', albumUrl);
     }
     try {
       setIsSearching(true);
       setIsAlbumLoading(true);
-      setSelectedAlbum(album);
+      // Limpa faixas de álbuns anteriores para evitar dados residuais e salto visual
+      setAlbumTracks([]);
+
+      const resolvedArtist = album.artist || album.artistName || album.artist_name || activeArtist?.name || '';
+      const resolvedAvatar = album.artistAvatar || (resolvedArtist && activeArtist?.name && activeArtist.name.toLowerCase() === resolvedArtist.toLowerCase() ? activeArtist.avatarImg : '') || '';
+
+      setSelectedAlbum({
+        ...album,
+        artist: resolvedArtist,
+        artistName: resolvedArtist,
+        artistAvatar: resolvedAvatar,
+        nbTracks: album.nbTracks || null,
+        durationSec: album.durationSec || null
+      });
       setViewMode('album');
 
       // Joga a visualização imediatamente para a parte de cima do álbum
@@ -2759,6 +3818,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
       if (data && data.album) {
         setSelectedAlbum({
+          ...album,
           ...data.album,
           year: getDisplayAlbumYear(data.album, artistNameParam, data.album.year)
         });
@@ -2769,15 +3829,21 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
           year: getDisplayAlbumYear(a, a.artist || artistNameParam, a.year)
         })));
       } else {
-        const pool = (albums && albums.length > 0) ? albums : HOME_ALBUNS_PARA_VOCE;
+        const pool = (albums && albums.length > 0) ? albums : albunsParaVoce;
         setRelatedAlbums(pool.filter(a => a.id !== (data?.album?.id || album.id)).slice(0, 8).map(a => ({
           ...a,
           year: getDisplayAlbumYear(a, a.artist || artistNameParam, a.year)
         })));
       }
       if (data && data.tracks && data.tracks.length > 0) {
-        setAlbumTracks(data.tracks);
-        setTracks(data.tracks);
+        const enrichedTracks = data.tracks.map(t => ({
+          ...t,
+          album: t.album || data.album?.title || album.title,
+          albumId: t.albumId || data.album?.id || album.id,
+          album_id: t.album_id || data.album?.id || album.id
+        }));
+        setAlbumTracks(enrichedTracks);
+        setTracks(enrichedTracks);
       } else {
         // Fallback local ou iTunes caso o backend não retorne faixas
         const isBK = artistNameParam.toLowerCase().includes('bk');
@@ -2803,6 +3869,75 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       setIsAlbumLoading(false);
     }
   };
+  handleSelectAlbumRef.current = handleSelectAlbum;
+
+  const navigateTo = (path, options = {}) => {
+    if (path === '/home') {
+      setViewMode('home');
+      setActiveTab('inicio');
+      setSelectedAlbum(null);
+      setSelectedCompany(null);
+      setBaseMode('home');
+      setCompanyTracks([]);
+      setActiveArtist(null);
+      if (router.pathname && (router.pathname.startsWith('/artist') || router.pathname.startsWith('/album') || router.pathname.startsWith('/playlist'))) {
+        router.push('/home');
+      } else if (typeof window !== 'undefined') {
+        window.history.pushState({ devsongsView: 'home', tab: 'inicio' }, '', '/home');
+      }
+    } else if (path === '/explore') {
+      setViewMode('home');
+      setActiveTab('explorar');
+      setSelectedAlbum(null);
+      setSelectedCompany(null);
+      setActiveArtist(null);
+      if (router.pathname && (router.pathname.startsWith('/artist') || router.pathname.startsWith('/album') || router.pathname.startsWith('/playlist'))) {
+        router.push('/explore');
+      } else if (typeof window !== 'undefined') {
+        window.history.pushState({ devsongsView: 'home', tab: 'explorar' }, '', '/explore');
+      }
+    } else if (path === '/library') {
+      setViewMode('home');
+      setActiveTab('biblioteca');
+      setSelectedAlbum(null);
+      setSelectedSidebarPlaylistId(null);
+      setActiveArtist(null);
+      fetchUserPurchases();
+      if (router.pathname && (router.pathname.startsWith('/artist') || router.pathname.startsWith('/album') || router.pathname.startsWith('/playlist'))) {
+        router.push('/library');
+      } else if (typeof window !== 'undefined') {
+        window.history.pushState({ devsongsView: 'home', tab: 'biblioteca' }, '', '/library');
+      }
+    } else if (path === '/upgrade') {
+      setViewMode('home');
+      setActiveTab('upgrade');
+      setSelectedAlbum(null);
+      setSelectedCompany(null);
+      setActiveArtist(null);
+      if (router.pathname && (router.pathname.startsWith('/artist') || router.pathname.startsWith('/album') || router.pathname.startsWith('/playlist'))) {
+        router.push('/upgrade');
+      } else if (typeof window !== 'undefined') {
+        window.history.pushState({ devsongsView: 'home', tab: 'upgrade' }, '', '/upgrade');
+      }
+    } else if (path.startsWith('/artist/')) {
+      const slugOrId = path.replace('/artist/', '');
+      openArtistProfile(options.artistName || slugOrId, options.artistId || slugOrId, options.returnState);
+    } else if (path.startsWith('/album/')) {
+      const albumId = path.replace('/album/', '');
+      handleSelectAlbum(options.album || { id: albumId, albumId }, options.returnState);
+    } else if (path.startsWith('/playlist/')) {
+      const plId = path.replace('/playlist/', '');
+      setSelectedSidebarPlaylistId(plId);
+      setActiveTab('biblioteca');
+      setViewMode('home');
+      setSelectedAlbum(null);
+      setActiveArtist(null);
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ devsongsView: 'home', playlistId: plId }, '', path);
+      }
+    }
+  };
+  navigateToRef.current = navigateTo;
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -2844,8 +3979,21 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userData');
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('devsongs_last_track');
+      localStorage.removeItem('devsongs_recent_history');
+      localStorage.removeItem('devsongs_cart');
+      localStorage.removeItem('devsongs_used_coupons');
+    } catch (_) {}
+    setUser(null);
+    setRecentHistory([]);
+    setLastTrack(null);
+    setCurrentTrack(null);
+    setIsPlaying(false);
+    setEscolhaADedo(HOME_ESCOLHA_A_DEDO);
+    setAlbunsParaVoce(HOME_ALBUNS_PARA_VOCE);
     router.push('/login');
   };
 
@@ -2909,14 +4057,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             </button>
             <div
               className={styles.ytMusicLogoRow}
-              onClick={() => {
-                setActiveTab('inicio');
-                setViewMode('home');
-                setSelectedAlbum(null);
-                setSelectedCompany(null);
-                setBaseMode('home');
-                setCompanyTracks([]);
-              }}
+              onClick={() => navigateTo('/home')}
               style={{ cursor: 'pointer' }}
               title="Ir para página inicial DevSongs"
             >
@@ -3026,14 +4167,25 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                       }}
                     >
                       <img
-                        src={entity.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                        src={getSafeCover(entity)}
                         alt={entity.title}
                         className={`${styles.searchEntityThumb} ${entity.type === 'artist' ? styles.searchEntityThumbArtist : ''}`}
                         referrerPolicy="no-referrer"
                         onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                       />
                       <div className={styles.searchEntityContent}>
-                        <span className={styles.searchEntityTitle}>{entity.title}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                          <span className={styles.searchEntityTitle}>{entity.title}</span>
+                          {(entity.isPurchased || entity.badge === 'Comprada' || isTrackOwned(entity)) ? (
+                            <span className={styles.purchasedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                              Comprada
+                            </span>
+                          ) : ((entity.isRented || entity.badge === 'Alugada' || isTrackRentedActive(entity)) && !entity.isExpired) ? (
+                            <span className={styles.rentedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                              Alugada
+                            </span>
+                          ) : null}
+                        </div>
                         <span className={styles.searchEntitySub}>
                           {entity.explicit && <span className={styles.explicitTag}>E</span>}
                           <span>{entity.sub}</span>
@@ -3314,50 +4466,32 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
           >
             <nav className={styles.navSection}>
               <button
-                onClick={() => {
-                  setActiveTab('inicio');
-                  setViewMode('home');
-                  setSelectedAlbum(null);
-                  setSelectedCompany(null);
-                  setBaseMode('home');
-                  setCompanyTracks([]);
-                }}
-                className={`${styles.navItem} ${viewMode === 'home' && !selectedCompany && baseMode === 'home' ? styles.navItemActive : ''}`}
+                onClick={() => navigateTo('/home')}
+                className={`${styles.navItem} ${viewMode === 'home' && activeTab === 'inicio' ? styles.navItemActive : ''}`}
                 title="Início"
               >
                 <Home size={22} />
                 <span>Início</span>
               </button>
               <button
-                onClick={() => {
-                  openArtistProfile('BK');
-                }}
-                className={`${styles.navItem} ${viewMode === 'artist' ? styles.navItemActive : ''}`}
+                onClick={() => navigateTo('/explore')}
+                className={`${styles.navItem} ${viewMode === 'home' && activeTab === 'explorar' ? styles.navItemActive : ''}`}
                 title="Explorar"
               >
                 <Compass size={22} />
                 <span>Explorar</span>
               </button>
               <button
-                onClick={() => {
-                  setActiveTab('biblioteca');
-                  setViewMode('home');
-                  setSelectedSidebarPlaylistId(null);
-                  if (router.query.playlist) {
-                    const { playlist, ...restQuery } = router.query;
-                    router.replace({ pathname: '/home', query: restQuery }, undefined, { shallow: true });
-                  }
-                  fetchUserPurchases();
-                }}
-                className={`${styles.navItem} ${activeTab === 'biblioteca' ? styles.navItemActive : ''}`}
+                onClick={() => navigateTo('/library')}
+                className={`${styles.navItem} ${viewMode === 'home' && activeTab === 'biblioteca' ? styles.navItemActive : ''}`}
                 title="Biblioteca"
               >
                 <Bookmark size={22} />
                 <span>Biblioteca</span>
               </button>
               <button
-                onClick={() => setActiveTab('upgrade')}
-                className={`${styles.navItem} ${activeTab === 'upgrade' ? styles.navItemActive : ''}`}
+                onClick={() => navigateTo('/upgrade')}
+                className={`${styles.navItem} ${viewMode === 'home' && activeTab === 'upgrade' ? styles.navItemActive : ''}`}
                 title="Upgrade"
               >
                 <PlayCircle size={22} />
@@ -3462,8 +4596,10 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 <LibraryView
                   token={typeof window !== 'undefined' ? localStorage.getItem('token') : null}
                   user={user}
+                  refreshKey={libraryRefreshKey}
                   onPlayTrack={handlePlayLibraryTrack}
                   onPlayQueue={handlePlayLibraryQueue}
+                  onAddToQueue={addToQueue}
                   currentTrack={currentTrack}
                   isPlaying={isPlaying}
                   initialPlaylistId={router.query.playlist || null}
@@ -3478,25 +4614,343 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                   }}
                   onPlaylistsUpdated={fetchSidebarPlaylists}
                   onExploreCatalog={() => {
-                    setSelectedCompany(null);
-                    setBaseMode('all');
-                    setActiveTab('explorar');
+                    navigateTo('/explore');
                   }}
                   onSelectAlbum={(album) => {
-                    handleSelectAlbum(album, {
-                      viewMode: 'home',
-                      activeTab: 'biblioteca',
-                      selectedSidebarPlaylistId
+                    navigateTo(`/album/${album.id || album.albumId || slugify(album.title)}`, {
+                      album,
+                      returnState: {
+                        viewMode: 'home',
+                        activeTab: 'biblioteca',
+                        selectedSidebarPlaylistId
+                      }
                     });
                   }}
                   onOpenArtistProfile={(artistName, artistId) => {
-                    openArtistProfile(artistName, artistId, {
-                      viewMode: 'home',
-                      activeTab: 'biblioteca',
-                      selectedSidebarPlaylistId
+                    navigateTo(`/artist/${slugify(artistName || artistId)}`, {
+                      artistName,
+                      artistId,
+                      returnState: {
+                        viewMode: 'home',
+                        activeTab: 'biblioteca',
+                        selectedSidebarPlaylistId
+                      }
                     });
                   }}
                 />
+              </div>
+            ) : activeTab === 'upgrade' ? (
+              /* ─── TELA DEDICADA DE UPGRADE & PLANOS (/upgrade) ─── */
+              <div className={styles.upgradeViewWrapper}>
+                <div className={styles.upgradeHero}>
+                  <div className={styles.upgradeBadge}>
+                    <Sparkles size={14} /> DevSongs Premium
+                  </div>
+                  <h1 className={styles.upgradeTitle}>Eleve sua experiência musical ao nível profissional</h1>
+                  <p className={styles.upgradeSubtitle}>
+                    Música sem interrupções, áudio Hi-Fi de estúdio e aluguéis ilimitados de acervos das gravadoras parceiras.
+                  </p>
+                </div>
+
+                <div className={styles.upgradePlansGrid}>
+                  {/* Plano Free */}
+                  <div className={styles.upgradePlanCard}>
+                    <div className={styles.upgradePlanName}>DevSongs Free</div>
+                    <div className={styles.upgradePlanDesc}>Ideal para quem quer ouvir músicas enquanto programa com recursos básicos.</div>
+                    <div className={styles.upgradePriceRow}>
+                      <span className={styles.upgradePriceValue}>R$ 0</span>
+                      <span className={styles.upgradePricePeriod}>/ mês</span>
+                    </div>
+                    <ul className={styles.upgradeFeatureList}>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Streaming padrão a 128 kbps</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Acesso ao catálogo de músicas DevSongs</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Criação de até 5 playlists pessoais</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Anúncios ocasionais entre faixas</span>
+                      </li>
+                    </ul>
+                    <button type="button" className={`${styles.upgradePlanBtn} ${styles.upgradePlanBtnCurrent}`} disabled>
+                      Plano Atual
+                    </button>
+                  </div>
+
+                  {/* Plano Pro (Mais Popular) */}
+                  <div className={`${styles.upgradePlanCard} ${styles.upgradePlanCardPopular}`}>
+                    <div className={styles.upgradePopularTag}>Mais Escolhido</div>
+                    <div className={styles.upgradePlanName}>DevSongs Pro</div>
+                    <div className={styles.upgradePlanDesc}>Para desenvolvedores que buscam foco absoluto, qualidade máxima e liberdade total.</div>
+                    <div className={styles.upgradePriceRow}>
+                      <span className={styles.upgradePriceValue}>R$ 19,90</span>
+                      <span className={styles.upgradePricePeriod}>/ mês</span>
+                    </div>
+                    <ul className={styles.upgradeFeatureList}>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Áudio Hi-Fi Lossless (320 kbps e FLAC de estúdio)</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Zero anúncios e reprodução contínua sem pausas</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Aluguel ilimitado de faixas de todas as bases musicais</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Modo Offline (download de faixas para o cache local)</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Acesso antecipado a discografias e faixas exclusivas</span>
+                      </li>
+                    </ul>
+                    <button
+                      type="button"
+                      className={`${styles.upgradePlanBtn} ${styles.upgradePlanBtnPrimary}`}
+                      onClick={() => {
+                        setPurchaseNotice({ type: 'success', text: 'Parabéns! Seu teste de 30 dias do DevSongs Pro foi ativado com sucesso.' });
+                        setTimeout(() => setPurchaseNotice(null), 4000);
+                      }}
+                    >
+                      Começar Teste de 30 Dias Grátis
+                    </button>
+                  </div>
+
+                  {/* Plano Enterprise */}
+                  <div className={styles.upgradePlanCard}>
+                    <div className={styles.upgradePlanName}>DevSongs Studio</div>
+                    <div className={styles.upgradePlanDesc}>Para gravadoras, selos independentes e estúdios que precisam de gestão e royalties.</div>
+                    <div className={styles.upgradePriceRow}>
+                      <span className={styles.upgradePriceValue}>R$ 49,90</span>
+                      <span className={styles.upgradePricePeriod}>/ mês</span>
+                    </div>
+                    <ul className={styles.upgradeFeatureList}>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Todos os benefícios do plano DevSongs Pro</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Painel de Analytics e métricas de audiência em tempo real</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Upload e publicação ilimitada de produções autorais</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Licenciamento comercial para games, vídeos e apps</span>
+                      </li>
+                      <li className={styles.upgradeFeatureItem}>
+                        <Check size={16} className={styles.upgradeFeatureIcon} />
+                        <span>Suporte técnico prioritário 24/7 com engenheiro dedicado</span>
+                      </li>
+                    </ul>
+                    <button
+                      type="button"
+                      className={`${styles.upgradePlanBtn} ${styles.upgradePlanBtnOutline}`}
+                      onClick={() => {
+                        setPurchaseNotice({ type: 'success', text: 'Solicitação enviada! Nossa equipe entrará em contato em breve.' });
+                        setTimeout(() => setPurchaseNotice(null), 4000);
+                      }}
+                    >
+                      Contratar Studio
+                    </button>
+                  </div>
+                </div>
+
+                {/* Destaques / Vantagens */}
+                <div className={styles.upgradeHighlightsGrid}>
+                  <div className={styles.upgradeHighlightCard}>
+                    <div className={styles.upgradeHighlightIcon}>
+                      <Headphones size={26} />
+                    </div>
+                    <h3 className={styles.upgradeHighlightTitle}>Áudio de Estúdio</h3>
+                    <p className={styles.upgradeHighlightDesc}>Fidelidade sonora cristalina em FLAC e 320 kbps calibrada para fones de alta performance.</p>
+                  </div>
+                  <div className={styles.upgradeHighlightCard}>
+                    <div className={styles.upgradeHighlightIcon}>
+                      <ShieldCheck size={26} />
+                    </div>
+                    <h3 className={styles.upgradeHighlightTitle}>Sem Fidelidade</h3>
+                    <p className={styles.upgradeHighlightDesc}>Cancele quando quiser com um clique no seu painel de usuário sem taxas extras.</p>
+                  </div>
+                  <div className={styles.upgradeHighlightCard}>
+                    <div className={styles.upgradeHighlightIcon}>
+                      <Compass size={26} />
+                    </div>
+                    <h3 className={styles.upgradeHighlightTitle}>Multi-Bases Integradas</h3>
+                    <p className={styles.upgradeHighlightDesc}>Acesso unificado aos acervos de streaming, compras e aluguéis de todas as gravadoras.</p>
+                  </div>
+                  <div className={styles.upgradeHighlightCard}>
+                    <div className={styles.upgradeHighlightIcon}>
+                      <Zap size={26} />
+                    </div>
+                    <h3 className={styles.upgradeHighlightTitle}>Desenvolvido para Devs</h3>
+                    <p className={styles.upgradeHighlightDesc}>Playlists de foco, Lo-Fi de codificação e atalhos rápidos integrados ao seu fluxo de trabalho.</p>
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === 'explorar' ? (
+              /* ─── TELA DEDICADA DE EXPLORAR (/explore) ─── */
+              <div className={styles.exploreViewWrapper}>
+                <div className={styles.exploreHeader}>
+                  <h1 className={styles.exploreTitle}>Explorar</h1>
+                  <p className={styles.exploreSubtitle}>Descubra novos lançamentos, explore por gênero musical ou acesse acervos de gravadoras parceiras.</p>
+                </div>
+
+                {/* Categorias Rápidas */}
+                <div className={styles.exploreCategoriesRow}>
+                  <button
+                    type="button"
+                    className={`${styles.exploreCategoryBtn} ${exploreFilter === 'all' ? styles.exploreCategoryBtnActive : ''}`}
+                    onClick={() => setExploreFilter('all')}
+                  >
+                    <Sparkles size={16} /> Todos os Destaques
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.exploreCategoryBtn} ${exploreFilter === 'releases' ? styles.exploreCategoryBtnActive : ''}`}
+                    onClick={() => setExploreFilter('releases')}
+                  >
+                    <Disc size={16} /> Lançamentos
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.exploreCategoryBtn} ${exploreFilter === 'genres' ? styles.exploreCategoryBtnActive : ''}`}
+                    onClick={() => setExploreFilter('genres')}
+                  >
+                    <Radio size={16} /> Gêneros & Moods
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.exploreCategoryBtn} ${exploreFilter === 'artists' ? styles.exploreCategoryBtnActive : ''}`}
+                    onClick={() => setExploreFilter('artists')}
+                  >
+                    <Users size={16} /> Top Artistas
+                  </button>
+                </div>
+
+                {/* Gêneros em Destaque */}
+                {(exploreFilter === 'all' || exploreFilter === 'genres') && (
+                  <section style={{ marginBottom: '3rem' }}>
+                    <div className={styles.exploreSectionHeader}>
+                      <h2 className={styles.exploreSectionTitle}>Gêneros Musicais & Humores</h2>
+                    </div>
+                    <div className={styles.exploreGenresGrid}>
+                      {[
+                        { name: 'Trap & Rap', tag: 'Urbano', bg: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' },
+                        { name: 'Hip-Hop', tag: 'Clássico & Atual', bg: 'linear-gradient(135deg, #701a75, #ec4899)' },
+                        { name: 'Funk Brasil', tag: 'Ritmo & Pista', bg: 'linear-gradient(135deg, #831843, #f43f5e)' },
+                        { name: 'R&B / Soul', tag: 'Vibe & Groove', bg: 'linear-gradient(135deg, #4c1d95, #8b5cf6)' },
+                        { name: 'Lo-Fi Dev', tag: 'Foco & Código', bg: 'linear-gradient(135deg, #064e3b, #10b981)' },
+                        { name: 'Pop Hits', tag: 'Em Alta', bg: 'linear-gradient(135deg, #b45309, #f59e0b)' },
+                        { name: 'Rock & Indie', tag: 'Guitarras & Energia', bg: 'linear-gradient(135deg, #991b1b, #ef4444)' },
+                        { name: 'Eletrônica', tag: 'Bass & Sintetizadores', bg: 'linear-gradient(135deg, #155e75, #06b6d4)' }
+                      ].map((genre, idx) => (
+                        <div
+                          key={idx}
+                          className={styles.exploreGenreCard}
+                          style={{ background: genre.bg }}
+                          onClick={() => handleSearchSubmit(genre.name)}
+                        >
+                          <span className={styles.exploreGenreTag}>{genre.tag}</span>
+                          <span className={styles.exploreGenreName}>{genre.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Artistas em Destaque */}
+                {(exploreFilter === 'all' || exploreFilter === 'artists') && (
+                  <section style={{ marginBottom: '3rem' }}>
+                    <div className={styles.exploreSectionHeader}>
+                      <h2 className={styles.exploreSectionTitle}>Artistas em Destaque</h2>
+                    </div>
+                    <div className={styles.exploreArtistsGrid}>
+                      {[
+                        { name: '50 Cent', genre: 'Hip-Hop / Rap', avatar: 'https://cdn-images.dzcdn.net/images/artist/8c1df88318aa16cfa2b9ba835df38992/500x500-000000-80-0-0.jpg', id: 'dz-artist-66' },
+                        { name: 'BK', genre: 'Rap Nacional', avatar: 'https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg', id: 1 },
+                        { name: 'Veigh', genre: 'Trap', avatar: 'https://cdn-images.dzcdn.net/images/artist/f1542f2eb6e99b45dbf6824967396c21/500x500-000000-80-0-0.jpg', id: 2 },
+                        { name: 'Matuê', genre: 'Trap', avatar: 'https://cdn-images.dzcdn.net/images/artist/f8d839bb09bbcd3460655ad1e31adfc8/500x500-000000-80-0-0.jpg', id: 14 },
+                        { name: 'Justin Bieber', genre: 'Pop', avatar: 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025319/bookhub/img/justin_my_world.jpg', id: 7 },
+                        { name: 'Djonga', genre: 'Rap', avatar: 'https://cdn-images.dzcdn.net/images/artist/230f60ce9d8d697843ba9a8a32bb5826/500x500-000000-80-0-0.jpg', id: 9 },
+                        { name: 'Eminem', genre: 'Hip-Hop', avatar: 'https://cdn-images.dzcdn.net/images/artist/1805da7227bf611e9a444a7f50d0325b/500x500-000000-80-0-0.jpg', id: 32 }
+                      ].map((art, idx) => (
+                        <div
+                          key={idx}
+                          className={styles.exploreArtistCard}
+                          onClick={() => navigateTo(`/artist/${slugify(art.name)}`, { artistName: art.name, artistId: art.id })}
+                        >
+                          <img src={art.avatar} alt={art.name} className={styles.exploreArtistAvatar} />
+                          <span className={styles.exploreArtistName}>{art.name}</span>
+                          <span className={styles.exploreArtistGenre}>{art.genre}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Lançamentos em Alta */}
+                {(exploreFilter === 'all' || exploreFilter === 'releases') && (
+                  <section>
+                    <div className={styles.exploreSectionHeader}>
+                      <h2 className={styles.exploreSectionTitle}>Lançamentos & Faixas Mais Tocadas</h2>
+                    </div>
+                    <div className={styles.tracksGrid}>
+                      {(escolhaADedo || []).slice(0, 12).map((track, idx) => (
+                        <div
+                          key={track.id || idx}
+                          className={styles.trackCard}
+                          onClick={() => playTrack(track, false)}
+                        >
+                          <div className={styles.trackCardCoverWrap}>
+                            <img
+                              src={track.cover || track.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                              alt={track.title}
+                              className={styles.trackCardCover}
+                              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                            />
+                            <button
+                              type="button"
+                              className={styles.trackCardPlayBtn}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playTrack(track, false);
+                              }}
+                            >
+                              <Play size={18} fill="#ffffff" color="#ffffff" />
+                            </button>
+                          </div>
+                          <div className={styles.trackCardDetails}>
+                            <span className={styles.trackCardTitle}>{track.title}</span>
+                            <span
+                              className={styles.trackCardArtist}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigateTo(`/artist/${slugify(track.artist)}`, { artistName: track.artist });
+                              }}
+                            >
+                              {track.artist}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
               </div>
             ) : (
               /* ─── TELA DE INÍCIO YOUTUBE MUSIC (Foto 1 do Usuário) ─── */
@@ -3773,65 +5227,86 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
               ) : (
                 <>
 
-                  {/* ─── CONTINUAR OUVINDO (Estilo Spotify - Últimas Músicas Ouvidas) ─── */}
+                  {/* ─── CONTINUAR OUVINDO (6 Músicas Recentes e Histórico Completo) ─── */}
                   {(() => {
-                    const displayList = (recentHistory && recentHistory.length > 0)
+                    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+                    const rawList = (recentHistory && recentHistory.length > 0)
                       ? recentHistory
                       : (lastTrack ? [lastTrack] : []);
+                    const displayList = rawList.filter(t => !t.playedAt || new Date(t.playedAt).getTime() >= cutoff);
 
                     if (displayList.length === 0) return null;
 
+                    const visibleTracks = displayList.slice(0, 6);
+
                     return (
                       <section className={styles.spotifyRecentSection}>
-                    <div className={styles.homeSectionHeader}>
-                      <div>
-                        <h2 className={styles.homeSectionTitle}>Continuar ouvindo</h2>
-                        <span className={styles.recentSectionSub}>Últimas músicas que você escutou</span>
-                      </div>
-                    </div>
-
-                    <div className={styles.spotifyRecentGrid}>
-                      {displayList.map((track, idx) => {
-                        const isCurrent = currentTrack?.id === track.id || currentTrack?.title === track.title;
-                        return (
-                          <div
-                            key={track.id || idx}
-                            className={`${styles.spotifyRecentCard} ${isCurrent ? styles.spotifyRecentCardActive : ''}`}
-                            onClick={() => playTrack(track)}
-                            title={`Continuar ouvindo ${track.title}`}
-                          >
-                            <div className={styles.spotifyRecentCoverWrap}>
-                              <img
-                                src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
-                                alt={track.title}
-                                className={styles.spotifyRecentCover}
-                                referrerPolicy="no-referrer"
-                                onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
-                              />
-                            </div>
-
-                            <div className={styles.spotifyRecentInfo}>
-                              <div className={styles.spotifyRecentTitleRow}>
-                                {idx === 0 && <span className={styles.recentBadge}>Última ouvida</span>}
-                                <span className={styles.spotifyRecentTitle}>{track.title}</span>
-                              </div>
-                              <span className={styles.spotifyRecentArtist}>{track.artist}</span>
-                            </div>
-
-                            <div className={styles.spotifyRecentPlayCircle}>
-                              {isCurrent && isPlaying ? (
-                                <Pause size={16} fill="#030303" color="#030303" />
-                              ) : (
-                                <Play size={16} fill="#030303" color="#030303" style={{ marginLeft: 2 }} />
-                              )}
-                            </div>
+                        <div className={styles.recentSectionHeader}>
+                          <div>
+                            <h2 className={styles.homeSectionTitle}>Continuar ouvindo</h2>
+                            <span className={styles.recentSectionSub}>Suas reproduções recentes</span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })()}
+
+                          <div className={styles.recentHeaderActions}>
+                            <button
+                              type="button"
+                              className={styles.btnRecentFullHistory}
+                              onClick={() => {
+                                setHistoryVisibleCount(15);
+                                setHistorySearchTerm('');
+                                setShowFullHistoryModal(true);
+                              }}
+                              title="Visualizar histórico completo de reprodução"
+                            >
+                              <Clock size={14} />
+                              <span>Ver histórico completo</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className={styles.spotifyRecentGrid}>
+                          {visibleTracks.map((track, idx) => {
+                            const isCurrent = (currentTrack?.id && track.id && String(currentTrack.id) === String(track.id)) ||
+                                              (currentTrack?.title && track.title && currentTrack.title.trim().toLowerCase() === track.title.trim().toLowerCase());
+                            return (
+                              <div
+                                key={track.id || `${track.title}-${idx}`}
+                                className={`${styles.spotifyRecentCard} ${isCurrent ? styles.spotifyRecentCardActive : ''}`}
+                                onClick={() => playTrack(track)}
+                                title={`Continuar ouvindo ${track.title} - ${track.artist}`}
+                              >
+                                <div className={styles.spotifyRecentCoverWrap}>
+                                  <img
+                                    src={getSafeCover(track)}
+                                    alt={track.title}
+                                    className={styles.spotifyRecentCover}
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                                  />
+                                </div>
+
+                                <div className={styles.spotifyRecentInfo}>
+                                  <div className={styles.spotifyRecentTitleRow}>
+                                    {idx === 0 && <span className={styles.recentBadge}>Última ouvida</span>}
+                                    <span className={styles.spotifyRecentTitle}>{track.title}</span>
+                                  </div>
+                                  <span className={styles.spotifyRecentArtist}>{track.artist}</span>
+                                </div>
+
+                                <div className={styles.spotifyRecentPlayCircle}>
+                                  {isCurrent && isPlaying ? (
+                                    <Pause size={16} fill="#030303" color="#030303" />
+                                  ) : (
+                                    <Play size={16} fill="#030303" color="#030303" style={{ marginLeft: 2 }} />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })()}
 
               {/* ─── SEÇÃO 1: ESCOLHA A DEDO (3 colunas x 4 linhas - Foto 1) ─── */}
               <section className={styles.homeSection}>
@@ -3842,10 +5317,11 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                       type="button"
                       className={styles.tocarTudoBtn}
                       onClick={() => {
-                        setTracks(HOME_ESCOLHA_A_DEDO);
-                        playTrack(HOME_ESCOLHA_A_DEDO[0]);
+                        const list = (escolhaADedo && escolhaADedo.length > 0) ? escolhaADedo : HOME_ESCOLHA_A_DEDO;
+                        setTracks(list);
+                        playTrack(list[0], false, list, 'Escolha a dedo');
                       }}
-                      title="Tocar todas as 12 faixas de Escolha a dedo"
+                      title="Tocar todas as faixas de Escolha a dedo"
                     >
                       <span>Tocar tudo</span>
                     </button>
@@ -3869,7 +5345,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 </div>
 
                 <div className={styles.escolhaDedoGrid}>
-                  {HOME_ESCOLHA_A_DEDO.map((item) => {
+                  {(escolhaADedo || []).map((item) => {
                     const isCurrent = currentTrack?.title?.toLowerCase() === item.title.toLowerCase();
                     return (
                       <div
@@ -3882,17 +5358,21 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                             }
                             return prev;
                           });
-                          playTrack(item);
+                          const list = (escolhaADedo && escolhaADedo.length > 0) ? escolhaADedo : HOME_ESCOLHA_A_DEDO;
+                          playTrack(item, false, list, 'Escolha a dedo');
                         }}
                         title={`Tocar ${item.title} - ${item.artist}`}
                       >
                         <div className={styles.escolhaDedoThumbWrap}>
                           <img
-                            src={item.cover}
+                            src={getSafeCover(item)}
                             alt={item.title}
                             className={styles.escolhaDedoThumb}
                             referrerPolicy="no-referrer"
-                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png';
+                            }}
                           />
                           <div className={styles.escolhaDedoPlayOverlay}>
                             {isCurrent && isPlaying ? (
@@ -3914,6 +5394,16 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                             <span>{item.plays}</span>
                           </span>
                         </div>
+
+                        <button
+                          type="button"
+                          className={styles.trackCardMoreBtn}
+                          onClick={(e) => openTrackContextMenu(item, e)}
+                          title="Mais opções"
+                          aria-label="Mais opções"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
                       </div>
                     );
                   })}
@@ -3945,7 +5435,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 </div>
 
                 <div className={styles.albunsCarousel} ref={albunsScrollRef}>
-                  {HOME_ALBUNS_PARA_VOCE.map((album) => (
+                  {(albunsParaVoce || []).map((album) => (
                     <div
                       key={album.id}
                       className={styles.albumCard}
@@ -3954,7 +5444,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                     >
                       <div className={styles.albumCardCoverWrap}>
                         <img
-                          src={album.cover}
+                          src={getSafeCover(album)}
                           alt={album.title}
                           className={styles.albumCardCover}
                           referrerPolicy="no-referrer"
@@ -3996,30 +5486,26 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
               </div>
 
               <div className={styles.albumViewContainer}>
-                {/* Coluna Esquerda: Botão Voltar, Mini Artista, Cover HD, Título, Estatísticas e Ações */}
+                {/* Coluna Esquerda: Mini Artista Centralizado no Meio, Cover HD, Título, Estatísticas e Ações */}
                 <div className={styles.albumHeroColumn}>
-                  <button
-                    type="button"
-                    className={styles.albumBackBtn}
-                    onClick={handleBackFromDedicatedView}
-                    title="Voltar à tela anterior"
-                  >
-                    <ArrowLeft size={16} />
-                    <span>Voltar</span>
-                  </button>
-                  <div
-                    className={styles.albumArtistRow}
-                    onClick={() => openArtistProfile(selectedAlbum.artistName || activeArtist?.name, selectedAlbum.artistId || activeArtist?.id)}
-                    title={`Voltar ao perfil de ${selectedAlbum.artistName || activeArtist?.name}`}
-                  >
-                    <img
-                      src={selectedAlbum.artistAvatar || activeArtist?.avatarImg || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
-                      alt={selectedAlbum.artistName || activeArtist?.name}
-                      className={styles.albumArtistMiniAvatar}
-                      referrerPolicy="no-referrer"
-                      onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
-                    />
-                    <span>{selectedAlbum.artistName || activeArtist?.name}</span>
+                  <div className={styles.albumTopControls}>
+                    <div
+                      className={styles.albumArtistRow}
+                      onClick={() => {
+                        const artName = selectedAlbum.artistName || selectedAlbum.artist || activeArtist?.name;
+                        if (artName) openArtistProfile(artName, selectedAlbum.artistId || activeArtist?.id);
+                      }}
+                      title={`Ver perfil de ${selectedAlbum.artistName || selectedAlbum.artist || activeArtist?.name || 'Artista'}`}
+                    >
+                      <img
+                        src={selectedAlbum.artistAvatar || (selectedAlbum.artistName && activeArtist?.name && selectedAlbum.artistName.toLowerCase() === activeArtist.name.toLowerCase() ? activeArtist.avatarImg : '') || activeArtist?.avatarImg || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                        alt={selectedAlbum.artistName || selectedAlbum.artist || activeArtist?.name || 'Artista'}
+                        className={styles.albumArtistMiniAvatar}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                      />
+                      <span>{selectedAlbum.artistName || selectedAlbum.artist || activeArtist?.name || 'Artista'}</span>
+                    </div>
                   </div>
 
                   <div className={styles.albumHeroCoverWrap}>
@@ -4038,13 +5524,17 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                     {selectedAlbum.explicit && <span className={styles.explicitTagSmall}>E</span>}
                     <span>Álbum</span>
                     <span className={styles.albumDot}>•</span>
-                    <span>{getDisplayAlbumYear(selectedAlbum, selectedAlbum.artistName || activeArtist?.name, selectedAlbum.year)}</span>
+                    <span>{getDisplayAlbumYear(selectedAlbum, selectedAlbum.artistName || selectedAlbum.artist || activeArtist?.name, selectedAlbum.year)}</span>
                   </div>
 
                   <div className={styles.albumHeroStats}>
-                    <span>
-                      {selectedAlbum.nbTracks || albumTracks.length || 0} músicas • {formatDurationSummary(selectedAlbum.durationSec || albumTracks.reduce((acc, t) => acc + (t.durationSec || 0), 0))}
-                    </span>
+                    {isAlbumLoading && (!selectedAlbum.nbTracks || !selectedAlbum.durationSec) ? (
+                      <span style={{ color: '#64748b', fontSize: '0.82rem' }}>Carregando faixas...</span>
+                    ) : (
+                      <span>
+                        {(albumTracks.length > 0 ? albumTracks.length : selectedAlbum.nbTracks) || 0} músicas • {formatDurationSummary(selectedAlbum.durationSec || albumTracks.reduce((acc, t) => acc + (t.durationSec || 0), 0))}
+                      </span>
+                    )}
                   </div>
 
                   <div className={styles.albumActionButtonsRow}>
@@ -4063,7 +5553,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                       title="Tocar álbum completo"
                       onClick={() => {
                         if (albumTracks.length > 0) {
-                          playTrack(albumTracks[0]);
+                          playTrack(albumTracks[0], false, albumTracks, selectedAlbum?.title || selectedAlbum?.name || 'Álbum');
                         }
                       }}
                     >
@@ -4079,22 +5569,49 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                     </button>
                   </div>
 
-                  {/* Botões Comerciais de Compra e Aluguel */}
-                  <div className={styles.albumCommerceRow}>
-                    <button
-                      type="button"
-                      className={styles.btnBuyAlbum}
-                      onClick={() => handleBuyOrRentAlbum(selectedAlbum, 'buy')}
-                    >
-                      Comprar Álbum • {selectedAlbum.priceSale || 'R$ 29,90'}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.btnRentAlbum}
-                      onClick={() => handleBuyOrRentAlbum(selectedAlbum, 'rent')}
-                    >
-                      Alugar Álbum • {selectedAlbum.priceRent || 'R$ 9,90'} / mês
-                    </button>
+                  {/* Bloco Comercial de Compra, Aluguel e Desconto Inteligente de Álbuns */}
+                  <div className={styles.albumCommerceBox}>
+                    {currentAlbumPricing.isOwned ? (
+                      <div className={styles.albumPurchasedBadge}>
+                        <CheckCircle2 size={18} color="#22c55e" />
+                        <span>Álbum Comprado • Acesso Vitalício Liberado</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className={styles.albumCommerceRow}>
+                          <button
+                            type="button"
+                            className={styles.btnBuyAlbum}
+                            onClick={() => handleBuyOrRentAlbum(selectedAlbum, 'buy', currentAlbumPricing)}
+                          >
+                            <ShoppingCart size={17} />
+                            <span>Comprar Álbum • R$ {currentAlbumPricing.finalPrice.toFixed(2).replace('.', ',')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.btnRentAlbum}
+                            onClick={() => handleBuyOrRentAlbum(selectedAlbum, 'rent', currentAlbumPricing)}
+                            disabled={currentAlbumPricing.isRented && !currentAlbumPricing.isRentExpired}
+                          >
+                            <Clock size={17} />
+                            <span>
+                              {currentAlbumPricing.isRented && !currentAlbumPricing.isRentExpired
+                                ? `Alugado • ${currentAlbumPricing.remainingDays}d restantes`
+                                : 'Alugar Álbum • R$ 9,90 / mês'}
+                            </span>
+                          </button>
+                        </div>
+
+                        {currentAlbumPricing.discount > 0 && (
+                          <div className={styles.smartDiscountNotice}>
+                            <Sparkles size={16} color="#10b981" style={{ flexShrink: 0, marginTop: '2px' }} />
+                            <span>
+                              <strong>Desconto Inteligente:</strong> - R$ {currentAlbumPricing.discount.toFixed(2).replace('.', ',')} ({currentAlbumPricing.purchasedTracksCount} {currentAlbumPricing.purchasedTracksCount === 1 ? 'faixa já adquirida' : 'faixas já adquiridas'}). De <s style={{ opacity: 0.7 }}>R$ {currentAlbumPricing.originalPrice.toFixed(2).replace('.', ',')}</s> por <strong>R$ {currentAlbumPricing.finalPrice.toFixed(2).replace('.', ',')}</strong>.
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -4105,8 +5622,17 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                   </div>
 
                   {isAlbumLoading ? (
-                    <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-                      Carregando faixas do álbum...
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.75rem' }}>
+                      {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                        <div
+                          key={i}
+                          className={styles.skeletonTrackRow}
+                          style={{
+                            height: '52px',
+                            opacity: Math.max(0.35, 1 - i * 0.1)
+                          }}
+                        />
+                      ))}
                     </div>
                   ) : (
                     albumTracks.map((track, idx) => {
@@ -4115,7 +5641,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                         <div
                           key={track.id || idx}
                           className={`${styles.albumTrackRow} ${isCurrent ? styles.albumTrackRowActive : ''}`}
-                          onClick={() => playTrack(track)}
+                          onClick={() => playTrack(track, false, albumTracks, selectedAlbum?.title || selectedAlbum?.name || 'Álbum')}
                         >
                           <div className={styles.albumTrackNumCol}>
                             {isCurrent && isPlaying ? (
@@ -4147,6 +5673,16 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                           <div className={styles.albumTrackDuration}>
                             {track.duration || '3:30'}
                           </div>
+
+                          <button
+                            type="button"
+                            className={styles.trackCardMoreBtn}
+                            onClick={(e) => openTrackContextMenu(track, e)}
+                            title="Mais opções"
+                            aria-label="Mais opções"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
                         </div>
                       );
                     })
@@ -4328,13 +5864,34 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                               </div>
 
                               <div className={styles.resultTrackInfo}>
-                                <span className={`${styles.resultTrackTitle} ${isCurrent ? styles.resultTrackTitleActive : ''}`}>
-                                  {track.title}
-                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                  <span className={`${styles.resultTrackTitle} ${isCurrent ? styles.resultTrackTitleActive : ''}`}>
+                                    {track.title}
+                                  </span>
+                                  {(track.isPurchased || track.badge === 'Comprada' || isTrackOwned(track)) ? (
+                                    <span className={styles.purchasedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                      Comprada
+                                    </span>
+                                  ) : ((track.isRented || track.badge === 'Alugada' || isTrackRentedActive(track)) && !track.isExpired) ? (
+                                    <span className={styles.rentedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                      Alugada
+                                    </span>
+                                  ) : null}
+                                </div>
                                 <span className={styles.resultTrackMeta}>
                                   Música • {track.artist} • {track.plays}
                                 </span>
                               </div>
+
+                              <button
+                                type="button"
+                                className={styles.trackCardMoreBtn}
+                                onClick={(e) => openTrackContextMenu(track, e)}
+                                title="Mais opções"
+                                aria-label="Mais opções"
+                              >
+                                <MoreVertical size={16} />
+                              </button>
                             </div>
                           );
                         })}
@@ -4370,13 +5927,34 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                         </div>
 
                         <div className={styles.resultTrackInfo}>
-                          <span className={`${styles.resultTrackTitle} ${isCurrent ? styles.resultTrackTitleActive : ''}`}>
-                            {track.title}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                            <span className={`${styles.resultTrackTitle} ${isCurrent ? styles.resultTrackTitleActive : ''}`}>
+                              {track.title}
+                            </span>
+                            {(track.isPurchased || track.badge === 'Comprada' || isTrackOwned(track)) ? (
+                              <span className={styles.purchasedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                Comprada
+                              </span>
+                            ) : ((track.isRented || track.badge === 'Alugada' || isTrackRentedActive(track)) && !track.isExpired) ? (
+                              <span className={styles.rentedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                Alugada
+                              </span>
+                            ) : null}
+                          </div>
                           <span className={styles.resultTrackMeta}>
                             Música • {track.artist} • {track.plays}
                           </span>
                         </div>
+
+                        <button
+                          type="button"
+                          className={styles.trackCardMoreBtn}
+                          onClick={(e) => openTrackContextMenu(track, e)}
+                          title="Mais opções"
+                          aria-label="Mais opções"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
                       </div>
                     );
                   })}
@@ -4498,9 +6076,20 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                                   </div>
 
                                   <div className={styles.heroTrackInfo}>
-                                    <span className={`${styles.heroTrackName} ${isCurrent ? styles.heroTrackNameActive : ''}`}>
-                                      {track.title}
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                      <span className={`${styles.heroTrackName} ${isCurrent ? styles.heroTrackNameActive : ''}`}>
+                                        {track.title}
+                                      </span>
+                                      {(track.isPurchased || track.badge === 'Comprada' || isTrackOwned(track)) ? (
+                                        <span className={styles.purchasedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                          Comprada
+                                        </span>
+                                      ) : ((track.isRented || track.badge === 'Alugada' || isTrackRentedActive(track)) && !track.isExpired) ? (
+                                        <span className={styles.rentedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                          Alugada
+                                        </span>
+                                      ) : null}
+                                    </div>
                                     <span className={styles.heroTrackSubtitle}>
                                       Música • {track.duration || '3:30'} • {track.plays}
                                     </span>
@@ -4518,7 +6107,14 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                             onClick={() => playTrack(tracks[0])}
                             title={`Reproduzir ${tracks[0].title}`}
                           >
-                            <span className={styles.topResultTag}>Melhor resultado</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                              <span className={styles.topResultTag} style={{ marginBottom: 0 }}>Melhor resultado</span>
+                              {(tracks[0].isPurchased || tracks[0].badge === 'Comprada' || isTrackOwned(tracks[0])) ? (
+                                <span className={styles.purchasedBadge}>Comprada</span>
+                              ) : ((tracks[0].isRented || tracks[0].badge === 'Alugada' || isTrackRentedActive(tracks[0])) && !tracks[0].isExpired) ? (
+                                <span className={styles.rentedBadge}>Alugada</span>
+                              ) : null}
+                            </div>
                             <div className={styles.songCardCoverWrap}>
                               <img
                                 src={tracks[0].cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
@@ -4570,13 +6166,34 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                                   </div>
 
                                   <div className={styles.heroTrackInfo}>
-                                    <span className={`${styles.heroTrackName} ${isCurrent ? styles.heroTrackNameActive : ''}`}>
-                                      {track.title}
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                      <span className={`${styles.heroTrackName} ${isCurrent ? styles.heroTrackNameActive : ''}`}>
+                                        {track.title}
+                                      </span>
+                                      {(track.isPurchased || track.badge === 'Comprada' || isTrackOwned(track)) ? (
+                                        <span className={styles.purchasedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                          Comprada
+                                        </span>
+                                      ) : ((track.isRented || track.badge === 'Alugada' || isTrackRentedActive(track)) && !track.isExpired) ? (
+                                        <span className={styles.rentedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                          Alugada
+                                        </span>
+                                      ) : null}
+                                    </div>
                                     <span className={styles.heroTrackSubtitle}>
                                       Música • {track.artist} • {track.duration || '3:30'}
                                     </span>
                                   </div>
+
+                                  <button
+                                    type="button"
+                                    className={styles.trackCardMoreBtn}
+                                    onClick={(e) => openTrackContextMenu(track, e)}
+                                    title="Mais opções"
+                                    aria-label="Mais opções"
+                                  >
+                                    <MoreVertical size={16} />
+                                  </button>
                                 </div>
                               );
                             })}
@@ -4612,13 +6229,34 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                           </div>
 
                           <div className={styles.resultTrackInfo}>
-                            <span className={`${styles.resultTrackTitle} ${isCurrent ? styles.resultTrackTitleActive : ''}`}>
-                              {track.title}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                              <span className={`${styles.resultTrackTitle} ${isCurrent ? styles.resultTrackTitleActive : ''}`}>
+                                {track.title}
+                              </span>
+                              {(track.isPurchased || track.badge === 'Comprada' || isTrackOwned(track)) ? (
+                                <span className={styles.purchasedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                  Comprada
+                                </span>
+                              ) : ((track.isRented || track.badge === 'Alugada' || isTrackRentedActive(track)) && !track.isExpired) ? (
+                                <span className={styles.rentedBadge} style={{ flexShrink: 0, padding: '1px 5px', fontSize: '0.68rem', lineHeight: '1.2' }}>
+                                  Alugada
+                                </span>
+                              ) : null}
+                            </div>
                             <span className={styles.resultTrackMeta}>
                               Música • {track.artist} • {track.plays}
                             </span>
                           </div>
+
+                          <button
+                            type="button"
+                            className={styles.trackCardMoreBtn}
+                            onClick={(e) => openTrackContextMenu(track, e)}
+                            title="Mais opções"
+                            aria-label="Mais opções"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
                         </div>
                       );
                     })}
@@ -4642,18 +6280,6 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 }}
               >
                 <div className={styles.bannerContent}>
-                  {previousViewRef.current && (
-                    <button
-                      type="button"
-                      className={styles.albumBackBtn}
-                      style={{ marginBottom: '0.75rem', alignSelf: 'flex-start' }}
-                      onClick={handleBackFromDedicatedView}
-                      title="Voltar à tela anterior"
-                    >
-                      <ArrowLeft size={16} />
-                      <span>Voltar</span>
-                    </button>
-                  )}
                   <h1 className={styles.bannerArtistTitle}>{activeArtist?.name || 'Artista'}</h1>
                   <p className={styles.bannerMonthlyListeners}>{activeArtist?.listeners || ''}</p>
                   <p className={styles.bannerBio}>
@@ -4691,10 +6317,19 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
                     <button
                       type="button"
-                      className={styles.btnSubscribe}
-                      onClick={() => alert('Inscrição confirmada!')}
+                      className={isArtistSubscribed ? styles.btnSubscribed : styles.btnSubscribe}
+                      onClick={handleToggleArtistSubscription}
+                      disabled={isSubscribing}
+                      title={isArtistSubscribed ? 'Inscrito • Clique para cancelar inscrição' : 'Inscrever-se neste artista'}
                     >
-                      <span>Inscrever-se {activeArtist?.subscribers || '78,6 mi'}</span>
+                      {isArtistSubscribed ? (
+                        <>
+                          <Check size={16} strokeWidth={2.5} />
+                          <span>Inscrito</span>
+                        </>
+                      ) : (
+                        <span>Inscrever-se {activeArtist?.subscribers || '428 mil'}</span>
+                      )}
                     </button>
 
                     <button type="button" className={styles.btnMoreOptions} title="Mais opções">
@@ -4733,11 +6368,17 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                                   )}
                                 </div>
                                 <img
-                                  src={track.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                                  src={
+                                    (track.cover && !track.cover.includes('42078a6ff6071ef28ba866bbf30fe357'))
+                                      ? track.cover
+                                      : (track.cover_url && !track.cover_url.includes('42078a6ff6071ef28ba866bbf30fe357'))
+                                        ? track.cover_url
+                                        : 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'
+                                  }
                                   alt={track.title}
                                   className={styles.topMusicasThumb}
                                   referrerPolicy="no-referrer"
-                                  onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                                 />
                                 <span className={`${styles.topMusicasTrackName} ${isCurrent ? styles.topMusicasTrackNamePlaying : ''}`}>
                                   {track.title}
@@ -4756,6 +6397,16 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                               <div className={styles.topMusicasColAlbum}>
                                 {track.album}
                               </div>
+
+                              <button
+                                type="button"
+                                className={styles.trackCardMoreBtn}
+                                onClick={(e) => openTrackContextMenu(track, e)}
+                                title="Mais opções"
+                                aria-label="Mais opções"
+                              >
+                                <MoreVertical size={16} />
+                              </button>
                             </div>
                           );
                         })}
@@ -5204,10 +6855,14 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                           <div className={styles.cartSegmentInner}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <Sparkles size={13} color={item.type === 'buy' ? '#10b981' : '#94a3b8'} />
-                              <span className={styles.cartSegmentTitle}>Compra Vitalícia</span>
+                              <span className={styles.cartSegmentTitle}>
+                                {item.isAlbum ? 'Álbum Vitalício' : 'Compra Vitalícia'}
+                              </span>
                             </div>
                             <span className={styles.cartSegmentPriceTag}>
-                              {item.rawTrack?.salePrice || item.rawTrack?.priceSale || 'R$ 4,90'}
+                              {item.isAlbum
+                                ? `R$ ${(item.originalPrice !== undefined ? Math.max(0, item.originalPrice - (item.discount || 0)) : 29.90).toFixed(2).replace('.', ',')}`
+                                : (item.rawTrack?.salePrice || item.rawTrack?.priceSale || 'R$ 4,90')}
                             </span>
                           </div>
                         </button>
@@ -5221,14 +6876,23 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                           <div className={styles.cartSegmentInner}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <Clock size={13} color={item.type === 'rent' ? '#3b82f6' : '#94a3b8'} />
-                              <span className={styles.cartSegmentTitle}>Aluguel 30d</span>
+                              <span className={styles.cartSegmentTitle}>
+                                {item.isAlbum ? 'Aluguel Álbum 30d' : 'Aluguel 30d'}
+                              </span>
                             </div>
                             <span className={styles.cartSegmentPriceTag}>
-                              {item.rawTrack?.rentPrice || item.rawTrack?.priceRent || 'R$ 1,90'}
+                              {item.isAlbum ? 'R$ 9,90' : (item.rawTrack?.rentPrice || item.rawTrack?.priceRent || 'R$ 1,90')}
                             </span>
                           </div>
                         </button>
                       </div>
+
+                      {item.isAlbum && item.discount > 0 && item.type === 'buy' && (
+                        <div style={{ marginTop: '0.4rem', fontSize: '0.74rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Sparkles size={12} />
+                          <span>Desconto inteligente aplicado: - R$ {Number(item.discount).toFixed(2).replace('.', ',')} por faixas já compradas</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -5856,7 +7520,9 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
         {isQueueOpen && (
           <aside className={styles.queueDrawer}>
             <div className={styles.queueHeader}>
-              <h3 className={styles.queueTitle}>Fila</h3>
+              <div className={styles.queueHeaderTitleWrap}>
+                <h3 className={styles.queueTitle}>Fila</h3>
+              </div>
               <button
                 type="button"
                 className={styles.queueCloseBtn}
@@ -5875,7 +7541,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                   <div className={styles.queueSectionTitle}>Tocando agora</div>
                   <div className={styles.queueCurrentCard}>
                     <img
-                      src={currentTrack.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                      src={getSafeCover(currentTrack)}
                       alt={currentTrack.title}
                       className={styles.queueCurrentCover}
                       referrerPolicy="no-referrer"
@@ -5883,66 +7549,150 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                     />
                     <div className={styles.queueCurrentMeta}>
                       <span className={styles.queueCurrentTitle}>{currentTrack.title}</span>
-                      <span className={styles.queueCurrentArtist}>{currentTrack.artist}</span>
+                      <div className={styles.queueTrackArtistRow}>
+                        {currentTrack.explicit && <span className={styles.explicitTag}>E</span>}
+                        <span className={styles.queueCurrentArtist}>{currentTrack.artist}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Seção 2: Próximas Faixas Adquiridas */}
+              {/* Seção 2: A seguir (Músicas adicionadas manualmente pelo usuário com "Limpar fila") */}
+              {manualQueue && manualQueue.length > 0 && (
+                <div className={styles.queueSection}>
+                  <div className={styles.queueSectionHeaderRow}>
+                    <div className={styles.queueSectionTitle} style={{ margin: 0, padding: 0 }}>
+                      A seguir
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.queueClearManualBtn}
+                      onClick={clearManualQueue}
+                      title="Limpar faixas adicionadas manualmente"
+                    >
+                      Limpar fila
+                    </button>
+                  </div>
+
+                  <div className={styles.queueList}>
+                    {manualQueue.map((item, idx) => {
+                      return (
+                        <div
+                          key={item.manualQueueId || item.id || `manual-${idx}`}
+                          className={styles.queueTrackItem}
+                          onClick={() => playManualQueueTrack(idx)}
+                          title={`Tocar agora: ${item.title} - ${item.artist}`}
+                        >
+                          <div className={styles.queueTrackCoverWrap}>
+                            <img
+                              src={getSafeCover(item)}
+                              alt={item.title}
+                              className={styles.queueTrackCover}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                            />
+                            <div className={styles.queueTrackPlayHover}>
+                              <Play size={16} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
+                            </div>
+                          </div>
+
+                          <div className={styles.queueTrackMeta}>
+                            <span className={styles.queueTrackTitle}>{item.title}</span>
+                            <div className={styles.queueTrackArtistRow}>
+                              {item.explicit && <span className={styles.explicitTag}>E</span>}
+                              <span>{item.artist}</span>
+                            </div>
+                          </div>
+
+                          {item.duration && (
+                            <span className={styles.queueTrackDuration}>{item.duration}</span>
+                          )}
+
+                          <button
+                            type="button"
+                            className={styles.queueItemRemoveBtn}
+                            onClick={(e) => removeFromManualQueue(idx, e)}
+                            title="Remover da fila"
+                            aria-label="Remover da fila"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Seção 3: Próximas de: [Nome do álbum ou playlist] */}
               <div className={styles.queueSection}>
                 <div className={styles.queueSectionTitle}>
-                  Próximas na fila{' '}
-                  <span className={styles.queueSectionSub}>
-                    (Adquiridas: {displayQueue.length})
-                  </span>
+                  {displayContextTitle}{' '}
+                  {effectiveContextQueue.length > 0 && (
+                    <span className={styles.queueSectionSub}>
+                      ({effectiveContextQueue.length} {effectiveContextQueue.length === 1 ? 'música' : 'músicas'})
+                    </span>
+                  )}
                 </div>
 
-                {displayQueue && displayQueue.length > 0 ? (
+                {effectiveContextQueue && effectiveContextQueue.length > 0 ? (
                   <div className={styles.queueList}>
-                    {displayQueue.map((item, idx) => (
-                      <div
-                        key={item.purchaseId || item.id || idx}
-                        className={styles.queueTrackItem}
-                        onClick={() => {
-                          playTrack(item);
-                        }}
-                        title={`Tocar agora: ${item.title} - ${item.artist}`}
-                      >
-                        <div className={styles.queueTrackCoverWrap}>
-                          <img
-                            src={item.cover || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
-                            alt={item.title}
-                            className={styles.queueTrackCover}
-                            referrerPolicy="no-referrer"
-                            onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
-                          />
-                          <div className={styles.queueTrackPlayHover}>
-                            <Play size={16} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
+                    {effectiveContextQueue.map((item, idx) => {
+                      return (
+                        <div
+                          key={item.purchaseId || item.id || `ctx-${idx}`}
+                          className={styles.queueTrackItem}
+                          onClick={() => playContextQueueTrack(idx)}
+                          title={`Tocar agora: ${item.title} - ${item.artist}`}
+                        >
+                          <div className={styles.queueTrackCoverWrap}>
+                            <img
+                              src={getSafeCover(item)}
+                              alt={item.title}
+                              className={styles.queueTrackCover}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                            />
+                            <div className={styles.queueTrackPlayHover}>
+                              <Play size={16} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
+                            </div>
                           </div>
-                        </div>
 
-                        <div className={styles.queueTrackMeta}>
-                          <span className={styles.queueTrackTitle}>{item.title}</span>
-                          <div className={styles.queueTrackArtistRow}>
-                            {item.explicit && <span className={styles.explicitTag}>E</span>}
-                            <span>{item.artist}</span>
+                          <div className={styles.queueTrackMeta}>
+                            <span className={styles.queueTrackTitle}>{item.title}</span>
+                            <div className={styles.queueTrackArtistRow}>
+                              {item.explicit && <span className={styles.explicitTag}>E</span>}
+                              <span>{item.artist}</span>
+                            </div>
                           </div>
-                        </div>
 
-                        {item.duration && (
-                          <span className={styles.queueTrackDuration}>{item.duration}</span>
-                        )}
-                      </div>
-                    ))}
+                          {item.duration && (
+                            <span className={styles.queueTrackDuration}>{item.duration}</span>
+                          )}
+
+                          <button
+                            type="button"
+                            className={styles.queueItemRemoveBtn}
+                            onClick={(e) => removeFromContextQueue(idx, e)}
+                            title="Remover da fila"
+                            aria-label="Remover da fila"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className={styles.queueEmptyState}>
-                    <span>Nenhuma outra música adquirida na fila.</span>
-                    <span style={{ fontSize: '0.78rem', color: '#a7a7a7', marginTop: 4, textAlign: 'center', lineHeight: '1.4' }}>
-                      Compre ou alugue faixas nas bases para expandir sua fila.
-                    </span>
-                  </div>
+                  (!manualQueue || manualQueue.length === 0) && (
+                    <div className={styles.queueEmptyState}>
+                      <span>Sua fila de reprodução está vazia.</span>
+                      <span style={{ fontSize: '0.78rem', color: '#a7a7a7', marginTop: 4, textAlign: 'center', lineHeight: '1.4' }}>
+                        Clique no menu de três pontinhos (⋮) em qualquer música para adicioná-la à fila.
+                      </span>
+                    </div>
+                  )
                 )}
               </div>
             </div>
@@ -5960,7 +7710,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             >
               <div
                 className={styles.topProgressBarFill}
-                style={{ width: `${Math.min(100, (currentTime / (duration || 1)) * 100)}%` }}
+                style={{ width: `${Math.min(100, Math.max(0, (currentTime / (duration || 1)) * 100))}%` }}
               >
                 <div className={styles.topProgressBarThumb} />
               </div>
@@ -5970,9 +7720,11 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             <div className={styles.playerLeft}>
               <div className={styles.playerCoverWrap}>
                 <img
-                  src={currentTrack?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'}
+                  src={currentTrack ? getSafeCover(currentTrack) : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100'}
                   alt={currentTrack?.title}
                   className={styles.playerCover}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
                 />
               </div>
 
@@ -5986,7 +7738,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
             <div className={styles.playerCenter}>
               <button
                 type="button"
-                onClick={() => setIsShuffle(!isShuffle)}
+                onClick={toggleShuffle}
                 className={`${styles.controlBtn} ${isShuffle ? styles.controlBtnActive : ''}`}
                 title="Ordem aleatória"
               >
@@ -6046,8 +7798,17 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
             {/* Player Right: Tempo, Like, Vídeo, Volume e Fechar */}
             <div className={styles.playerRight}>
-              <span className={styles.timeDisplay}>
-                {formatSeconds(currentTime)} / {formatSeconds(duration)}
+              <span
+                className={styles.timeDisplay}
+                onClick={() => setShowRemainingTime(prev => !prev)}
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                title={showRemainingTime ? 'Clique para ver duração total' : 'Clique para ver tempo restante (-mm:ss)'}
+              >
+                {showRemainingTime ? (
+                  `${formatSeconds(currentTime)} / -${formatSeconds(Math.max(0, duration - currentTime))}`
+                ) : (
+                  `${formatSeconds(currentTime)} / ${formatSeconds(duration)}`
+                )}
               </span>
 
               <button
@@ -6100,6 +7861,271 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
               </button>
             </div>
           </footer>
+        )}
+
+        {/* Modal de Confirmação para Cancelar Inscrição */}
+        {unsubscribeModalOpen && (
+          <div className={styles.unsubModalBackdrop} onClick={() => !isSubscribing && setUnsubscribeModalOpen(false)}>
+            <div className={styles.unsubModal} onClick={(e) => e.stopPropagation()}>
+              <h3 className={styles.unsubModalTitle}>Cancelar inscrição?</h3>
+              <p className={styles.unsubModalDesc}>
+                Deseja cancelar a sua inscrição em <strong>{activeArtist?.name}</strong>? O artista será removido da aba <strong>Artistas</strong> na sua Biblioteca Musical.
+              </p>
+              <div className={styles.unsubModalActions}>
+                <button
+                  type="button"
+                  className={styles.unsubModalCancelBtn}
+                  onClick={() => setUnsubscribeModalOpen(false)}
+                  disabled={isSubscribing}
+                >
+                  Manter inscrição
+                </button>
+                <button
+                  type="button"
+                  className={styles.unsubModalConfirmBtn}
+                  onClick={handleConfirmUnsubscribe}
+                  disabled={isSubscribing}
+                >
+                  {isSubscribing ? 'Cancelando...' : 'Cancelar inscrição'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Dedicado de Histórico Completo de Reprodução */}
+        {showFullHistoryModal && (
+          <div className={styles.historyModalBackdrop} onClick={() => setShowFullHistoryModal(false)}>
+            <div className={styles.historyModal} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.historyModalHeader}>
+                <div>
+                  <div className={styles.historyModalTitleRow}>
+                    <Clock size={20} className={styles.historyModalIcon} />
+                    <h3 className={styles.historyModalTitle}>Histórico de Reprodução</h3>
+                    <span className={styles.historyDurationBadge}>Últimas 24h</span>
+                  </div>
+                  <span className={styles.historyModalSubtitle}>
+                    {(() => {
+                      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+                      const validCount = (recentHistory || []).filter(t => !t.playedAt || new Date(t.playedAt).getTime() >= cutoff).length;
+                      return `${validCount} ${validCount === 1 ? 'música ouvida nas últimas 24 horas' : 'músicas ouvidas nas últimas 24 horas'}`;
+                    })()}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.historyModalCloseBtn}
+                  onClick={() => setShowFullHistoryModal(false)}
+                  title="Fechar histórico"
+                  aria-label="Fechar histórico"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Barra de Busca rápida no Histórico */}
+              <div className={styles.historySearchBox}>
+                <Search size={15} className={styles.historySearchIcon} />
+                <input
+                  type="text"
+                  placeholder="Pesquisar nas faixas escutadas..."
+                  value={historySearchTerm}
+                  onChange={(e) => setHistorySearchTerm(e.target.value)}
+                  className={styles.historySearchInput}
+                />
+                {historySearchTerm && (
+                  <button
+                    type="button"
+                    className={styles.historySearchClearBtn}
+                    onClick={() => setHistorySearchTerm('')}
+                    title="Limpar busca"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {/* Tabela / Lista compacta de faixas */}
+              <div className={styles.historyModalBody}>
+                {(() => {
+                  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+                  const rawList = (recentHistory && recentHistory.length > 0)
+                    ? recentHistory
+                    : (lastTrack ? [lastTrack] : []);
+                  const displayList = rawList.filter(t => !t.playedAt || new Date(t.playedAt).getTime() >= cutoff);
+
+                  const filtered = historySearchTerm.trim()
+                    ? displayList.filter(t => {
+                        const q = historySearchTerm.trim().toLowerCase();
+                        return (t.title && t.title.toLowerCase().includes(q)) ||
+                               (t.artist && t.artist.toLowerCase().includes(q)) ||
+                               (t.album && t.album.toLowerCase().includes(q));
+                      })
+                    : displayList;
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className={styles.historyEmptyState}>
+                        <Headphones size={40} className={styles.historyEmptyIcon} />
+                        <p className={styles.historyEmptyTitle}>
+                          {historySearchTerm ? 'Nenhuma faixa encontrada para esta busca' : 'Nenhuma música no histórico ainda'}
+                        </p>
+                        <span className={styles.historyEmptySubtitle}>
+                          {historySearchTerm ? 'Tente buscar por outro termo ou nome de artista.' : 'As músicas que você escutar aparecerão listadas aqui em ordem cronológica.'}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  const paginated = filtered.slice(0, historyVisibleCount);
+
+                  return (
+                    <>
+                      <div className={styles.historyTable}>
+                        <div className={styles.historyTableHeader}>
+                          <span className={styles.historyColNum}>#</span>
+                          <span className={styles.historyColTitle}>Título</span>
+                          <span className={styles.historyColAlbum}>Álbum</span>
+                          <span className={styles.historyColDate}>Quando</span>
+                          <span className={styles.historyColDuration}>Duração</span>
+                        </div>
+
+                        <div className={styles.historyTableRows}>
+                          {paginated.map((track, idx) => {
+                            const isCurrent = (currentTrack?.id && track.id && String(currentTrack.id) === String(track.id)) ||
+                                              (currentTrack?.title && track.title && currentTrack.title.trim().toLowerCase() === track.title.trim().toLowerCase());
+
+                            return (
+                              <div
+                                key={track.id || `${track.title}-${idx}`}
+                                className={`${styles.historyTableRow} ${isCurrent ? styles.historyTableRowActive : ''}`}
+                                onClick={() => playTrack(track)}
+                                title={`Tocar ${track.title} - ${track.artist}`}
+                              >
+                                <div className={styles.historyColNum}>
+                                  <span className={styles.historyTrackIndex}>{idx + 1}</span>
+                                  <div className={styles.historyRowPlayIcon}>
+                                    {isCurrent && isPlaying ? (
+                                      <Pause size={14} fill="#3ea6ff" color="#3ea6ff" />
+                                    ) : (
+                                      <Play size={14} fill="#ffffff" color="#ffffff" style={{ marginLeft: 2 }} />
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className={styles.historyColTitle}>
+                                  <img
+                                    src={getSafeCover(track)}
+                                    alt={track.title}
+                                    className={styles.historyTrackCover}
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+                                  />
+                                  <div className={styles.historyTrackText}>
+                                    <div className={styles.historyTitleWrapper}>
+                                      {idx === 0 && <span className={styles.historyBadgeLatest}>Última</span>}
+                                      <span className={`${styles.historyTrackName} ${isCurrent ? styles.historyTrackNameActive : ''}`}>
+                                        {track.title}
+                                      </span>
+                                    </div>
+                                    <span className={styles.historyTrackArtist}>{track.artist}</span>
+                                  </div>
+                                </div>
+
+                                <div className={styles.historyColAlbum}>
+                                  <span className={styles.historyAlbumText}>
+                                    {track.album || 'Single'}
+                                  </span>
+                                </div>
+
+                                <div className={styles.historyColDate}>
+                                  <span className={styles.historyDateText}>
+                                    {formatPlayedTime(track.playedAt)}
+                                  </span>
+                                </div>
+
+                                <div className={styles.historyColDuration}>
+                                  <span className={styles.historyDurationText}>
+                                    {track.duration || (track.durationSec ? `${Math.floor(track.durationSec / 60)}:${String(track.durationSec % 60).padStart(2, '0')}` : '--:--')}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {filtered.length > historyVisibleCount && (
+                        <div className={styles.historyLoadMoreWrapper}>
+                          <button
+                            type="button"
+                            className={styles.historyLoadMoreBtn}
+                            onClick={() => setHistoryVisibleCount(prev => prev + 15)}
+                          >
+                            <span>Carregar mais faixas ({filtered.length - historyVisibleCount} restantes)</span>
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Backdrop para fechar o menu de contexto de 3 pontinhos */}
+        {activeTrackMenu && (
+          <div
+            className={styles.contextMenuBackdrop}
+            onClick={() => setActiveTrackMenu(null)}
+          />
+        )}
+
+        {/* Menu de contexto flutuante da música */}
+        {activeTrackMenu && (
+          <div
+            className={styles.trackContextMenu}
+            style={{
+              top: activeTrackMenu.y,
+              left: activeTrackMenu.x
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.trackContextMenuHeader}>
+              <img
+                src={activeTrackMenu.track.cover || activeTrackMenu.track.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'}
+                alt={activeTrackMenu.track.title}
+                className={styles.trackContextMenuThumb}
+                onError={(e) => { e.currentTarget.src = 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png'; }}
+              />
+              <div className={styles.trackContextMenuMeta}>
+                <span className={styles.trackContextMenuTitle}>{activeTrackMenu.track.title}</span>
+                <span className={styles.trackContextMenuArtist}>{activeTrackMenu.track.artist}</span>
+              </div>
+            </div>
+            <div className={styles.trackContextMenuDivider} />
+            <button
+              type="button"
+              className={styles.trackContextMenuItem}
+              onClick={() => {
+                const t = activeTrackMenu.track;
+                setActiveTrackMenu(null);
+                addToQueue(t);
+              }}
+            >
+              <ListMusic size={16} color="#3ea6ff" />
+              <span>Adicionar à fila</span>
+            </button>
+          </div>
+        )}
+
+        {/* Toast flutuante de feedback da fila */}
+        {queueToast && (
+          <div className={styles.queueToast}>
+            <ListMusic size={16} />
+            <span>{queueToast}</span>
+          </div>
         )}
 
       </div>

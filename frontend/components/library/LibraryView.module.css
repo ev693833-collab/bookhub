@@ -276,6 +276,41 @@
   margin: 0;
 }
 
+/* Cards de Artistas Otimizados */
+.artistCardInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.2rem;
+  margin-top: 0.15rem;
+  width: 100%;
+}
+
+.artistCardTitle {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.artistCardGenre {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #a7a7a7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+  width: 100%;
+  text-align: center;
+}
+
 /* Badges de Privacidade */
 .privacyBadge {
   display: inline-flex;
