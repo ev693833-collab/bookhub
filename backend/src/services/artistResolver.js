@@ -41,7 +41,11 @@ const KNOWN_ALIASES = {
   'alee': ['alee'],
   'qualy': ['qualy'],
   'leall': ['leall'],
-  'scalene': ['scalene']
+  'scalene': ['scalene'],
+  '2zdiniz': ['2zdiniz', '2zdinizz', '2z diniz', '2zdinizzz'],
+  'matchola': ['matchola'],
+  'link do zap': ['link do zap', 'linkdozap'],
+  'pluglip': ['pluglip']
 };
 
 /**
@@ -79,10 +83,13 @@ function isSafeArtistMatch(target, candidate) {
 function splitArtistParticipants(artistString) {
   if (!artistString || typeof artistString !== 'string') return [];
 
+  // Remove sufixos residuais de arquivos de áudio (ex: 'Qualy.wav1' -> 'Qualy')
+  const cleanSource = artistString.replace(/\.(wav|mp3|m4a|flac|aac)\d*$/i, '');
+
   // Divisão por vírgula, &, barra, ' e ', ' feat. ', ' ft. ', ' part. ', '+'
-  const parts = artistString
+  const parts = cleanSource
     .split(/[,&/+]|(?:\s+e\s+)|\s+feat\.?\s+|\s+ft\.?\s+|\s+part\.?\s+/i)
-    .map(p => p.trim())
+    .map(p => p.trim().replace(/\.(wav|mp3|m4a|flac|aac)\d*$/i, ''))
     .filter(Boolean);
 
   // Evita duplicatas na lista dividida
@@ -154,19 +161,30 @@ function resolveTrackParticipants(track, artistCatalog) {
   if (!track) return [];
   const catalog = artistCatalog || [];
 
-  // Se a faixa já tiver participantes estruturados no banco
+  // Se a faixa já tiver participantes estruturados, re-resolve SEMPRE contra o catálogo atual.
+  // Isso garante que artistas cadastrados depois da faixa sejam reconhecidos corretamente,
+  // mesmo que o campo participants tenha sido salvo com hasProfile: false anteriormente.
   if (Array.isArray(track.participants) && track.participants.length > 0) {
-    return track.participants.map(p => {
-      const matched = findMatchingArtist(p.artist_id || p.id || p.name, catalog);
-      return {
-        name: p.name || (matched ? matched.name : 'Artista'),
-        artistId: matched ? matched.id : (p.artist_id || null),
-        hasProfile: Boolean(matched && matched.id),
-        avatarUrl: matched ? matched.avatar_url : null,
-        bio: matched ? matched.bio : null,
-        role: p.role || 'primary'
-      };
-    });
+    // Filtra participantes inválidos (ex: strings serializadas incorretamente pelo PowerShell)
+    const validParticipants = track.participants.filter(p => typeof p === 'object' && p !== null);
+
+    if (validParticipants.length > 0) {
+      return validParticipants.map(p => {
+        const pId = p.artistId || p.artist_id || p.id;
+        // Busca primeiro por ID direto, depois por nome — garante re-resolução mesmo se hasProfile era false
+        const byId = (pId && Number(pId) > 0) ? catalog.find(a => Number(a.id) === Number(pId)) : null;
+        const matched = byId || findMatchingArtist(p.name, catalog);
+        return {
+          name: (matched ? matched.name : p.name) || 'Artista',
+          artistId: matched ? matched.id : (pId ? Number(pId) : null),
+          hasProfile: Boolean(matched && matched.id),
+          avatarUrl: matched ? matched.avatar_url : (p.avatarUrl || null),
+          bio: matched ? matched.bio : (p.bio || null),
+          role: p.role || 'primary'
+        };
+      });
+    }
+    // Se todos eram inválidos, cai no fluxo de resolução textual abaixo
   }
 
   // Se a faixa tiver artist_ids array

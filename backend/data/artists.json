@@ -3,8 +3,8 @@
     "id": 1,
     "name": "BK",
     "bio": "Rapper, compositor e produtor brasileiro, um dos expoentes do hip-hop nacional.",
-    "avatar_url": "https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/bk_avatar.png",
-    "genre": "Rap",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg",
+    "genre": "Rap Nacional & Hip-Hop",
     "created_at": "2026-10-15T12:00:00.000Z"
   },
   {
@@ -12,7 +12,7 @@
     "name": "Veigh",
     "bio": "Destaque do trap nacional com sucessos que lideraram as paradas do streaming.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/cover/6646c5f4c6b60b0ddd4f00987623437c/500x500-000000-80-0-0.jpg",
-    "genre": "Trap",
+    "genre": "Trap & R&B",
     "created_at": "2026-10-15T12:00:00.000Z"
   },
   {
@@ -52,7 +52,7 @@
     "name": "Justin Bieber",
     "bio": "Superestrela global do pop.",
     "avatar_url": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/81/a4/dc/81a4dc50-8d7e-6ae5-71d3-f83393348248/15UMGIM59807.rgb.jpg/600x600bb.jpg",
-    "genre": "Pop",
+    "genre": "Pop & R&B",
     "created_at": "2026-10-15T12:00:00.000Z"
   },
   {
@@ -60,7 +60,7 @@
     "name": "LEALL",
     "bio": "LEALL é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/ceb93edbe8c08c59e347aa4179fe2fef/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Drill & Rap Nacional",
     "created_at": "2026-10-30T19:31:41.635Z",
     "updated_at": "2026-10-30T19:31:41.635Z"
   },
@@ -69,7 +69,7 @@
     "name": "Djonga",
     "bio": "Djonga é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/a685bd7ab1fd1234b7b420c59ca5be4f/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Rap Nacional & Hip-Hop",
     "created_at": "2026-10-30T19:35:35.433Z",
     "updated_at": "2026-10-30T19:35:35.433Z"
   },
@@ -78,7 +78,7 @@
     "name": "Scalene",
     "bio": "Scalene é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/7b75b50b0033b0612f2a36795ac283a0/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Rock Alternativo",
     "created_at": "2026-10-31T21:31:43.777Z",
     "updated_at": "2026-10-31T21:31:43.777Z"
   },
@@ -87,7 +87,7 @@
     "name": "Leviano",
     "bio": "Leviano é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/f1798562d69abd2a8535bc0e1c0acef4/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Trap",
     "created_at": "2026-11-01T00:06:28.157Z",
     "updated_at": "2026-11-01T00:06:28.157Z"
   },
@@ -96,7 +96,7 @@
     "name": "Jovem Dex",
     "bio": "Jovem Dex é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/9e3af30341ac3a62425bb563212415e5/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Trap",
     "created_at": "2026-11-01T00:21:21.773Z",
     "updated_at": "2026-11-01T00:21:21.773Z"
   },
@@ -105,7 +105,7 @@
     "name": "Teto",
     "bio": "Teto é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/2e074d001d9cb79055d9c648c758c160/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Trap",
     "created_at": "2026-11-01T00:22:24.994Z",
     "updated_at": "2026-11-01T00:22:24.994Z"
   },
@@ -114,7 +114,7 @@
     "name": "Matuê",
     "bio": "Matuê é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/c42fcb920963cca4d195b939e51f19d1/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Trap",
     "created_at": "2026-11-01T00:22:26.468Z",
     "updated_at": "2026-11-01T00:22:26.468Z"
   },
@@ -123,7 +123,7 @@
     "name": "WIU",
     "bio": "WIU é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/33c57e62925f8aa9639ede9c92a198d8/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Trap & R&B",
     "created_at": "2026-11-01T00:22:28.004Z",
     "updated_at": "2026-11-01T00:22:28.004Z"
   },
@@ -132,7 +132,7 @@
     "name": "Baco Exu do Blues",
     "bio": "Baco Exu do Blues é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/f21ec3008588db26c43727623b98698e/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Hip-Hop & Blues",
     "created_at": "2026-11-01T00:22:32.787Z",
     "updated_at": "2026-11-01T00:22:32.787Z"
   },
@@ -141,7 +141,7 @@
     "name": "MC Cabelinho",
     "bio": "MC Cabelinho é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/9af42c5b0cecdd05765ec8a7f568d3af/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Trap & Funk",
     "created_at": "2026-11-01T00:22:34.346Z",
     "updated_at": "2026-11-01T00:22:34.346Z"
   },
@@ -150,7 +150,7 @@
     "name": "VMZ",
     "bio": "VMZ é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/9fcec8861b268e2d21e4174ccfb474fa/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Geek Rap & Trap",
     "created_at": "2026-11-01T00:22:36.564Z",
     "updated_at": "2026-11-01T00:22:36.564Z"
   },
@@ -159,7 +159,7 @@
     "name": "Alee",
     "bio": "Alee é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/4fec56e2b9080c958683ea45737e1130/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Trap",
     "created_at": "2026-11-01T00:22:38.474Z",
     "updated_at": "2026-11-01T00:22:38.474Z"
   },
@@ -168,7 +168,7 @@
     "name": "Qualy",
     "bio": "Qualy é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/afbdd277a736ca9afaf67181da5409fc/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Rap Nacional",
     "created_at": "2026-11-01T00:22:40.367Z",
     "updated_at": "2026-11-01T00:22:40.367Z"
   },
@@ -177,8 +177,150 @@
     "name": "Manu Chao",
     "bio": "Manu Chao é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
     "avatar_url": "https://cdn-images.dzcdn.net/images/artist/8761b9e8ef9dfd200775d1458ea6446e/1000x1000-000000-80-0-0.jpg",
-    "genre": "Trap & Rap",
+    "genre": "Latin Alternative & Reggae",
     "created_at": "2026-11-01T01:11:44.632Z",
     "updated_at": "2026-11-01T01:11:44.632Z"
+  },
+  {
+    "id": 22,
+    "name": "Matchola",
+    "bio": "Matchola é um artista do cenário musical.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/1967fe8245804c2e7553f22d2f86f910/1000x1000-000000-80-0-0.jpg",
+    "genre": "Afrobeat & Trap",
+    "created_at": "2026-11-01T20:52:02.769Z",
+    "updated_at": "2026-11-01T20:52:02.770Z"
+  },
+  {
+    "id": 23,
+    "name": "2ZDINIZ",
+    "bio": "2ZDINIZ é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/95a1c7be3fcc7dd3a7059597f622b388/1000x1000-000000-80-0-0.jpg",
+    "genre": "Afrobeat & Trap",
+    "created_at": "2026-11-01T20:52:03.211Z",
+    "updated_at": "2026-11-01T20:52:03.211Z"
+  },
+  {
+    "id": 24,
+    "name": "Link do Zap",
+    "bio": "Link do Zap é um artista do cenário musical.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/067127e1ca147e0ac9772541eaba0dea/1000x1000-000000-80-0-0.jpg",
+    "genre": "Plug & Funk",
+    "created_at": "2026-11-01T20:52:03.622Z",
+    "updated_at": "2026-11-01T20:52:03.622Z"
+  },
+  {
+    "id": 25,
+    "name": "pluglip",
+    "bio": "pluglip é um artista do cenário musical.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/4b5bbbecdfa8685f1758ee6c3dfcfb20/1000x1000-000000-80-0-0.jpg",
+    "genre": "Plug & Trap",
+    "created_at": "2026-11-01T20:52:03.939Z",
+    "updated_at": "2026-11-01T20:52:03.939Z"
+  },
+  {
+    "id": 26,
+    "name": "Cjota",
+    "bio": "Cjota é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/738131b52a80e900ea1b12deaf9bd2a7/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & R&B",
+    "created_at": "2026-11-01T20:53:34.399Z",
+    "updated_at": "2026-11-01T20:53:34.399Z"
+  },
+  {
+    "id": 27,
+    "name": "2ZDinizz",
+    "bio": "2ZDinizz é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/95a1c7be3fcc7dd3a7059597f622b388/1000x1000-000000-80-0-0.jpg",
+    "genre": "Afrobeat & Trap",
+    "created_at": "2026-11-01T20:55:19.422Z",
+    "updated_at": "2026-11-01T20:55:19.422Z"
+  },
+  {
+    "id": 28,
+    "name": "Chefin",
+    "bio": "Chefin é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/a281dbe120bfcb442d97a79895edca71/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap",
+    "created_at": "2026-11-01T22:21:49.173Z",
+    "updated_at": "2026-11-01T22:21:49.173Z"
+  },
+  {
+    "id": 29,
+    "name": "BIN",
+    "bio": "BIN é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/1bfef6c25efcd2a449b610b828f39467/1000x1000-000000-80-0-0.jpg",
+    "genre": "Trap & Rap",
+    "created_at": "2026-11-01T22:22:58.645Z",
+    "updated_at": "2026-11-01T22:22:58.645Z"
+  },
+  {
+    "id": 30,
+    "name": "Sorry",
+    "bio": "Sorry é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/4fb53e4fb3c2ea6a8e48783ff28e56a1/1000x1000-000000-80-0-0.jpg",
+    "genre": "Indie Rock",
+    "created_at": "2026-11-01T22:26:05.133Z",
+    "updated_at": "2026-11-01T22:26:05.133Z"
+  },
+  {
+    "id": 31,
+    "name": "Céline Dion",
+    "bio": "Céline Dion é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/e3ae78e5c49ed42342513d5a248b9c4c/1000x1000-000000-80-0-0.jpg",
+    "genre": "Pop",
+    "created_at": "2026-11-01T22:38:51.835Z",
+    "updated_at": "2026-11-01T22:38:51.835Z"
+  },
+  {
+    "id": 32,
+    "name": "Eminem",
+    "bio": "Eminem é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/0f30bbd33a680030054af004d698d6ac/1000x1000-000000-80-0-0.jpg",
+    "genre": "Hip-Hop & Rap",
+    "created_at": "2026-11-01T22:54:34.802Z",
+    "updated_at": "2026-11-01T22:54:34.802Z"
+  },
+  {
+    "id": 33,
+    "name": "Taylor Swift",
+    "bio": "Taylor Swift é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/cc2495870fe1a792ad0cdb05501ad5ec/1000x1000-000000-80-0-0.jpg",
+    "genre": "Pop & Country",
+    "created_at": "2026-11-01T22:54:36.341Z",
+    "updated_at": "2026-11-01T22:54:36.341Z"
+  },
+  {
+    "id": 34,
+    "name": "Mc IG",
+    "bio": "Mc IG é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/441740859831aa7476a989a44d8c187f/1000x1000-000000-80-0-0.jpg",
+    "genre": "Funk & Trap",
+    "created_at": "2026-11-01T22:59:32.180Z",
+    "updated_at": "2026-11-01T22:59:32.180Z"
+  },
+  {
+    "id": 35,
+    "name": "50 Cent",
+    "bio": "50 Cent é um dos artistas seguidos na sua biblioteca DevSongs.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/58da3cca2d598e43c7a7823cf75277e5/1000x1000-000000-80-0-0.jpg",
+    "genre": "Hip-Hop & Rap",
+    "created_at": "2026-11-02T18:03:23.162Z"
+  },
+  {
+    "id": 36,
+    "name": "Cazuza",
+    "bio": "Agenor de Miranda Araújo Neto, mais conhecido como Cazuza, foi um dos maiores cantores, compositores e poetas do rock brasileiro.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/cf195330295e6a6312cce4602a3d43a3/1000x1000-000000-80-0-0.jpg",
+    "genre": "Rock Nacional & MPB",
+    "created_at": "2026-11-02T20:07:57.753Z"
+  },
+  {
+    "id": 37,
+    "name": "Natanzinho Lima",
+    "bio": "Natanzinho Lima é um dos artistas mais ouvidos do momento, acumulando milhares de reproduções e fãs por todo o país.",
+    "avatar_url": "https://cdn-images.dzcdn.net/images/artist/41b2a643473a93bfe707434c1beb1780/1000x1000-000000-80-0-0.jpg",
+    "genre": "Arrocha & Forró",
+    "created_at": "2026-11-03T00:42:27.758Z",
+    "updated_at": "2026-11-03T00:42:27.758Z"
   }
 ]

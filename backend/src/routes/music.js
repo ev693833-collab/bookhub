@@ -1,6 +1,20 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const artistSyncService = require('../services/artistSyncService');
+const libraryStorage = require('../services/libraryStorage');
+const verifyToken = require('../middlewares/auth');
+const recommendationService = require('../services/recommendationService');
+
+function readJsonFile(filePath, fallback = []) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+  } catch (_) {}
+  return fallback;
+}
 
 // Caches em memória de alta performance para resposta instantânea (0ms)
 const searchCache = new Map();
@@ -262,18 +276,25 @@ function isValidArtistPicture(url) {
   return true;
 }
 
+function safeUpgradeAvatar(url) {
+  if (typeof libraryStorage.upgradeArtistAvatarResolution === 'function') {
+    return libraryStorage.upgradeArtistAvatarResolution(url);
+  }
+  return (url || '').replace(/\/(\d+)x(\d+)-/g, '/1000x1000-').replace('/250x250-', '/1000x1000-');
+}
+
 function getArtistPhoto(artist, queryName) {
   const qClean = cleanSimple(queryName || (artist && artist.name));
   // Imagens oficiais HD com prioridade para artistas icônicos
   if (qClean === 'bk') {
-    return 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025311/bookhub/img/bk_avatar.png';
+    return (artist && (artist.picture_xl || artist.picture_big)) || 'https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg';
   }
   if (qClean === 'justinbieber') {
     return 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025319/bookhub/img/justin_my_world.jpg';
   }
   if (artist) {
     const pic = artist.picture_xl || artist.picture_big || artist.picture_medium || artist.picture_small;
-    if (isValidArtistPicture(pic)) return pic;
+    if (isValidArtistPicture(pic)) return safeUpgradeAvatar(pic);
   }
   return null;
 }
@@ -369,276 +390,574 @@ router.post('/artist/sync', async (req, res) => {
 });
 
 /**
+ * Helper para enriquecer os resultados de busca integrando o catálogo geral
+ * com a biblioteca de faixas e álbuns comprados/alugados do usuário e o catálogo local.
+ */
+async function enrichSearchResultsWithUserLibrary(catalogResult, userId, q) {
+  if (!catalogResult) return { artist: null, artists: [], tracks: [] };
+
+  const normalizeStr = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['"`.,\-_/\\()&]/g, ' ').replace(/\s+/g, ' ').trim();
+  const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+
+  const qNorm = normalizeStr(q);
+  const qClean = cleanSimple(q);
+  const qTokens = qNorm.split(' ').filter(Boolean);
+
+  const matchesQuery = (item) => {
+    if (!qNorm) return false;
+    const titleNorm = normalizeStr(item.title);
+    const artistNorm = normalizeStr(item.artist || item.artist_name || item.companyName);
+    const albumNorm = normalizeStr(item.album || item.album_title);
+    const combined = `${titleNorm} ${artistNorm} ${albumNorm}`;
+
+    if (titleNorm.includes(qNorm) || artistNorm.includes(qNorm) || albumNorm.includes(qNorm) || combined.includes(qNorm)) return true;
+    if (qNorm.includes(titleNorm) || (artistNorm.length >= 3 && qNorm.includes(artistNorm))) return true;
+    if (qTokens.length > 1 && qTokens.every(t => combined.includes(t))) return true;
+    const titleClean = cleanSimple(item.title);
+    if (titleClean && qClean && (titleClean.includes(qClean) || qClean.includes(titleClean))) return true;
+    return false;
+  };
+
+  const scoreMatch = (item) => {
+    let score = 0;
+    const titleNorm = normalizeStr(item.title);
+    const artistNorm = normalizeStr(item.artist || item.artist_name);
+    const albumNorm = normalizeStr(item.album || item.album_title);
+    const titleClean = cleanSimple(item.title);
+
+    if (titleClean === qClean) score += 100;
+    else if (titleNorm === qNorm) score += 95;
+    else if (titleNorm.startsWith(qNorm)) score += 70;
+    else if (titleNorm.includes(qNorm)) score += 50;
+
+    if (cleanSimple(item.artist) === qClean) score += 80;
+    else if (artistNorm.includes(qNorm)) score += 40;
+
+    if (albumNorm.includes(qNorm)) score += 30;
+    return score;
+  };
+
+  let userLibraryTracks = [];
+  let userPurchasedAlbums = [];
+  if (userId) {
+    try {
+      userLibraryTracks = await libraryStorage.getUserLibraryTracks(userId, 'all');
+      userPurchasedAlbums = await libraryStorage.getUserPurchasedAlbums(userId);
+    } catch (e) {
+      console.warn('Erro ao carregar faixas da biblioteca do usuário na busca:', e.message);
+    }
+  }
+
+  let localTracks = [];
+  try {
+    localTracks = readJsonFile(path.join(__dirname, '../../data/company_tracks.json'), []);
+  } catch (_) {}
+
+  const matchingUserTracks = userLibraryTracks.filter(t => matchesQuery(t));
+  matchingUserTracks.sort((a, b) => scoreMatch(b) - scoreMatch(a));
+
+  const userPurchasesMap = new Map();
+  for (const t of userLibraryTracks) {
+    const keyTitleArtist = `${cleanSimple(t.title)}__${cleanSimple(t.artist)}`;
+    const keyTrackId = String(t.dbTrackId || t.id).replace(/^ct-/, '');
+    userPurchasesMap.set(keyTitleArtist, t);
+    userPurchasesMap.set(keyTrackId, t);
+  }
+
+  const purchasedAlbumIds = new Set(userPurchasedAlbums.map(a => Number(a.id)).filter(Boolean));
+  const purchasedAlbumTitles = new Set(userPurchasedAlbums.map(a => cleanSimple(a.title)).filter(Boolean));
+
+  const formatTrack = (t, fromLibrary = false, userAcquisition = null) => {
+    const dur = t.durationSec || t.duration_sec || 210;
+    const min = Math.floor(dur / 60);
+    const sec = dur % 60;
+    const isRent = userAcquisition ? userAcquisition.type === 'rent' : (t.type === 'rent' || t.isRented);
+    const isExpired = userAcquisition ? userAcquisition.isExpired : (t.isExpired || false);
+    const isPurchased = userAcquisition ? userAcquisition.type === 'buy' : Boolean(t.isPurchased || t.type === 'buy');
+    const isRented = isRent && !isExpired;
+    const hasActiveAccess = isPurchased || isRented;
+
+    const license = isPurchased
+      ? 'Comprada'
+      : (isRented ? (userAcquisition?.licenseLabel || 'Alugada') : null);
+
+    return {
+      id: userAcquisition?.id || t.id || `track-${t.dbTrackId || Date.now()}`,
+      dbTrackId: userAcquisition?.dbTrackId || t.dbTrackId || t.id,
+      type: 'song',
+      title: t.title,
+      artist: t.artist,
+      album: t.album || 'Single',
+      sub: `Música • ${t.artist} • ${t.album || 'Single'}`,
+      cover: t.cover || t.cover_url || userAcquisition?.cover || userAcquisition?.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+      preview: t.preview || t.preview_url || userAcquisition?.preview || null,
+      youtubeVideoId: t.youtubeVideoId || t.youtube_video_id || userAcquisition?.youtubeVideoId || null,
+      durationSec: dur,
+      duration: t.duration || `${min}:${String(sec).padStart(2, '0')}`,
+      plays: fromLibrary ? (userAcquisition?.plays || (isPurchased ? 'Comprado (Permanente)' : 'Alugado')) : (t.plays || 'Tocou recentemente'),
+      explicit: Boolean(t.explicit || t.explicit_lyrics),
+      albumId: t.albumId || t.album_id || userAcquisition?.album_id,
+      isPurchased,
+      isRented,
+      isExpired,
+      licenseLabel: license,
+      badge: license ? (isRented ? 'Alugada' : 'Comprada') : null,
+      canPlay: hasActiveAccess || Boolean(t.canPlay),
+      access_status: isPurchased ? 'purchased' : (isRented ? 'rent_active' : 'unpurchased')
+    };
+  };
+
+  const finalTracks = [];
+  const seenTracks = new Set();
+  const getDedupKey = (title, artist) => `${cleanSimple(title)}__${cleanSimple(artist)}`;
+
+  // 1. Adiciona faixas correspondentes da biblioteca pessoal primeiro (alta prioridade e badge)
+  for (const uTrack of matchingUserTracks) {
+    const key = getDedupKey(uTrack.title, uTrack.artist);
+    if (!seenTracks.has(key)) {
+      seenTracks.add(key);
+      finalTracks.push(formatTrack(uTrack, true, uTrack));
+    }
+  }
+
+  // 2. Adiciona faixas do catálogo externo, deduplicando e verificando se o usuário já as possui
+  for (const cTrack of (catalogResult.tracks || [])) {
+    const key = getDedupKey(cTrack.title, cTrack.artist);
+    const trackIdStr = String(cTrack.dbTrackId || cTrack.id).replace(/^(ct-|dz-track-|it-track-)/, '');
+
+    const userAcq = userPurchasesMap.get(key) || userPurchasesMap.get(trackIdStr) || null;
+    const isAlbumCovered = (cTrack.albumId && purchasedAlbumIds.has(Number(cTrack.albumId))) ||
+      (cTrack.album && purchasedAlbumTitles.has(cleanSimple(cTrack.album)));
+
+    if (seenTracks.has(key)) {
+      continue;
+    }
+
+    seenTracks.add(key);
+
+    if (userAcq) {
+      finalTracks.push(formatTrack({ ...cTrack, ...userAcq }, true, userAcq));
+    } else if (isAlbumCovered) {
+      finalTracks.push({
+        ...formatTrack(cTrack, false, null),
+        isPurchased: true,
+        licenseLabel: 'Comprada',
+        badge: 'Comprada',
+        canPlay: true,
+        access_status: 'purchased'
+      });
+    } else {
+      finalTracks.push(formatTrack(cTrack, false, null));
+    }
+  }
+
+  // 3. Adiciona faixas do catálogo local da plataforma se corresponderem à busca
+  const matchingLocal = localTracks.filter(t => matchesQuery(t));
+  for (const lTrack of matchingLocal) {
+    const key = getDedupKey(lTrack.title, lTrack.artist);
+    if (!seenTracks.has(key)) {
+      seenTracks.add(key);
+      const userAcq = userPurchasesMap.get(key) || userPurchasesMap.get(String(lTrack.id)) || null;
+      finalTracks.push(formatTrack(lTrack, Boolean(userAcq), userAcq));
+    }
+  }
+
+  // Ajuste do destaque de artista: se o usuário pesquisou exatamente pelo título de uma música
+  // e ela é uma faixa comprada de alta relevância, não sobrepõe com perfil solto não relacionado
+  let artistObj = catalogResult.artist;
+  if (finalTracks.length > 0 && finalTracks[0].isPurchased) {
+    const topTitleClean = cleanSimple(finalTracks[0].title);
+    if (topTitleClean === qClean || topTitleClean.includes(qClean) || qClean.includes(topTitleClean)) {
+      if (artistObj && cleanSimple(artistObj.name) !== cleanSimple(finalTracks[0].artist) && (artistObj.fansCount || 0) < 50000) {
+        artistObj = null;
+      }
+    }
+  }
+
+  return {
+    artist: artistObj,
+    artists: catalogResult.artists || [],
+    tracks: finalTracks
+  };
+}
+
+/**
  * GET /api/music/search?q={query}
  * Busca faixas e entidades para autocomplete e resultados gerais de pesquisa.
+ * Integra catálogo Deezer/iTunes, catálogo local e biblioteca pessoal (compradas/alugadas).
  */
-router.get('/search', async (req, res) => {
+router.get('/search', verifyToken.optional, async (req, res) => {
   const { q } = req.query;
   if (!q) {
     return res.status(400).json({ error: 'Parâmetro "q" é obrigatório.' });
   }
 
   const cleanQ = (q || '').toLowerCase().trim();
-  if (searchCache.has(cleanQ)) {
-    return res.json(searchCache.get(cleanQ));
-  }
+  const userId = req.user?.id || req.query.userId || null;
 
   try {
-    const cleanStr = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['"`.,\s]/g, '');
-    const qClean = cleanSimple(q);
+    let catalogResult = null;
 
-    let artistObj = null;
-    let allArtists = [];
+    if (searchCache.has(cleanQ)) {
+      catalogResult = searchCache.get(cleanQ);
+    } else {
+      const cleanStr = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['"`.,\s]/g, '');
+      const qClean = cleanSimple(q);
 
-    const [tracksRes, artistRes] = await Promise.all([
-      fetchWithTimeout(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=30`, {}, 4000)
-        .then(r => r.json())
-        .catch(() => ({ data: [] })),
-      fetchWithTimeout(`https://api.deezer.com/search/artist?q=${encodeURIComponent(q)}&limit=30`, {}, 4000)
-        .then(r => r.json())
-        .catch(() => ({ data: [] }))
-    ]);
+      let artistObj = null;
+      let allArtists = [];
 
-    if (artistRes.data && artistRes.data.length > 0) {
-      const bestCandidate = pickBestArtistCandidate(artistRes.data, q);
-      if (bestCandidate) {
-        const fans = bestCandidate.nb_fan || 500000;
-        const listenersStr = fans >= 1000000
-          ? `${(fans / 1000000).toFixed(1).replace('.', ',')} mi ouvintes mensais`
-          : (fans >= 1000 ? `${Math.round(fans / 1000)} mil ouvintes mensais` : `${fans} ouvintes mensais`);
-        const subsStr = fans >= 1000000
-          ? `${(fans / 1000000).toFixed(1).replace('.', ',')} mi`
-          : (fans >= 1000 ? `${Math.round(fans / 1000)} mil` : `${fans}`);
+      const [tracksRes, artistRes] = await Promise.all([
+        fetchWithTimeout(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=30`, {}, 4000)
+          .then(r => r.json())
+          .catch(() => ({ data: [] })),
+        fetchWithTimeout(`https://api.deezer.com/search/artist?q=${encodeURIComponent(q)}&limit=30`, {}, 4000)
+          .then(r => r.json())
+          .catch(() => ({ data: [] }))
+      ]);
 
-        const isBk = cleanSimple(bestCandidate.name) === 'bk' || cleanSimple(q) === 'bk';
-        const avatarPhoto = getArtistPhoto(bestCandidate, q) || bestCandidate.picture_xl || bestCandidate.picture_big;
-        artistObj = {
-          id: `dz-artist-${bestCandidate.id}`,
-          name: isBk ? 'BK' : bestCandidate.name,
-          fansCount: fans,
-          avatarImg: avatarPhoto,
-          bannerImg: isBk ? 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png' : avatarPhoto,
-          bannerPosition: getArtistBannerPosition(bestCandidate.name),
-          listeners: listenersStr,
-          subscribers: subsStr,
-          bio: isBk
-            ? "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes metrópoles."
-            : `${bestCandidate.name} é um dos artistas mais ouvidos do momento.`
-        };
-      }
+      if (artistRes.data && artistRes.data.length > 0) {
+        const bestCandidate = pickBestArtistCandidate(artistRes.data, q);
+        if (bestCandidate) {
+          const fans = bestCandidate.nb_fan || 500000;
+          const listenersStr = fans >= 1000000
+            ? `${(fans / 1000000).toFixed(1).replace('.', ',')} mi ouvintes mensais`
+            : (fans >= 1000 ? `${Math.round(fans / 1000)} mil ouvintes mensais` : `${fans} ouvintes mensais`);
+          const subsStr = fans >= 1000000
+            ? `${(fans / 1000000).toFixed(1).replace('.', ',')} mi`
+            : (fans >= 1000 ? `${Math.round(fans / 1000)} mil` : `${fans}`);
 
-      // Prepara lista ordenada por relevância e fãs para a aba 'Artistas'
-      const sortedPool = [...artistRes.data].sort((a, b) => (b.nb_fan || 0) - (a.nb_fan || 0));
-      allArtists = sortedPool.slice(0, 8).map(a => {
-        const fans = a.nb_fan || 5000;
-        const avatarPhoto = getArtistPhoto(a, a.name) || a.picture_xl || a.picture_big || a.picture_medium;
-        return {
-          id: `dz-artist-${a.id}`,
-          name: (cleanSimple(a.name) === 'bk' && cleanSimple(q) === 'bk') ? 'BK' : a.name,
-          avatarImg: avatarPhoto,
-          bannerImg: avatarPhoto,
-          listeners: fans >= 1000000 ? `${(fans / 1000000).toFixed(1).replace('.', ',')} mi ouvintes mensais` : (fans >= 1000 ? `${Math.round(fans / 1000)} mil ouvintes mensais` : `${fans} ouvintes mensais`),
-          subscribers: fans >= 1000000 ? `${(fans / 1000000).toFixed(1).replace('.', ',')} mi` : (fans >= 1000 ? `${Math.round(fans / 1000)} mil` : `${fans}`),
-          bio: `${a.name} é um artista do cenário musical.`
-        };
-      });
-    }
-
-    // Se a busca contiver o nome do artista junto com a música (ex: "Bk amém amém" ou "matue anos luz"),
-    // e artistRes não encontrou o perfil direto com fãs suficientes:
-    if ((!artistObj || (artistObj.fansCount || 0) < 5000) && tracksRes.data && tracksRes.data.length > 0) {
-      const topArt = tracksRes.data[0].artist;
-      if (topArt && topArt.name) {
-        const topArtClean = cleanSimple(topArt.name);
-        if (topArtClean.length >= 2 && qClean.includes(topArtClean)) {
-          const avatarPhoto = getArtistPhoto(topArt, topArt.name) || topArt.picture_xl || topArt.picture_big;
+          const isBk = cleanSimple(bestCandidate.name) === 'bk' || cleanSimple(q) === 'bk';
+          const avatarPhoto = getArtistPhoto(bestCandidate, q) || bestCandidate.picture_xl || bestCandidate.picture_big;
           artistObj = {
-            id: `dz-artist-${topArt.id}`,
-            name: topArt.name === "BK'" ? 'BK' : topArt.name,
-            fansCount: 1250000,
+            id: `dz-artist-${bestCandidate.id}`,
+            name: isBk ? 'BK' : bestCandidate.name,
+            fansCount: fans,
+            avatarImg: avatarPhoto,
+            bannerImg: isBk ? 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png' : avatarPhoto,
+            bannerPosition: getArtistBannerPosition(bestCandidate.name),
+            listeners: listenersStr,
+            subscribers: subsStr,
+            bio: isBk
+              ? "Uma das vozes mais contundentes dentro do rap nacional, Abebe Bikila, mais conhecido como BK', é um rapper carioca que carrega em suas rimas as vivências de um corpo negro dentro das grandes metrópoles."
+              : `${bestCandidate.name} é um dos artistas mais ouvidos do momento.`
+          };
+        }
+
+        // Prepara lista ordenada por relevância e fãs para a aba 'Artistas'
+        const sortedPool = [...artistRes.data].sort((a, b) => (b.nb_fan || 0) - (a.nb_fan || 0));
+        allArtists = sortedPool.slice(0, 8).map(a => {
+          const fans = a.nb_fan || 5000;
+          const avatarPhoto = safeUpgradeAvatar(getArtistPhoto(a, a.name) || a.picture_xl || a.picture_big || a.picture_medium);
+          return {
+            id: `dz-artist-${a.id}`,
+            name: (cleanSimple(a.name) === 'bk' && cleanSimple(q) === 'bk') ? 'BK' : a.name,
             avatarImg: avatarPhoto,
             bannerImg: avatarPhoto,
-            listeners: '1,2 mi ouvintes mensais',
-            subscribers: '1,2 mi',
-            bio: `${topArt.name} é o artista destaque desta faixa.`
+            listeners: fans >= 1000000 ? `${(fans / 1000000).toFixed(1).replace('.', ',')} mi ouvintes mensais` : (fans >= 1000 ? `${Math.round(fans / 1000)} mil ouvintes mensais` : `${fans} ouvintes mensais`),
+            subscribers: fans >= 1000000 ? `${(fans / 1000000).toFixed(1).replace('.', ',')} mi` : (fans >= 1000 ? `${Math.round(fans / 1000)} mil` : `${fans}`),
+            bio: `${a.name} é um artista do cenário musical.`
           };
-          if (allArtists.length === 0) {
-            allArtists.push(artistObj);
-          }
-        }
+        });
       }
-    }
 
-    let rawTracks = tracksRes.data || [];
-
-    // Fallback para iTunes Brasil se Deezer não retornou faixas suficientes
-    if (rawTracks.length === 0) {
-      try {
-        const itunesRes = await fetchWithTimeout(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=BR`, {}, 3500)
-          .then(r => r.json())
-          .catch(() => ({ results: [] }));
-
-        if (itunesRes.results && itunesRes.results.length > 0) {
-          rawTracks = itunesRes.results.map((item, idx) => {
-            const dur = Math.round((item.trackTimeMillis || 210000) / 1000);
-            return {
-              id: item.trackId || (Date.now() + idx),
-              title: item.trackName,
-              artist: { name: item.artistName, id: item.artistId },
-              album: { title: item.collectionName || 'Single', cover_big: item.artworkUrl100?.replace('100x100bb', '600x600bb') },
-              duration: dur,
-              preview: item.previewUrl,
-              explicit_lyrics: item.trackExplicitness === 'explicit'
-            };
-          });
-
-          if (!artistObj && itunesRes.results[0]) {
-            const first = itunesRes.results[0];
-            const artistName = first.artistName;
-            const cover = first.artworkUrl100?.replace('100x100bb', '600x600bb');
+      if ((!artistObj || (artistObj.fansCount || 0) < 5000) && tracksRes.data && tracksRes.data.length > 0) {
+        const topArt = tracksRes.data[0].artist;
+        if (topArt && topArt.name) {
+          const topArtClean = cleanSimple(topArt.name);
+          if (topArtClean.length >= 2 && qClean.includes(topArtClean)) {
+            const avatarPhoto = getArtistPhoto(topArt, topArt.name) || topArt.picture_xl || topArt.picture_big;
             artistObj = {
-              id: `itunes-artist-${first.artistId || 1}`,
-              name: artistName,
-              avatarImg: cover,
-              bannerImg: cover,
-              listeners: '3,5 mi ouvintes mensais',
+              id: `dz-artist-${topArt.id}`,
+              name: topArt.name === "BK'" ? 'BK' : topArt.name,
+              fansCount: 1250000,
+              avatarImg: avatarPhoto,
+              bannerImg: avatarPhoto,
+              listeners: '1,2 mi ouvintes mensais',
               subscribers: '1,2 mi',
-              bio: `${artistName} é um artista de destaque no cenário musical.`
+              bio: `${topArt.name} é o artista destaque desta faixa.`
             };
             if (allArtists.length === 0) {
               allArtists.push(artistObj);
             }
           }
         }
-      } catch (_) {}
-    }
+      }
 
-    const firstTrack = rawTracks[0];
-    let artistTopTracks = [];
+      let rawTracks = tracksRes.data || [];
 
-    // Só busca top faixas adicionais do artista se as faixas da busca forem repetitivas
-    if (firstTrack && firstTrack.artist?.id) {
-      const firstTitleNorm = cleanSimple(firstTrack.title);
-      const isRepetitive = rawTracks.filter(t => cleanSimple(t.title) === firstTitleNorm).length >= 3;
+      // Fallback para iTunes Brasil se Deezer não retornou faixas suficientes
+      if (rawTracks.length === 0) {
+        try {
+          const itunesRes = await fetchWithTimeout(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=BR`, {}, 3500)
+            .then(r => r.json())
+            .catch(() => ({ results: [] }));
 
-      if (isRepetitive) {
-        const artistId = firstTrack.artist.id;
-        if (artistTopCache.has(artistId)) {
-          artistTopTracks = artistTopCache.get(artistId);
-        } else {
-          try {
-            const topRes = await fetchWithTimeout(`https://api.deezer.com/artist/${artistId}/top?limit=10`, {}, 1200)
-              .then(r => r.json())
-              .catch(() => ({ data: [] }));
-            artistTopTracks = topRes.data || [];
-            if (artistTopCache.size > 200) artistTopCache.clear();
-            artistTopCache.set(artistId, artistTopTracks);
-          } catch (_) {
-            artistTopTracks = [];
+          if (itunesRes.results && itunesRes.results.length > 0) {
+            rawTracks = itunesRes.results.map((item, idx) => {
+              const dur = Math.round((item.trackTimeMillis || 210000) / 1000);
+              return {
+                id: item.trackId || (Date.now() + idx),
+                title: item.trackName,
+                artist: { name: item.artistName, id: item.artistId },
+                album: { title: item.collectionName || 'Single', cover_big: item.artworkUrl100?.replace('100x100bb', '600x600bb') },
+                duration: dur,
+                preview: item.previewUrl,
+                explicit_lyrics: item.trackExplicitness === 'explicit'
+              };
+            });
+
+            if (!artistObj && itunesRes.results[0]) {
+              const first = itunesRes.results[0];
+              const artistName = first.artistName;
+              const cover = first.artworkUrl100?.replace('100x100bb', '600x600bb');
+              artistObj = {
+                id: `itunes-artist-${first.artistId || 1}`,
+                name: artistName,
+                avatarImg: cover,
+                bannerImg: cover,
+                listeners: '3,5 mi ouvintes mensais',
+                subscribers: '1,2 mi',
+                bio: `${artistName} é um artista de destaque no cenário musical.`
+              };
+              if (allArtists.length === 0) {
+                allArtists.push(artistObj);
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      const firstTrack = rawTracks[0];
+      let artistTopTracks = [];
+
+      if (firstTrack && firstTrack.artist?.id) {
+        const firstTitleNorm = cleanSimple(firstTrack.title);
+        const isRepetitive = rawTracks.filter(t => cleanSimple(t.title) === firstTitleNorm).length >= 3;
+
+        if (isRepetitive) {
+          const artistId = firstTrack.artist.id;
+          if (artistTopCache.has(artistId)) {
+            artistTopTracks = artistTopCache.get(artistId);
+          } else {
+            try {
+              const topRes = await fetchWithTimeout(`https://api.deezer.com/artist/${artistId}/top?limit=10`, {}, 1200)
+                .then(r => r.json())
+                .catch(() => ({ data: [] }));
+              artistTopTracks = topRes.data || [];
+              if (artistTopCache.size > 200) artistTopCache.clear();
+              artistTopCache.set(artistId, artistTopTracks);
+            } catch (_) {
+              artistTopTracks = [];
+            }
           }
         }
       }
-    }
 
-    // Combina de forma inteligente eliminando repetições abusivas do mesmo título por artistas amadores
-    const combined = [];
-    const seenIds = new Set();
-    const titleCounts = new Map();
+      const combined = [];
+      const seenIds = new Set();
+      const titleCounts = new Map();
 
-    const addTrack = (t) => {
-      if (!t || seenIds.has(t.id)) return false;
-      if (isBootlegTrack(t.title, t.artist?.name)) return false;
-      const normTitle = cleanSimple(t.title).replace(/(remix|acoustic|version|radioedit|live|aovivo|feat|featuring)/g, '');
-      const currentCount = titleCounts.get(normTitle) || 0;
+      const addTrack = (t) => {
+        if (!t || seenIds.has(t.id)) return false;
+        if (isBootlegTrack(t.title, t.artist?.name)) return false;
+        const normTitle = cleanSimple(t.title).replace(/(remix|acoustic|version|radioedit|live|aovivo|feat|featuring)/g, '');
+        const currentCount = titleCounts.get(normTitle) || 0;
 
-      const isMainArtist = firstTrack && t.artist && cleanSimple(t.artist.name) === cleanSimple(firstTrack.artist?.name);
-      if (currentCount >= 1 && !isMainArtist) {
-        return false;
-      }
-      if (currentCount >= 2) {
-        return false;
-      }
+        const isMainArtist = firstTrack && t.artist && cleanSimple(t.artist.name) === cleanSimple(firstTrack.artist?.name);
+        if (currentCount >= 1 && !isMainArtist) {
+          return false;
+        }
+        if (currentCount >= 2) {
+          return false;
+        }
 
-      seenIds.add(t.id);
-      titleCounts.set(normTitle, currentCount + 1);
-      combined.push(t);
-      return true;
-    };
-
-    if (firstTrack) addTrack(firstTrack);
-
-    for (const t of artistTopTracks) {
-      if (combined.length >= 10) break;
-      addTrack(t);
-    }
-
-    for (const t of rawTracks) {
-      if (combined.length >= 25) break;
-      addTrack(t);
-    }
-
-    let mappedTracks = combined.map((t, idx) => {
-      const dur = t.duration || 210;
-      const min = Math.floor(dur / 60);
-      const sec = dur % 60;
-      return {
-        id: `dz-track-${t.id}`,
-        type: 'song',
-        title: t.title,
-        artist: t.artist?.name || 'Artista',
-        album: t.album?.title || 'Single',
-        sub: `Música • ${t.artist?.name || 'Artista'} • ${t.album?.title || 'Single'}`,
-        cover: t.album?.cover_big || t.album?.cover_medium,
-        preview: t.preview,
-        durationSec: dur,
-        duration: `${min}:${String(sec).padStart(2, '0')}`,
-        plays: generatePlaysCount(idx),
-        explicit: t.explicit_lyrics || false
+        seenIds.add(t.id);
+        titleCounts.set(normTitle, currentCount + 1);
+        combined.push(t);
+        return true;
       };
-    });
 
-    // Se a busca corresponder com precisão ao título de uma música relevante (ex: "Planeta de Cores")
-    // e o artista detectado não for uma correspondência exata ou tiver pouquíssimos fãs:
-    // Mantém a música como destaque principal (Melhor resultado) e não exibe o perfil aleatório.
-    if (artistObj && mappedTracks.length > 0) {
-      const firstTrackTitleClean = cleanSimple(mappedTracks[0].title);
-      const artistNameClean = cleanSimple(artistObj.name);
-      const isSongTitleMatch = firstTrackTitleClean === qClean || firstTrackTitleClean.startsWith(qClean) || qClean.startsWith(firstTrackTitleClean);
-      const isArtistExactMatch = artistNameClean === qClean || stripMC(artistObj.name) === stripMC(qClean);
+      if (firstTrack) addTrack(firstTrack);
 
-      if (isSongTitleMatch && !isArtistExactMatch) {
-        artistObj = null;
-      } else if (!isArtistExactMatch && (artistObj.fansCount || 0) < 5000) {
-        artistObj = null;
+      for (const t of artistTopTracks) {
+        if (combined.length >= 10) break;
+        addTrack(t);
+      }
+
+      for (const t of rawTracks) {
+        if (combined.length >= 25) break;
+        addTrack(t);
+      }
+
+      let mappedTracks = combined.map((t, idx) => {
+        const dur = t.duration || 210;
+        const min = Math.floor(dur / 60);
+        const sec = dur % 60;
+        return {
+          id: `dz-track-${t.id}`,
+          type: 'song',
+          title: t.title,
+          artist: artistSyncService.formatTrackArtists(t, t.artist?.name || 'Artista'),
+          album: t.album?.title || 'Single',
+          sub: `Música • ${artistSyncService.formatTrackArtists(t, t.artist?.name || 'Artista')} • ${t.album?.title || 'Single'}`,
+          cover: t.album?.cover_big || t.album?.cover_medium,
+          preview: t.preview,
+          durationSec: dur,
+          duration: `${min}:${String(sec).padStart(2, '0')}`,
+          plays: generatePlaysCount(idx),
+          explicit: t.explicit_lyrics || false
+        };
+      });
+
+      if (artistObj && mappedTracks.length > 0) {
+        const firstTrackTitleClean = cleanSimple(mappedTracks[0].title);
+        const artistNameClean = cleanSimple(artistObj.name);
+        const isSongTitleMatch = firstTrackTitleClean === qClean || firstTrackTitleClean.startsWith(qClean) || qClean.startsWith(firstTrackTitleClean);
+        const isArtistExactMatch = artistNameClean === qClean || stripMC(artistObj.name) === stripMC(qClean);
+
+        if (isSongTitleMatch && !isArtistExactMatch) {
+          artistObj = null;
+        } else if (!isArtistExactMatch && (artistObj.fansCount || 0) < 5000) {
+          artistObj = null;
+        }
+      }
+
+      if (artistObj) {
+        const aNameClean = cleanSimple(artistObj.name);
+        mappedTracks.sort((a, b) => {
+          const aIsOwn = cleanSimple(a.artist) === aNameClean ? 1 : 0;
+          const bIsOwn = cleanSimple(b.artist) === aNameClean ? 1 : 0;
+          return bIsOwn - aIsOwn;
+        });
+      }
+
+      // Fallback local: se a busca externa retornar vazia ou poucas faixas
+      if (mappedTracks.length === 0 || !artistObj) {
+        try {
+          const localArtists = readJsonFile(path.join(__dirname, '../../data/artists.json'), []);
+          const localAlbums = readJsonFile(path.join(__dirname, '../../data/albums.json'), []);
+          const localTracks = readJsonFile(path.join(__dirname, '../../data/company_tracks.json'), []);
+
+          if (!artistObj) {
+            const matchedArt = localArtists.find(a => {
+              const aClean = cleanSimple(a.name);
+              return aClean === qClean || aClean.includes(qClean) || qClean.includes(aClean);
+            });
+            if (matchedArt) {
+              const isBk = cleanSimple(matchedArt.name) === 'bk';
+              artistObj = {
+                id: `artist-${matchedArt.id || matchedArt.name.toLowerCase()}`,
+                name: matchedArt.name,
+                fansCount: 1500000,
+                avatarImg: matchedArt.avatar_url || matchedArt.avatarImg || (isBk ? 'https://cdn-images.dzcdn.net/images/artist/7481fc25e9bf8f0d8c416ecb9104927d/1000x1000-000000-80-0-0.jpg' : null),
+                bannerImg: matchedArt.banner_url || (isBk ? 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793025316/bookhub/img/bk_banner.png' : null),
+                bannerPosition: getArtistBannerPosition(matchedArt.name),
+                listeners: matchedArt.monthly_listeners ? `${matchedArt.monthly_listeners} ouvintes mensais` : '1,5 mi ouvintes mensais',
+                subscribers: '1,2 mi',
+                bio: matchedArt.bio || `${matchedArt.name} é um artista cadastrado no catálogo oficial DevSongs.`
+              };
+              if (!allArtists.some(a => cleanSimple(a.name) === cleanSimple(matchedArt.name))) {
+                allArtists.unshift(artistObj);
+              }
+            }
+          }
+
+          if (mappedTracks.length === 0) {
+            const matchingLocalTracks = localTracks.filter(t => {
+              const tTitleClean = cleanSimple(t.title);
+              const tArtistClean = cleanSimple(t.artist);
+              const tAlbumClean = cleanSimple(t.album);
+              return tTitleClean.includes(qClean) || tArtistClean.includes(qClean) || tAlbumClean.includes(qClean) || qClean.includes(tArtistClean);
+            });
+
+            if (matchingLocalTracks.length > 0) {
+              mappedTracks = matchingLocalTracks.map((t, idx) => {
+                const dur = t.duration_sec || 210;
+                const min = Math.floor(dur / 60);
+                const sec = dur % 60;
+                return {
+                  id: `ct-${t.id}`,
+                  dbTrackId: t.id,
+                  type: 'song',
+                  title: t.title,
+                  artist: t.artist,
+                  album: t.album || 'Single',
+                  sub: `Música • ${t.artist} • ${t.album || 'Single'}`,
+                  cover: t.cover_url || 'https://res.cloudinary.com/z7j0hqnl/image/upload/v1793030284/bookhub/img/logo-devsongs.png',
+                  preview: t.preview_url,
+                  durationSec: dur,
+                  duration: `${min}:${String(sec).padStart(2, '0')}`,
+                  plays: generatePlaysCount(idx),
+                  explicit: false,
+                  albumId: t.album_id
+                };
+              });
+            }
+          }
+        } catch (localErr) {
+          console.warn('Erro ao consultar fallback local de busca:', localErr.message);
+        }
+      }
+
+      catalogResult = {
+        artist: artistObj,
+        artists: allArtists,
+        tracks: mappedTracks
+      };
+
+      if (mappedTracks.length > 0 || artistObj) {
+        if (searchCache.size > 300) searchCache.clear();
+        searchCache.set(cleanQ, catalogResult);
       }
     }
 
-    if (artistObj) {
-      const aNameClean = cleanSimple(artistObj.name);
-      mappedTracks.sort((a, b) => {
-        const aIsOwn = cleanSimple(a.artist) === aNameClean ? 1 : 0;
-        const bIsOwn = cleanSimple(b.artist) === aNameClean ? 1 : 0;
-        return bIsOwn - aIsOwn;
-      });
-    }
-
-    const searchResult = {
-      artist: artistObj,
-      artists: allArtists,
-      tracks: mappedTracks
-    };
-
-    // Apenas salva no cache se tiver encontrado resultados reais (nunca salva falhas vazias)
-    if (mappedTracks.length > 0 || artistObj) {
-      if (searchCache.size > 300) searchCache.clear();
-      searchCache.set(cleanQ, searchResult);
-    }
-
-    return res.json(searchResult);
+    // Enriquece os resultados integrando faixas compradas/alugadas da biblioteca do usuário
+    const finalResult = await enrichSearchResultsWithUserLibrary(catalogResult, userId, q);
+    return res.json(finalResult);
   } catch (err) {
     console.error('Erro na rota /api/music/search:', err);
     return res.status(500).json({ error: 'Erro ao buscar faixas' });
+  }
+});
+
+/**
+ * GET /api/music/track-access
+ * Verificação formal e em tempo real de autorização de reprodução para o usuário autenticado.
+ * Valida compras individuais, aluguéis ativos (30 dias) e propriedade integral de álbuns.
+ */
+router.get('/track-access', verifyToken.optional, async (req, res) => {
+  try {
+    const userId = req.user?.id || null;
+    const { title, artist, album, albumId, trackId } = req.query;
+
+    const trackObj = {
+      id: trackId,
+      dbTrackId: trackId,
+      title: title || '',
+      artist: artist || '',
+      album: album || '',
+      album_id: albumId,
+      albumId: albumId
+    };
+
+    const access = await libraryStorage.evaluateTrackAccess(trackObj, userId);
+
+    return res.json({
+      success: true,
+      canPlay: access.can_play,
+      isOwned: access.access_status === 'purchased',
+      isRentedActive: access.access_status === 'rented' || access.access_status === 'rent_active',
+      isLocked: access.is_locked,
+      isExpired: access.is_expired,
+      accessStatus: access.access_status,
+      type: access.type,
+      reason: access.reason
+    });
+  } catch (err) {
+    console.error('Erro ao verificar acesso à faixa:', err);
+    return res.status(500).json({ error: 'Erro ao avaliar autorização de reprodução' });
   }
 });
 
@@ -807,9 +1126,9 @@ router.get('/album-tracks', async (req, res) => {
     const aClean = cleanSimple(artist);
     const tClean = cleanSimple(title);
 
-    const isDeezerPrefixed = (albumId || '').startsWith('dz-alb-');
+    const isDeezerPrefixed = (albumId || '').startsWith('dz-alb-') || (albumId || '').startsWith('dz-feat-');
     const isItunesId = (albumId || '').startsWith('it-alb-');
-    const rawId = (albumId || '').replace('dz-alb-', '').replace('it-alb-', '');
+    const rawId = (albumId || '').replace('dz-alb-', '').replace('dz-feat-', '').replace('it-alb-', '');
 
     // 0. Verifica se o álbum pertence ao acervo interno (albums.json)
     let localAlbums = [];
@@ -1245,7 +1564,7 @@ router.get('/smart-queue', async (req, res) => {
         queueTracks.push({
           id: `dz-track-${t.id}`,
           title: t.title,
-          artist: t.artist?.name || 'Artista',
+          artist: artistSyncService.formatTrackArtists(t, t.artist?.name || 'Artista'),
           album: t.album?.title || 'Single',
           cover: t.album?.cover_big || t.album?.cover_medium,
           preview: t.preview,
@@ -1272,6 +1591,49 @@ router.get('/smart-queue', async (req, res) => {
   } catch (err) {
     console.error('Erro na rota /api/music/smart-queue:', err);
     return res.status(500).json({ error: 'Erro ao gerar fila inteligente' });
+  }
+});
+
+// =========================================================================
+// ROTAS DE HISTÓRICO DE REPRODUÇÃO & RECOMENDAÇÕES PERSONALIZADAS
+// =========================================================================
+
+// GET /api/music/history - Histórico estritamente isolado do usuário autenticado
+router.get('/history', verifyToken, async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 100);
+    const history = await libraryStorage.getUserPlaybackHistory(req.user.id, limit);
+    return res.json({ success: true, count: history.length, history });
+  } catch (err) {
+    console.error('Erro ao buscar histórico de reprodução:', err);
+    return res.status(500).json({ error: 'Erro ao buscar histórico de reprodução' });
+  }
+});
+
+// POST /api/music/history - Registra reprodução associada ao usuário autenticado
+router.post('/history', verifyToken, async (req, res) => {
+  try {
+    const { track } = req.body;
+    if (!track) {
+      return res.status(400).json({ error: 'Faixa não informada para registro de histórico.' });
+    }
+    const record = await libraryStorage.recordPlayback(req.user.id, track);
+    return res.json({ success: true, record });
+  } catch (err) {
+    console.error('Erro ao registrar histórico de reprodução:', err);
+    return res.status(500).json({ error: 'Erro ao registrar reprodução no histórico.' });
+  }
+});
+
+// GET /api/music/recommendations - Recomendações inteligentes personalizadas para a Home
+router.get('/recommendations', verifyToken.optional, async (req, res) => {
+  try {
+    const userId = req.user ? req.user.id : null;
+    const recommendations = await recommendationService.getUserHomeRecommendations(userId);
+    return res.json({ success: true, ...recommendations });
+  } catch (err) {
+    console.error('Erro ao gerar recomendações personalizadas:', err);
+    return res.status(500).json({ error: 'Erro ao gerar recomendações para a Home.' });
   }
 });
 

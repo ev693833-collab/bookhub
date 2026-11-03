@@ -35,6 +35,10 @@ const DEFAULT_PLACEHOLDER_PATTERNS = [
   'empty-cover',
   'music-placeholder',
   '/img/default',
+  '42078a6ff6071ef28ba866bbf30fe357',
+  'f9f60f6064f20ec719c83fa1091b5c4f',
+  'd41d8cd98f00b204e9800998ecf8427e',
+  '50cent.jpg',
   'b4618e8071852c93850ea9c7a233b2a2',
   'e3dd74dfebdfae5ad220ce690a6f8b1b',
   'f9e0787a4ddf82e8b625cf030b42774a',
@@ -442,6 +446,25 @@ async function findBestCover(targetTrack) {
   const cacheKey = `${normalizeText(targetTrack.artist)}|${normalizeText(targetTrack.album || targetTrack.title)}`;
   if (albumCoverCache.has(cacheKey)) {
     return albumCoverCache.get(cacheKey);
+  }
+
+  // 1.1 Se a música pertencer a um álbum cadastrado, utilizar a capa oficial desse álbum
+  if (targetTrack.album_id || targetTrack.album) {
+    const allAlbums = readJsonSafe(ALBUMS_FILE, []);
+    const matchingAlbum = allAlbums.find(a => 
+      (targetTrack.album_id && Number(a.id) === Number(targetTrack.album_id)) ||
+      (targetTrack.album && normalizeText(a.title) === normalizeText(targetTrack.album) && normalizeText(a.artist_name || a.artist) === normalizeText(targetTrack.artist))
+    );
+    if (matchingAlbum && matchingAlbum.cover_url && !isDefaultOrPlaceholder(matchingAlbum.cover_url)) {
+      const albMatch = {
+        cover_url: matchingAlbum.cover_url,
+        confidence: 0.98,
+        provider: 'album_official',
+        isValid: true
+      };
+      albumCoverCache.set(cacheKey, albMatch);
+      return albMatch;
+    }
   }
 
   // 2. Consulta Deezer (rápido e com capas em alta definição)

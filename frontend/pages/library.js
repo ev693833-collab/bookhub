@@ -1,6 +1,5 @@
 import HomeView from './home';
 
 export default function LibraryPage(props) {
-  return <HomeView {...props} forcedTab="biblioteca" />;
+  return <HomeView {...props} forcedTab="biblioteca" forcedViewMode="home" pageRoute="/library" />;
 }
-
