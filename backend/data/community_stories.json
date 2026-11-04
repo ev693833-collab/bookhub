@@ -1,0 +1,96 @@
+[
+  {
+    "id": "story_nat_1",
+    "userId": 9991,
+    "author": {
+      "id": 9991,
+      "name": "Nat",
+      "username": "@nat_vibes",
+      "avatar_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face"
+    },
+    "track": {
+      "id": "wtw-1",
+      "title": "No Church In The Wild - Album Version (Edited)",
+      "artist": "JAY-Z, Kanye West, Frank Ocean, The-Dream",
+      "album": "Watch The Throne",
+      "cover_url": "https://cdn-images.dzcdn.net/images/cover/0421054a6a7d8cb4e52dd27ff4deef2c/500x500-000000-80-0-0.jpg",
+      "preview_url": "https://cdns-preview-d.dzcdn.net/stream/c-d0b4356a422033bc6bf2dcf44ce4a34b-4.mp3"
+    },
+    "text": "Vibe noturna absurda 🌙✨",
+    "backgroundGradient": "linear-gradient(180deg, #183d22 0%, #1c0e35 60%, #0a0614 100%)",
+    "reactions": {
+      "❤️": [
+        2
+      ],
+      "🔥": [],
+      "🎧": [],
+      "⚡": [],
+      "🤯": []
+    },
+    "createdAt": "2026-11-03T22:35:49.697Z",
+    "isBFF": true
+  },
+  {
+    "id": "story_enzo_2",
+    "userId": 2,
+    "author": {
+      "id": 2,
+      "name": "Superadmin",
+      "username": "@admin",
+      "avatar_url": "https://ui-avatars.com/api/?name=Superadmin&background=1db954&color=fff",
+      "role": "admin"
+    },
+    "track": {
+      "id": "rec-rec-nu-2",
+      "title": "Girassóis de Van Gogh",
+      "artist": "Baco Exu do Blues",
+      "album": "Bluesman",
+      "cover_url": "https://cdn-images.dzcdn.net/images/cover/0421054a6a7d8cb4e52dd27ff4deef2c/500x500-000000-80-0-0.jpg",
+      "preview_url": "https://cdns-preview-d.dzcdn.net/stream/c-d0b4356a422033bc6bf2dcf44ce4a34b-4.mp3"
+    },
+    "text": "Repetindo esse som o dia todo 🎧🔥",
+    "backgroundGradient": "linear-gradient(180deg, #2b1d0c 0%, #121019 60%, #050508 100%)",
+    "reactions": {
+      "❤️": [],
+      "🔥": [
+        2
+      ],
+      "🎧": [],
+      "⚡": [],
+      "🤯": []
+    },
+    "createdAt": "2026-11-03T20:35:49.701Z",
+    "isBFF": false
+  },
+  {
+    "id": "story_djonga_3",
+    "userId": 9992,
+    "author": {
+      "id": 9992,
+      "name": "Djonga",
+      "username": "@djonga",
+      "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face"
+    },
+    "track": {
+      "id": "rec-1",
+      "title": "SOLTO",
+      "artist": "Djonga",
+      "album": "Inocente \"Demotape\"",
+      "cover_url": "https://cdn-images.dzcdn.net/images/cover/1915904ef289be6f3e680a61578e35cf/500x500-000000-80-0-0.jpg",
+      "preview_url": null
+    },
+    "text": "Obrigado pelo carinho família!",
+    "backgroundGradient": "linear-gradient(180deg, #0d3820 0%, #061e12 60%, #030a06 100%)",
+    "reactions": {
+      "❤️": [],
+      "🔥": [],
+      "🎧": [
+        2
+      ],
+      "⚡": [],
+      "🤯": []
+    },
+    "createdAt": "2026-11-03T18:35:49.701Z",
+    "isBFF": true
+  }
+]

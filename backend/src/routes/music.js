@@ -408,13 +408,27 @@ async function enrichSearchResultsWithUserLibrary(catalogResult, userId, q) {
     const titleNorm = normalizeStr(item.title);
     const artistNorm = normalizeStr(item.artist || item.artist_name || item.companyName);
     const albumNorm = normalizeStr(item.album || item.album_title);
-    const combined = `${titleNorm} ${artistNorm} ${albumNorm}`;
+    const combined = `${titleNorm} ${artistNorm} ${albumNorm}`.trim();
+    const titleArtist = `${titleNorm} ${artistNorm}`.trim();
 
-    if (titleNorm.includes(qNorm) || artistNorm.includes(qNorm) || albumNorm.includes(qNorm) || combined.includes(qNorm)) return true;
-    if (qNorm.includes(titleNorm) || (artistNorm.length >= 3 && qNorm.includes(artistNorm))) return true;
-    if (qTokens.length > 1 && qTokens.every(t => combined.includes(t))) return true;
-    const titleClean = cleanSimple(item.title);
-    if (titleClean && qClean && (titleClean.includes(qClean) || qClean.includes(titleClean))) return true;
+    // 1. Correspondência exata ou prefixo direto com a consulta
+    if (titleNorm === qNorm || artistNorm === qNorm || albumNorm === qNorm) return true;
+    if (titleNorm.startsWith(qNorm) || artistNorm.startsWith(qNorm)) return true;
+    if (titleNorm.includes(qNorm) || artistNorm.includes(qNorm)) return true;
+    if (combined.includes(qNorm)) return true;
+
+    // 2. Se a consulta tiver múltiplos termos (ex: "como eu amo essa mulher" ou "dfideliz como eu amo")
+    if (qTokens.length > 1) {
+      const matchedTokens = qTokens.filter(t => combined.includes(t));
+      if (matchedTokens.length === qTokens.length) return true;
+      if (qTokens.length >= 3 && (matchedTokens.length / qTokens.length) >= 0.8 && titleNorm.length >= 3) {
+        return true;
+      }
+    }
+
+    // 3. Se a busca for o título exato com o artista
+    if (qNorm === titleArtist || titleArtist.includes(qNorm)) return true;
+
     return false;
   };
 
@@ -459,20 +473,37 @@ async function enrichSearchResultsWithUserLibrary(catalogResult, userId, q) {
   const userPurchasesMap = new Map();
   for (const t of userLibraryTracks) {
     const keyTitleArtist = `${cleanSimple(t.title)}__${cleanSimple(t.artist)}`;
-    const keyTrackId = String(t.dbTrackId || t.id).replace(/^ct-/, '');
     userPurchasesMap.set(keyTitleArtist, t);
-    userPurchasesMap.set(keyTrackId, t);
+    // Identificador único confiável da faixa na biblioteca local
+    if (t.dbTrackId) {
+      userPurchasesMap.set(`local_db_${t.dbTrackId}`, t);
+    }
+    if (t.id) {
+      userPurchasesMap.set(`track_id_${t.id}`, t);
+    }
   }
 
+  const GENERIC_ALBUMS = new Set(['single', 'ep', 'variado', 'aovivo', 'deluxe', 'album', 'show', 'oshow']);
   const purchasedAlbumIds = new Set(userPurchasedAlbums.map(a => Number(a.id)).filter(Boolean));
-  const purchasedAlbumTitles = new Set(userPurchasedAlbums.map(a => cleanSimple(a.title)).filter(Boolean));
+  // Álbuns comprados com validação obrigatória de artista para evitar falsos positivos
+  const purchasedAlbumTitleArtist = new Set(
+    userPurchasedAlbums
+      .filter(a => {
+        const t = cleanSimple(a.title);
+        return t && !GENERIC_ALBUMS.has(t);
+      })
+      .map(a => `${cleanSimple(a.title)}__${cleanSimple(a.artist)}`)
+  );
 
   const formatTrack = (t, fromLibrary = false, userAcquisition = null) => {
     const dur = t.durationSec || t.duration_sec || 210;
     const min = Math.floor(dur / 60);
     const sec = dur % 60;
     const isRent = userAcquisition ? userAcquisition.type === 'rent' : (t.type === 'rent' || t.isRented);
-    const isExpired = userAcquisition ? userAcquisition.isExpired : (t.isExpired || false);
+    const now = new Date();
+    const isExpired = userAcquisition
+      ? Boolean(userAcquisition.isExpired || userAcquisition.is_expired || (userAcquisition.expiresAt && new Date(userAcquisition.expiresAt) <= now) || (userAcquisition.expires_at && new Date(userAcquisition.expires_at) <= now))
+      : Boolean(t.isExpired || t.is_expired || (t.expiresAt && new Date(t.expiresAt) <= now) || (t.expires_at && new Date(t.expires_at) <= now));
     const isPurchased = userAcquisition ? userAcquisition.type === 'buy' : Boolean(t.isPurchased || t.type === 'buy');
     const isRented = isRent && !isExpired;
     const hasActiveAccess = isPurchased || isRented;
@@ -523,11 +554,13 @@ async function enrichSearchResultsWithUserLibrary(catalogResult, userId, q) {
   // 2. Adiciona faixas do catálogo externo, deduplicando e verificando se o usuário já as possui
   for (const cTrack of (catalogResult.tracks || [])) {
     const key = getDedupKey(cTrack.title, cTrack.artist);
-    const trackIdStr = String(cTrack.dbTrackId || cTrack.id).replace(/^(ct-|dz-track-|it-track-)/, '');
+    const userAcq = userPurchasesMap.get(key) ||
+      (cTrack.dbTrackId ? userPurchasesMap.get(`local_db_${cTrack.dbTrackId}`) : null) ||
+      (cTrack.id ? userPurchasesMap.get(`track_id_${cTrack.id}`) : null) ||
+      null;
 
-    const userAcq = userPurchasesMap.get(key) || userPurchasesMap.get(trackIdStr) || null;
     const isAlbumCovered = (cTrack.albumId && purchasedAlbumIds.has(Number(cTrack.albumId))) ||
-      (cTrack.album && purchasedAlbumTitles.has(cleanSimple(cTrack.album)));
+      (cTrack.album && purchasedAlbumTitleArtist.has(`${cleanSimple(cTrack.album)}__${cleanSimple(cTrack.artist)}`));
 
     if (seenTracks.has(key)) {
       continue;
@@ -557,7 +590,10 @@ async function enrichSearchResultsWithUserLibrary(catalogResult, userId, q) {
     const key = getDedupKey(lTrack.title, lTrack.artist);
     if (!seenTracks.has(key)) {
       seenTracks.add(key);
-      const userAcq = userPurchasesMap.get(key) || userPurchasesMap.get(String(lTrack.id)) || null;
+      const userAcq = userPurchasesMap.get(key) ||
+        userPurchasesMap.get(`local_db_${lTrack.id}`) ||
+        userPurchasesMap.get(`track_id_ct-${lTrack.id}`) ||
+        null;
       finalTracks.push(formatTrack(lTrack, Boolean(userAcq), userAcq));
     }
   }

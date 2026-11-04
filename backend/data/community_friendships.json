@@ -3,8 +3,16 @@
     "id": "fr_1793717164156_verf5g",
     "requesterId": 100,
     "receiverId": 2,
-    "status": "pending",
+    "status": "accepted",
     "createdAt": "2026-11-03T14:46:04.156Z",
-    "updatedAt": "2026-11-03T14:46:04.156Z"
+    "updatedAt": "2026-11-04T00:45:43.999Z"
+  },
+  {
+    "id": "fr_1793753139951_w3dz84",
+    "requesterId": 2,
+    "receiverId": 1,
+    "status": "pending",
+    "createdAt": "2026-11-04T00:45:39.951Z",
+    "updatedAt": "2026-11-04T00:45:39.951Z"
   }
 ]

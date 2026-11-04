@@ -4,7 +4,9 @@ import {
   Share2, Play, Music, Radio, Settings, Bell, Check, X,
   Search, Shield, Lock, Eye, EyeOff, Sparkles, Send,
   Headphones, Disc, Trash2, Clock, CheckCircle2, BarChart3,
-  Award, Zap, Smile, Volume2, TrendingUp, Layers
+  Award, Zap, Smile, Volume2, TrendingUp, Layers,
+  Star, Pause, Plus, ChevronLeft, ChevronRight, Image as ImageIcon,
+  VolumeX, Sparkle
 } from 'lucide-react';
 import styles from './CommunityView.module.css';
 import { getSafeCover } from '../../utils/coverHelper';
@@ -32,6 +34,35 @@ export default function CommunityView({
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  // Stories Musicais (Airbuds)
+  const [stories, setStories] = useState([]);
+  const [activeStoryIndex, setActiveStoryIndex] = useState(null);
+  const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
+  const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
+  const [newStoryTrack, setNewStoryTrack] = useState(null);
+  const [newStoryText, setNewStoryText] = useState('');
+  const [newStoryGradient, setNewStoryGradient] = useState('linear-gradient(180deg, #183d22 0%, #1c0e35 60%, #0a0614 100%)');
+
+  // Preview de áudio (Snippet 30s Singleton)
+  const previewAudioRef = useRef(null);
+  const [previewTrackId, setPreviewTrackId] = useState(null);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+
+  // Sub-aba do Perfil Musical (Recentes | Space) & Status
+  const [profileSubTab, setProfileSubTab] = useState('recentes'); // 'recentes' | 'space'
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [statusInput, setStatusInput] = useState('');
+  const [statusEmoji, setStatusEmoji] = useState('✨');
+  const [isAddSpaceOpen, setIsAddSpaceOpen] = useState(false);
+  const [spaceForm, setSpaceForm] = useState({
+    type: 'photo',
+    title: '',
+    subtitle: '',
+    content: '',
+    imageUrl: '',
+    size: 'medium'
+  });
 
   // Post & Compartilhamento Airbuds
   const [postText, setPostText] = useState('');
@@ -177,11 +208,24 @@ export default function CommunityView({
     }
   }, [getHeaders]);
 
+  const fetchStories = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/community/stories`, { headers: getHeaders() });
+      const data = await res.json();
+      if (data.success) {
+        setStories(data.stories || []);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar stories:', e);
+    }
+  }, [getHeaders]);
+
   // Carregar dados conforme troca de aba
   useEffect(() => {
     fetchNotifications();
     fetchMyProfileAndStats();
     fetchFriendsActivity();
+    fetchStories();
 
     if (activeTab === 'feed') {
       fetchFeed();
@@ -194,19 +238,239 @@ export default function CommunityView({
     } else if (activeTab === 'messages') {
       fetchConversations();
     }
-  }, [activeTab, searchQuery, fetchFeed, fetchFriendsActivity, fetchDiscover, fetchFriends, fetchRequests, fetchNotifications, fetchMyProfileAndStats, fetchConversations]);
+  }, [activeTab, searchQuery, fetchFeed, fetchFriendsActivity, fetchStories, fetchDiscover, fetchFriends, fetchRequests, fetchNotifications, fetchMyProfileAndStats, fetchConversations]);
 
   // Polling em background a cada 10s
   useEffect(() => {
     const interval = setInterval(() => {
       fetchNotifications();
       fetchFriendsActivity();
+      if (activeTab === 'feed') {
+        fetchStories();
+      }
       if (activeTab === 'messages' && activeChatPartner) {
         fetchMessagesThread(activeChatPartner.id);
       }
     }, 10000);
     return () => clearInterval(interval);
-  }, [activeTab, activeChatPartner, fetchNotifications, fetchFriendsActivity, fetchMessagesThread]);
+  }, [activeTab, activeChatPartner, fetchNotifications, fetchFriendsActivity, fetchStories, fetchMessagesThread]);
+
+  // Cleanup de áudio de prévia no unmount
+  useEffect(() => {
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  // -------------------------------------------------------------
+  // PRÉVIA DE ÁUDIO INLINE (SNIPPET 30S AIRBUDS)
+  // -------------------------------------------------------------
+  const toggleAudioPreview = (track, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (!track) return;
+    const tId = String(track.id || track.track_id || track.title);
+    const audioSrc = track.audio_url || track.preview_url;
+
+    if (previewTrackId === tId && isPreviewPlaying) {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+      }
+      setIsPreviewPlaying(false);
+      return;
+    }
+
+    if (!audioSrc) {
+      showToast('Prévia de áudio não disponível para esta faixa.');
+      return;
+    }
+
+    if (!previewAudioRef.current) {
+      previewAudioRef.current = new Audio();
+    }
+
+    try {
+      previewAudioRef.current.pause();
+      previewAudioRef.current.src = audioSrc;
+      previewAudioRef.current.currentTime = 0;
+      previewAudioRef.current.play().then(() => {
+        setPreviewTrackId(tId);
+        setIsPreviewPlaying(true);
+      }).catch(err => {
+        console.warn('Erro ao reproduzir áudio:', err);
+        showToast('Não foi possível tocar a prévia desta música.');
+        setIsPreviewPlaying(false);
+      });
+
+      previewAudioRef.current.onended = () => {
+        setIsPreviewPlaying(false);
+        setPreviewTrackId(null);
+      };
+    } catch (err) {
+      console.error('Erro na prévia:', err);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // STORIES & BFF & SPACE & STATUS
+  // -------------------------------------------------------------
+  const handleCreateStory = async () => {
+    const track = newStoryTrack || currentTrack;
+    if (!track) {
+      showToast('Selecione ou dê play em uma música para criar sua Story.');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/community/stories`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          track,
+          text: newStoryText,
+          backgroundGradient: newStoryGradient
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Story musical publicada! 🎧🔥');
+        setIsCreateStoryOpen(false);
+        setNewStoryText('');
+        setNewStoryTrack(null);
+        fetchStories();
+      }
+    } catch (e) {
+      showToast('Erro ao publicar story.');
+    }
+  };
+
+  const handleReactToStory = async (storyId, emoji) => {
+    try {
+      const res = await fetch(`${API_URL}/api/community/stories/${storyId}/react`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ emoji })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStories(prev => prev.map(s => {
+          if (String(s.id) === String(storyId)) {
+            return { ...s, reactions: data.reactions, myReaction: data.myReaction };
+          }
+          return s;
+        }));
+        showToast(`Reagiu com ${emoji}!`);
+      }
+    } catch (e) {
+      showToast('Erro ao reagir à story.');
+    }
+  };
+
+  const handleToggleBFF = async (friendId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/community/friends/${friendId}/bff`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.isBFF ? 'Adicionado aos Melhores Amigos! ⭐' : 'Removido dos Melhores Amigos.');
+        fetchFriends();
+        if (profileData && Number(profileData.id) === Number(friendId)) {
+          setProfileData(prev => ({ ...prev, isBFF: data.isBFF }));
+        }
+      }
+    } catch (e) {
+      showToast('Erro ao atualizar Melhor Amigo.');
+    }
+  };
+
+  const handleSaveStatus = async () => {
+    if (!statusInput.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/api/community/status`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ statusText: statusInput.trim(), emoji: statusEmoji })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Estado atualizado com sucesso! ✨');
+        setIsEditingStatus(false);
+        if (profileData && profileData.friendshipStatus === 'self') {
+          setProfileData(prev => ({ ...prev, customStatus: data.status }));
+        }
+        fetchMyProfileAndStats();
+      }
+    } catch (e) {
+      showToast('Erro ao atualizar status.');
+    }
+  };
+
+  const handleAddSpaceItem = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/community/space`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(spaceForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Adicionado ao seu Space! 🚀');
+        setIsAddSpaceOpen(false);
+        setSpaceForm({ type: 'photo', title: '', subtitle: '', content: '', imageUrl: '', size: 'medium' });
+        if (profileData) {
+          setProfileData(prev => ({
+            ...prev,
+            spaceItems: [data.item, ...(prev.spaceItems || [])]
+          }));
+        }
+      }
+    } catch (e) {
+      showToast('Erro ao adicionar item ao Space.');
+    }
+  };
+
+  const handleDeleteSpaceItem = async (itemId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/community/space/${itemId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Item removido do Space.');
+        if (profileData) {
+          setProfileData(prev => ({
+            ...prev,
+            spaceItems: (prev.spaceItems || []).filter(x => String(x.id) !== String(itemId))
+          }));
+        }
+      }
+    } catch (e) {
+      showToast('Erro ao remover item.');
+    }
+  };
+
+  const handleSetFavoriteTrack = async (track) => {
+    try {
+      const res = await fetch(`${API_URL}/api/community/profile/favorite-track`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ track })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Faixa favorita atualizada no seu perfil! 💚');
+        if (profileData && profileData.friendshipStatus === 'self') {
+          setProfileData(prev => ({ ...prev, favoriteTrack: data.favoriteTrack }));
+        }
+      }
+    } catch (e) {
+      showToast('Erro ao definir faixa favorita.');
+    }
+  };
 
   // -------------------------------------------------------------
   // REAÇÕES DE EMOJIS AIRBUDS (🔥, ❤️, 🎧, ⚡, 🤯)
@@ -377,11 +641,14 @@ export default function CommunityView({
   const openUserProfile = async (userId) => {
     setProfileModalUserId(userId);
     setIsLoadingProfile(true);
+    setProfileSubTab('recentes');
     try {
       const res = await fetch(`${API_URL}/api/community/profile/${userId}`, { headers: getHeaders() });
       const data = await res.json();
       if (data.success) {
         setProfileData(data.profile);
+        setStatusInput(data.profile.customStatus?.text || '');
+        setStatusEmoji(data.profile.customStatus?.emoji || '✨');
       } else {
         showToast(data.error || 'Erro ao abrir perfil.');
         setProfileModalUserId(null);
@@ -651,6 +918,59 @@ export default function CommunityView({
       </nav>
 
       {/* ─────────────────────────────────────────────────────────────
+          2.5. AIRBUDS STORIES BAR (STORIES MUSICAIS DOS AMIGOS)
+          ───────────────────────────────────────────────────────────── */}
+      <div className={styles.storiesBar}>
+        {/* Botão de adicionar próprio Story */}
+        <button
+          type="button"
+          className={styles.storyItem}
+          onClick={() => {
+            if (currentTrack) setNewStoryTrack(currentTrack);
+            setIsCreateStoryOpen(true);
+          }}
+          title="Criar novo Story Musical"
+        >
+          <div className={`${styles.storyAvatarWrap} ${styles.storyRingAdd}`}>
+            <img
+              src={mySettings?.avatar_url || user?.avatar_url || 'https://ui-avatars.com/api/?name=User'}
+              alt=""
+              className={styles.storyAvatarImg}
+            />
+            <div className={styles.addStoryPlus}>
+              <Plus size={14} />
+            </div>
+          </div>
+          <span className={styles.storyLabel}>Seu Story</span>
+        </button>
+
+        {/* Stories ativas dos amigos */}
+        {stories.map((story, idx) => (
+          <button
+            key={story.id}
+            type="button"
+            className={styles.storyItem}
+            onClick={() => {
+              setActiveStoryIndex(idx);
+              setIsStoryModalOpen(true);
+            }}
+            title={`Story de ${story.author?.name}`}
+          >
+            <div className={`${styles.storyAvatarWrap} ${story.isBFF ? styles.storyRingBFF : styles.storyRingUnseen}`}>
+              <img
+                src={story.author?.avatar_url || 'https://ui-avatars.com/api/?name=User'}
+                alt=""
+                className={styles.storyAvatarImg}
+              />
+            </div>
+            <span className={styles.storyLabel}>
+              {story.isBFF ? '⭐ ' : ''}{story.author?.name ? story.author.name.split(' ')[0] : 'Amigo'}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
           3. AIRBUDS LIVE LISTENING SHELF (CAROUSEL DE AMIGOS AO VIVO)
           ───────────────────────────────────────────────────────────── */}
       <div className={styles.airbudsLiveShelf}>
@@ -729,13 +1049,28 @@ export default function CommunityView({
                       <p className={styles.artistTitle}>{track.artist}</p>
                     </div>
 
-                    <button
-                      className={styles.cardPlayBtn}
-                      onClick={() => onPlayTrack && onPlayTrack(track)}
-                      title={`Ouvir junto: ${track.title}`}
-                    >
-                      <Play size={16} fill="#000" color="#000" />
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <button
+                        className={`${styles.previewSnippetBtn} ${previewTrackId === String(track.id || track.track_id) && isPreviewPlaying ? styles.previewSnippetBtnPlaying : ''}`}
+                        onClick={(e) => toggleAudioPreview(track, e)}
+                        title="Ouvir prévia (30s)"
+                      >
+                        {previewTrackId === String(track.id || track.track_id) && isPreviewPlaying ? (
+                          <Pause size={13} fill="#000" color="#000" />
+                        ) : (
+                          <Volume2 size={13} />
+                        )}
+                        <span>Prévia</span>
+                      </button>
+
+                      <button
+                        className={styles.cardPlayBtn}
+                        onClick={() => onPlayTrack && onPlayTrack(track)}
+                        title={`Ouvir junto: ${track.title}`}
+                      >
+                        <Play size={16} fill="#000" color="#000" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Reações Rápidas do Airbuds (Emoji Dock) */}
@@ -873,13 +1208,28 @@ export default function CommunityView({
                             {post.mediaItem.artist} • {post.mediaItem.album || 'Single'}
                           </p>
                         </div>
-                        <button
-                          className={styles.cardPlayBtn}
-                          onClick={() => onPlayTrack && onPlayTrack(post.mediaItem)}
-                          title={`Tocar ${post.mediaItem.title}`}
-                        >
-                          <Play size={18} fill="#000" color="#000" />
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            className={`${styles.previewSnippetBtn} ${previewTrackId === String(post.mediaItem.id || post.mediaItem.track_id) && isPreviewPlaying ? styles.previewSnippetBtnPlaying : ''}`}
+                            onClick={(e) => toggleAudioPreview(post.mediaItem, e)}
+                            title="Ouvir prévia (30s)"
+                          >
+                            {previewTrackId === String(post.mediaItem.id || post.mediaItem.track_id) && isPreviewPlaying ? (
+                              <Pause size={14} fill="#000" color="#000" />
+                            ) : (
+                              <Volume2 size={14} />
+                            )}
+                            <span>Prévia</span>
+                          </button>
+
+                          <button
+                            className={styles.cardPlayBtn}
+                            onClick={() => onPlayTrack && onPlayTrack(post.mediaItem)}
+                            title={`Tocar ${post.mediaItem.title}`}
+                          >
+                            <Play size={18} fill="#000" color="#000" />
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -1171,7 +1521,17 @@ export default function CommunityView({
               {friendsList
                 .filter(f => friendsFilter === 'all' || (f.activity && f.activity.track))
                 .map(f => (
-                  <div key={f.friendId} className={styles.matchCard}>
+                  <div key={f.friendId} className={styles.matchCard} style={{ position: 'relative' }}>
+                    {f.isBFF && (
+                      <div style={{
+                        position: 'absolute', top: 12, right: 12,
+                        background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b',
+                        color: '#fbbf24', fontSize: '0.72rem', fontWeight: 800,
+                        padding: '0.2rem 0.55rem', borderRadius: 12, display: 'flex', alignItems: 'center', gap: '0.25rem'
+                      }}>
+                        <Star size={11} fill="#fbbf24" /> BFF
+                      </div>
+                    )}
                     <img src={f.avatar_url} alt="" className={styles.matchAvatar} />
                     <h3 className={styles.matchName}>{f.name}</h3>
                     <span className={styles.matchHandle}>{f.username}</span>
@@ -1197,6 +1557,19 @@ export default function CommunityView({
                     )}
 
                     <div className={styles.matchActions}>
+                      <button
+                        className={styles.attachTagBtn}
+                        style={{
+                          background: f.isBFF ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                          color: f.isBFF ? '#fbbf24' : '#888',
+                          borderColor: f.isBFF ? '#f59e0b' : 'rgba(255,255,255,0.12)',
+                          padding: '0.45rem 0.65rem'
+                        }}
+                        onClick={() => handleToggleBFF(f.friendId)}
+                        title={f.isBFF ? 'Remover dos Melhores Amigos' : 'Adicionar aos Melhores Amigos (BFF)'}
+                      >
+                        <Star size={14} fill={f.isBFF ? '#fbbf24' : 'none'} color={f.isBFF ? '#fbbf24' : '#888'} />
+                      </button>
                       <button
                         className={styles.attachTagBtn}
                         style={{ flex: 1, justifyContent: 'center' }}
@@ -1543,41 +1916,114 @@ export default function CommunityView({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          MODAL: PERFIL DO USUÁRIO
+          MODAL: PERFIL DO USUÁRIO AIRBUDS
           ───────────────────────────────────────────────────────────── */}
       {profileModalUserId && (
         <div className={styles.modalOverlay} onClick={() => setProfileModalUserId(null)}>
           <div style={{
-            background: '#181818', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px',
-            width: 680, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', position: 'relative'
+            background: '#161616', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '28px',
+            width: 720, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', position: 'relative',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.85)'
           }} onClick={(e) => e.stopPropagation()}>
             <button className={styles.closeModalBtn} onClick={() => setProfileModalUserId(null)}>
               <X size={20} />
             </button>
 
             {isLoadingProfile || !profileData ? (
-              <div style={{ padding: '4rem', textAlign: 'center', color: '#888' }}>Carregando perfil...</div>
+              <div style={{ padding: '4rem', textAlign: 'center', color: '#888' }}>Carregando perfil musical...</div>
             ) : (
               <div>
-                <div style={{ height: 130, background: 'linear-gradient(135deg, #1db954 0%, #0d5427 100%)', position: 'relative' }}>
-                  <img
-                    src={profileData.avatar_url}
-                    alt=""
-                    style={{
-                      width: 90, height: 90, borderRadius: '50%', objectFit: 'cover',
-                      border: '4px solid #181818', position: 'absolute', bottom: -35, left: 24, boxShadow: '0 6px 18px rgba(0,0,0,0.5)'
-                    }}
-                  />
+                {/* Banner e Avatar com Aura Airbuds */}
+                <div style={{ height: 140, background: 'linear-gradient(135deg, #1db954 0%, #115e29 50%, #0d1e13 100%)', position: 'relative' }}>
+                  <div style={{
+                    position: 'absolute', bottom: -40, left: 28,
+                    display: 'flex', alignItems: 'center', gap: '1rem'
+                  }}>
+                    <img
+                      src={profileData.avatar_url}
+                      alt=""
+                      style={{
+                        width: 96, height: 96, borderRadius: '50%', objectFit: 'cover',
+                        border: '4px solid #161616', boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
+                      }}
+                    />
+                  </div>
                 </div>
 
-                <div style={{ padding: '3.25rem 1.5rem 1.5rem' }}>
+                <div style={{ padding: '3.5rem 1.75rem 1.75rem' }}>
+                  {/* Topo: Nome, Handle, Status Capsule Pill e Ações */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
-                      <h2 style={{ fontSize: '1.45rem', fontWeight: 850, margin: 0 }}>{profileData.name}</h2>
-                      <span style={{ fontSize: '0.85rem', color: '#888' }}>{profileData.username}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <h2 style={{ fontSize: '1.6rem', fontWeight: 850, margin: 0 }}>{profileData.name}</h2>
+                        {profileData.isBFF && (
+                          <span style={{ background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#fbbf24', fontSize: '0.74rem', fontWeight: 800, padding: '0.2rem 0.6rem', borderRadius: 14, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <Star size={12} fill="#fbbf24" /> BFF
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '0.88rem', color: '#888' }}>{profileData.username}</span>
+
+                      {/* Yellow Status Capsule Pill: "Qual é o teu estado?" */}
+                      <div style={{ marginTop: '0.75rem' }}>
+                        {isEditingStatus ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem' }}>
+                            <select
+                              value={statusEmoji}
+                              onChange={(e) => setStatusEmoji(e.target.value)}
+                              style={{ background: '#222', border: '1px solid #444', color: '#fff', borderRadius: 8, padding: '0.35rem' }}
+                            >
+                              <option value="✨">✨</option>
+                              <option value="🌙">🌙</option>
+                              <option value="🎧">🎧</option>
+                              <option value="🔥">🔥</option>
+                              <option value="⚡">⚡</option>
+                              <option value="☕">☕</option>
+                              <option value="🤯">🤯</option>
+                            </select>
+                            <input
+                              type="text"
+                              value={statusInput}
+                              onChange={(e) => setStatusInput(e.target.value)}
+                              placeholder="Qual é o teu estado?"
+                              maxLength={50}
+                              style={{ background: '#222', border: '1px solid #444', color: '#fff', borderRadius: 8, padding: '0.35rem 0.6rem', fontSize: '0.84rem' }}
+                            />
+                            <button
+                              className={styles.attachTagBtn}
+                              style={{ background: '#1db954', color: '#000', borderColor: '#1db954', padding: '0.35rem 0.75rem' }}
+                              onClick={handleSaveStatus}
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              className={styles.attachTagBtn}
+                              style={{ padding: '0.35rem 0.65rem' }}
+                              onClick={() => setIsEditingStatus(false)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className={styles.profileStatusPill}
+                            onClick={() => {
+                              if (profileData.friendshipStatus === 'self') {
+                                setIsEditingStatus(true);
+                              }
+                            }}
+                            title={profileData.friendshipStatus === 'self' ? 'Clique para alterar seu estado' : ''}
+                          >
+                            <span>{profileData.customStatus?.emoji || '✨'}</span>
+                            <span>{profileData.customStatus?.text || 'Qual é o teu estado?'}</span>
+                            {profileData.friendshipStatus === 'self' && <Sparkles size={12} style={{ opacity: 0.6 }} />}
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {profileData.friendshipStatus !== 'self' && (
                         <button
                           className={styles.attachTagBtn}
@@ -1587,6 +2033,21 @@ export default function CommunityView({
                           }}
                         >
                           <Sparkles size={14} color="#1db954" /> Comparar Gosto
+                        </button>
+                      )}
+
+                      {profileData.friendshipStatus === 'friends' && (
+                        <button
+                          className={styles.attachTagBtn}
+                          style={{
+                            background: profileData.isBFF ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+                            color: profileData.isBFF ? '#fbbf24' : '#fff',
+                            borderColor: profileData.isBFF ? '#f59e0b' : 'rgba(255,255,255,0.15)'
+                          }}
+                          onClick={() => handleToggleBFF(profileData.id)}
+                        >
+                          <Star size={14} fill={profileData.isBFF ? '#fbbf24' : 'none'} color={profileData.isBFF ? '#fbbf24' : '#888'} />
+                          {profileData.isBFF ? 'Melhor Amigo (BFF)' : 'Tornar BFF'}
                         </button>
                       )}
 
@@ -1613,52 +2074,673 @@ export default function CommunityView({
                     </div>
                   </div>
 
-                  <p style={{ fontSize: '0.92rem', color: '#ccc', margin: '0.85rem 0 1.25rem', lineHeight: 1.5 }}>
-                    {profileData.bio || 'Membro do DevSongs 🎧'}
+                  {/* Bio */}
+                  <p style={{ fontSize: '0.94rem', color: '#ccc', margin: '0.85rem 0 1.25rem', lineHeight: 1.5 }}>
+                    {profileData.bio || 'Membro da Comunidade DevSongs 🎧'}
                   </p>
 
-                  {/* KPIs */}
-                  <div className={styles.statsHeroGrid} style={{ marginBottom: '1.5rem' }}>
-                    <div className={styles.statsKpiCard}>
-                      <div className={styles.kpiValue} style={{ fontSize: '1.4rem' }}>{profileData.friendsCount || 0}</div>
-                      <div className={styles.kpiLabel}>Amigos</div>
-                    </div>
-                    <div className={styles.statsKpiCard}>
-                      <div className={styles.kpiValue} style={{ fontSize: '1.4rem' }}>{profileData.postsCount || 0}</div>
-                      <div className={styles.kpiLabel}>Posts</div>
-                    </div>
-                    <div className={styles.statsKpiCard}>
-                      <div className={styles.kpiValue} style={{ fontSize: '1.4rem' }}>{profileData.stats?.totalPlays || 0}</div>
-                      <div className={styles.kpiLabel}>Plays</div>
-                    </div>
-                    <div className={styles.statsKpiCard}>
-                      <div className={styles.kpiValue} style={{ fontSize: '1.4rem' }}>{profileData.stats?.totalHours || 0}h</div>
-                      <div className={styles.kpiLabel}>Horas</div>
-                    </div>
+                  {/* Resumo de Amigos & Plays */}
+                  <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.88rem', color: '#888', marginBottom: '1.25rem' }}>
+                    <span><strong style={{ color: '#fff' }}>{profileData.friendsCount || 0}</strong> amigos</span>
+                    <span><strong style={{ color: '#fff' }}>{profileData.stats?.totalPlays || 0}</strong> reproduções</span>
+                    <span><strong style={{ color: '#fff' }}>{profileData.stats?.totalHours || 0}h</strong> ouvidas</span>
                   </div>
 
-                  {/* Top Artistas do Perfil */}
-                  {profileData.stats?.topArtists && profileData.stats.topArtists.length > 0 && (
-                    <div style={{ marginBottom: '1.25rem' }}>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1db954', margin: '0 0 0.65rem' }}>
-                        Artistas Favoritos
-                      </h4>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-                        {profileData.stats.topArtists.map((a, i) => (
-                          <span
-                            key={i}
+                  {/* Sub-abas do Perfil Musical: Recentes vs Space */}
+                  <div className={styles.profileSubTabs}>
+                    <button
+                      type="button"
+                      className={`${styles.profileSubTabBtn} ${profileSubTab === 'recentes' ? styles.profileSubTabBtnActive : ''}`}
+                      onClick={() => setProfileSubTab('recentes')}
+                    >
+                      Recentes
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.profileSubTabBtn} ${profileSubTab === 'space' ? styles.profileSubTabBtnActive : ''}`}
+                      onClick={() => setProfileSubTab('space')}
+                    >
+                      Space
+                    </button>
+                  </div>
+
+                  {/* ABA RECENTES: Lista vertical com timestamp Airbuds ("Há 9 h", "Há 23 h", "Ontem") */}
+                  {profileSubTab === 'recentes' && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      {(!profileData.recentPlays || profileData.recentPlays.length === 0) ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#777' }}>
+                          Nenhuma reprodução recente registrada.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          {profileData.recentPlays.map((rec, idx) => (
+                            <div key={idx} className={styles.recentItemRow}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0 }}>
+                                <img
+                                  src={getSafeCover(rec)}
+                                  alt=""
+                                  className={styles.recentCover}
+                                />
+                                <div style={{ minWidth: 0 }}>
+                                  <strong style={{ fontSize: '0.94rem', color: '#fff', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {rec.title}
+                                  </strong>
+                                  <span style={{ fontSize: '0.82rem', color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                                    {rec.artist}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                                <span className={styles.recentTimeAgo}>{rec.timeAgo || 'Recentemente'}</span>
+                                <button
+                                  className={`${styles.previewSnippetBtn} ${previewTrackId === String(rec.id || rec.track_id) && isPreviewPlaying ? styles.previewSnippetBtnPlaying : ''}`}
+                                  onClick={(e) => toggleAudioPreview(rec, e)}
+                                  title="Ouvir prévia (30s)"
+                                >
+                                  {previewTrackId === String(rec.id || rec.track_id) && isPreviewPlaying ? (
+                                    <Pause size={12} fill="#000" color="#000" />
+                                  ) : (
+                                    <Volume2 size={12} />
+                                  )}
+                                </button>
+                                <button
+                                  className={styles.cardPlayBtn}
+                                  style={{ width: 32, height: 32 }}
+                                  onClick={() => onPlayTrack && onPlayTrack(rec)}
+                                  title={`Tocar ${rec.title}`}
+                                >
+                                  <Play size={13} fill="#000" color="#000" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ABA SPACE: Mosaico Airbuds (Fotos, Álbuns, Músicas, Citações) */}
+                  {profileSubTab === 'space' && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.86rem', color: '#888' }}>Mural de gostos, fotos e memórias musicais</span>
+                        {profileData.friendshipStatus === 'self' && (
+                          <button
                             className={styles.attachTagBtn}
-                            onClick={() => onOpenArtist && onOpenArtist(a.artist)}
+                            style={{ background: 'rgba(29, 185, 84, 0.15)', borderColor: '#1db954', color: '#1db954' }}
+                            onClick={() => setIsAddSpaceOpen(true)}
                           >
-                            #{i + 1} {a.artist} ({a.plays}x)
-                          </span>
+                            <Plus size={14} /> Adicionar ao Space
+                          </button>
+                        )}
+                      </div>
+
+                      {(!profileData.spaceItems || profileData.spaceItems.length === 0) ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#777' }}>
+                          O mural musical do Space está vazio.
+                        </div>
+                      ) : (
+                        <div className={styles.spaceMosaicGrid}>
+                          {profileData.spaceItems.map((item) => {
+                            const isLarge = item.size === 'large';
+                            const isMedium = item.size === 'medium';
+                            const cardClass = isLarge ? styles.spaceCardLarge : isMedium ? styles.spaceCardMedium : styles.spaceCardSmall;
+                            return (
+                              <div key={item.id} className={`${styles.spaceCard} ${cardClass}`}>
+                                {item.imageUrl && (
+                                  <img
+                                    src={item.imageUrl}
+                                    alt=""
+                                    style={{
+                                      width: '100%',
+                                      height: item.content || item.title ? (isLarge ? '75%' : '65%') : '100%',
+                                      objectFit: 'cover'
+                                    }}
+                                  />
+                                )}
+                                <div style={{ padding: '0.85rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                  {item.title && (
+                                    <strong style={{ fontSize: '0.92rem', color: '#fff', display: 'block' }}>
+                                      {item.title}
+                                    </strong>
+                                  )}
+                                  {item.subtitle && (
+                                    <span style={{ fontSize: '0.78rem', color: '#888', display: 'block' }}>
+                                      {item.subtitle}
+                                    </span>
+                                  )}
+                                  {item.content && (
+                                    <p style={{ fontSize: '0.84rem', color: '#ddd', fontStyle: 'italic', margin: '0.35rem 0 0' }}>
+                                      {item.content}
+                                    </p>
+                                  )}
+                                </div>
+                                {profileData.friendshipStatus === 'self' && (
+                                  <button
+                                    onClick={() => handleDeleteSpaceItem(item.id)}
+                                    title="Remover do Space"
+                                    style={{
+                                      position: 'absolute', top: 8, right: 8,
+                                      background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%',
+                                      width: 26, height: 26, color: '#fff', cursor: 'pointer',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SEÇÃO: FAVORITOS (AIRBUDS PROFILE) */}
+                  <div style={{ marginTop: '1.75rem' }}>
+                    <div className={styles.favoritosHeader}>favoritos</div>
+                    <p className={styles.favoritosDesc}>
+                      Seleciona uma faixa no teu perfil para a mostrar como favorita
+                    </p>
+
+                    {profileData.favoriteTrack ? (
+                      <div className={styles.favoritoCard}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                          <img
+                            src={getSafeCover(profileData.favoriteTrack)}
+                            alt=""
+                            style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }}
+                          />
+                          <div>
+                            <strong style={{ fontSize: '1rem', color: '#fff', display: 'block' }}>
+                              {profileData.favoriteTrack.title}
+                            </strong>
+                            <span style={{ fontSize: '0.84rem', color: '#888' }}>
+                              {profileData.favoriteTrack.artist}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            className={`${styles.previewSnippetBtn} ${previewTrackId === String(profileData.favoriteTrack.id) && isPreviewPlaying ? styles.previewSnippetBtnPlaying : ''}`}
+                            onClick={(e) => toggleAudioPreview(profileData.favoriteTrack, e)}
+                            title="Ouvir prévia (30s)"
+                          >
+                            {previewTrackId === String(profileData.favoriteTrack.id) && isPreviewPlaying ? (
+                              <Pause size={14} fill="#000" color="#000" />
+                            ) : (
+                              <Volume2 size={14} />
+                            )}
+                            <span>Prévia</span>
+                          </button>
+                          <button
+                            className={styles.cardPlayBtn}
+                            onClick={() => onPlayTrack && onPlayTrack(profileData.favoriteTrack)}
+                            title={`Tocar ${profileData.favoriteTrack.title}`}
+                          >
+                            <Play size={16} fill="#000" color="#000" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={styles.favoritoCard} style={{ justifyContent: 'center', color: '#777' }}>
+                        <span>Nenhuma faixa favorita selecionada ainda.</span>
+                        {profileData.friendshipStatus === 'self' && currentTrack && (
+                          <button
+                            className={styles.attachTagBtn}
+                            style={{ marginLeft: '1rem', color: '#1db954', borderColor: '#1db954' }}
+                            onClick={() => handleSetFavoriteTrack(currentTrack)}
+                          >
+                            Definir som atual como favorita
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SEÇÃO: MEUS ARTISTAS (AIRBUDS ARTIST BUBBLES) */}
+                  {profileData.stats?.topArtists && profileData.stats.topArtists.length > 0 && (
+                    <div style={{ marginTop: '1.5rem' }}>
+                      <h4 style={{ fontSize: '1.05rem', fontWeight: 850, color: '#fff', margin: '0 0 0.85rem' }}>
+                        meus artistas
+                      </h4>
+                      <div className={styles.meusArtistasRow}>
+                        {profileData.stats.topArtists.map((a, i) => (
+                          <div
+                            key={i}
+                            className={styles.artistaBubble}
+                            onClick={() => onOpenArtist && onOpenArtist(a.artist)}
+                            title={`Ver artista ${a.artist}`}
+                          >
+                            <img
+                              src={a.cover || `https://ui-avatars.com/api/?name=${encodeURIComponent(a.artist)}&background=222&color=fff`}
+                              alt=""
+                              className={styles.artistaAvatar}
+                            />
+                            <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 700, textAlign: 'center', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {a.artist}
+                            </span>
+                          </div>
                         ))}
                       </div>
                     </div>
                   )}
+
+                  {/* SEÇÃO: SEMANA PASSADA (AIRBUDS RECAP CARD) */}
+                  <div className={styles.semanaPassadaCard}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: '#1db954', fontSize: '1.2rem' }}>📊</span>
+                      <h4 style={{ fontSize: '1.05rem', fontWeight: 850, color: '#fff', margin: 0 }}>
+                        Semana passada
+                      </h4>
+                    </div>
+                    <div className={styles.semanaPassadaStats}>
+                      <div>
+                        <div className={styles.recapKpiNum}>
+                          {profileData.weeklyRecap?.minutosTocados || 1180}
+                        </div>
+                        <div className={styles.recapKpiLabel}>Min tocados</div>
+                      </div>
+                      <div>
+                        <div className={styles.recapKpiNum}>
+                          {profileData.weeklyRecap?.artistasTocados || 43}
+                        </div>
+                        <div className={styles.recapKpiLabel}>Artistas tocados</div>
+                      </div>
+                      <div>
+                        <div className={styles.recapKpiNum}>
+                          {profileData.weeklyRecap?.faixasTocadas || 195}
+                        </div>
+                        <div className={styles.recapKpiLabel}>Faixas tocadas</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: STORY AIRBUDS FULLSCREEN DESKTOP (WATCH THE THRONE STYLE)
+          ───────────────────────────────────────────────────────────── */}
+      {isStoryModalOpen && stories[activeStoryIndex] && (
+        <div className={styles.modalOverlay} onClick={() => {
+          setIsStoryModalOpen(false);
+          if (previewAudioRef.current) previewAudioRef.current.pause();
+          setIsPreviewPlaying(false);
+        }}>
+          <div
+            className={styles.storyModalContainer}
+            style={{ background: stories[activeStoryIndex].backgroundGradient || '#111' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Navegação lateral (< e >) */}
+            {activeStoryIndex > 0 && (
+              <button
+                className={styles.storyNavBtnLeft}
+                style={{ left: -56 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (previewAudioRef.current) previewAudioRef.current.pause();
+                  setIsPreviewPlaying(false);
+                  setActiveStoryIndex(prev => prev - 1);
+                }}
+              >
+                <ChevronLeft size={24} />
+              </button>
+            )}
+
+            {activeStoryIndex < stories.length - 1 && (
+              <button
+                className={styles.storyNavBtnRight}
+                style={{ right: -56 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (previewAudioRef.current) previewAudioRef.current.pause();
+                  setIsPreviewPlaying(false);
+                  setActiveStoryIndex(prev => prev + 1);
+                }}
+              >
+                <ChevronRight size={24} />
+              </button>
+            )}
+
+            {/* Conteúdo da Story */}
+            <div className={styles.storyContent}>
+              <div>
+                {/* Progress Bars */}
+                <div className={styles.storyProgressRow}>
+                  {stories.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`${styles.storyProgressBar} ${i === activeStoryIndex ? styles.storyProgressBarActive : ''}`}
+                    />
+                  ))}
+                </div>
+
+                {/* Topo: Autor & Horário */}
+                <div className={styles.storyHeader}>
+                  <div
+                    className={styles.storyUserBadge}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      setIsStoryModalOpen(false);
+                      openUserProfile(stories[activeStoryIndex].author.id);
+                    }}
+                  >
+                    <img
+                      src={stories[activeStoryIndex].author?.avatar_url}
+                      alt=""
+                      className={styles.storyUserAvatar}
+                    />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <strong style={{ fontSize: '0.96rem' }}>{stories[activeStoryIndex].author?.name}</strong>
+                        {stories[activeStoryIndex].isBFF && <span style={{ color: '#fbbf24', fontSize: '0.78rem' }}>⭐ BFF</span>}
+                      </div>
+                      <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.75)' }}>
+                        {stories[activeStoryIndex].timeAgo || 'Há 2 horas'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    className={styles.closeModalBtn}
+                    style={{ position: 'static' }}
+                    onClick={() => {
+                      setIsStoryModalOpen(false);
+                      if (previewAudioRef.current) previewAudioRef.current.pause();
+                      setIsPreviewPlaying(false);
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Centro: Capa Grande + Título + Artista */}
+              <div className={styles.storyCenter}>
+                {stories[activeStoryIndex].track ? (
+                  <>
+                    <img
+                      src={getSafeCover(stories[activeStoryIndex].track)}
+                      alt=""
+                      className={styles.storyBigCover}
+                    />
+                    <h3 className={styles.storyTrackTitle}>
+                      {stories[activeStoryIndex].track.title}
+                    </h3>
+                    <p className={styles.storyTrackArtist}>
+                      {stories[activeStoryIndex].track.artist}
+                    </p>
+
+                    {/* Botão de Prévia de Áudio (30s) */}
+                    <button
+                      className={`${styles.storyAudioSnippetBtn} ${previewTrackId === String(stories[activeStoryIndex].track.id) && isPreviewPlaying ? styles.storyAudioSnippetBtnActive : ''}`}
+                      onClick={(e) => toggleAudioPreview(stories[activeStoryIndex].track, e)}
+                    >
+                      {previewTrackId === String(stories[activeStoryIndex].track.id) && isPreviewPlaying ? (
+                        <>
+                          <Pause size={18} fill="#000" color="#000" />
+                          <span>Pausar Prévia</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 size={18} />
+                          <span>Tocar Prévia (30s)</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      className={styles.attachTagBtn}
+                      style={{ marginTop: '0.4rem', background: 'rgba(255,255,255,0.1)' }}
+                      onClick={() => onPlayTrack && onPlayTrack(stories[activeStoryIndex].track)}
+                    >
+                      <Play size={13} fill="#fff" /> Tocar no DevSongs
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>
+                    <Music size={60} color="rgba(255,255,255,0.6)" />
+                  </div>
+                )}
+
+                {stories[activeStoryIndex].text && (
+                  <div className={styles.storyTextBubble}>
+                    {stories[activeStoryIndex].text}
+                  </div>
+                )}
+              </div>
+
+              {/* Rodapé: Dock de Reações */}
+              <div className={styles.storyReactionsDock}>
+                {AIRBUDS_EMOJIS.map(em => {
+                  const isMyReaction = stories[activeStoryIndex].myReaction === em;
+                  return (
+                    <button
+                      key={em}
+                      className={`${styles.storyReactionItem} ${isMyReaction ? styles.storyReactionActive : ''}`}
+                      onClick={() => handleReactToStory(stories[activeStoryIndex].id, em)}
+                      title={`Reagir com ${em}`}
+                    >
+                      {em}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: CRIAR STORY MUSICAL
+          ───────────────────────────────────────────────────────────── */}
+      {isCreateStoryOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsCreateStoryOpen(false)}>
+          <div style={{
+            background: '#181818', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '24px',
+            width: 480, maxWidth: '95vw', padding: '1.75rem', position: 'relative'
+          }} onClick={(e) => e.stopPropagation()}>
+            <button className={styles.closeModalBtn} onClick={() => setIsCreateStoryOpen(false)}>
+              <X size={20} />
+            </button>
+
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 850, margin: '0 0 1rem' }}>
+              Publicar Story Musical
+            </h3>
+
+            {/* Música Selecionada */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.85rem',
+              padding: '0.75rem', background: 'rgba(255,255,255,0.04)', borderRadius: 14, marginBottom: '1.25rem'
+            }}>
+              {(newStoryTrack || currentTrack) ? (
+                <>
+                  <img
+                    src={getSafeCover(newStoryTrack || currentTrack)}
+                    alt=""
+                    style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover' }}
+                  />
+                  <div>
+                    <strong style={{ fontSize: '0.94rem', color: '#fff', display: 'block' }}>
+                      {(newStoryTrack || currentTrack).title}
+                    </strong>
+                    <span style={{ fontSize: '0.8rem', color: '#888' }}>
+                      {(newStoryTrack || currentTrack).artist}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ color: '#888', fontSize: '0.85rem' }}>
+                  Nenhuma música tocando. Dê o play em qualquer som para anexar à sua Story.
+                </div>
+              )}
+            </div>
+
+            {/* Legenda / Vibe */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ fontSize: '0.82rem', color: '#888', display: 'block', marginBottom: '0.4rem' }}>
+                O que você está achando desse som? (Opcional)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Vibe noturna absurda 🌙✨"
+                value={newStoryText}
+                onChange={(e) => setNewStoryText(e.target.value)}
+                maxLength={100}
+                className={styles.shareTextarea}
+                style={{ minHeight: 'auto', padding: '0.75rem' }}
+              />
+            </div>
+
+            {/* Gradiente de Fundo */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ fontSize: '0.82rem', color: '#888', display: 'block', marginBottom: '0.4rem' }}>
+                Estilo de Fundo
+              </label>
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                {[
+                  { id: 'green', val: 'linear-gradient(180deg, #183d22 0%, #1c0e35 60%, #0a0614 100%)' },
+                  { id: 'purple', val: 'linear-gradient(180deg, #2e1065 0%, #1e1b4b 60%, #050508 100%)' },
+                  { id: 'emerald', val: 'linear-gradient(180deg, #064e3b 0%, #022c22 60%, #02130e 100%)' },
+                  { id: 'blue', val: 'linear-gradient(180deg, #1e3a8a 0%, #0f172a 60%, #020617 100%)' },
+                  { id: 'dark', val: 'linear-gradient(180deg, #2b1d0c 0%, #121019 60%, #050508 100%)' }
+                ].map(g => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setNewStoryGradient(g.val)}
+                    style={{
+                      width: 38, height: 38, borderRadius: '50%', background: g.val,
+                      border: newStoryGradient === g.val ? '3px solid #1db954' : '2px solid rgba(255,255,255,0.2)',
+                      cursor: 'pointer'
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button className={styles.attachTagBtn} onClick={() => setIsCreateStoryOpen(false)}>
+                Cancelar
+              </button>
+              <button className={styles.publishShareBtn} onClick={handleCreateStory}>
+                Publicar Story
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          MODAL: ADICIONAR ITEM AO SPACE MURAL
+          ───────────────────────────────────────────────────────────── */}
+      {isAddSpaceOpen && (
+        <div className={styles.modalOverlay} onClick={() => setIsAddSpaceOpen(false)}>
+          <div style={{
+            background: '#181818', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '24px',
+            width: 480, maxWidth: '95vw', padding: '1.75rem', position: 'relative'
+          }} onClick={(e) => e.stopPropagation()}>
+            <button className={styles.closeModalBtn} onClick={() => setIsAddSpaceOpen(false)}>
+              <X size={20} />
+            </button>
+
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 850, margin: '0 0 1.25rem' }}>
+              Adicionar ao seu Space
+            </h3>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.82rem', color: '#888', display: 'block', marginBottom: '0.35rem' }}>
+                Tipo de Item
+              </label>
+              <select
+                value={spaceForm.type}
+                onChange={(e) => setSpaceForm(prev => ({ ...prev, type: e.target.value }))}
+                style={{ width: '100%', background: '#222', color: '#fff', border: '1px solid #444', borderRadius: 8, padding: '0.6rem' }}
+              >
+                <option value="photo">Foto / Show</option>
+                <option value="album">Álbum Marcante</option>
+                <option value="track">Música</option>
+                <option value="quote">Citação / Frase Musical</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.82rem', color: '#888', display: 'block', marginBottom: '0.35rem' }}>
+                Título / Nome
+              </label>
+              <input
+                type="text"
+                value={spaceForm.title}
+                onChange={(e) => setSpaceForm(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Ex: Show do Travis Scott 🌵"
+                className={styles.shareTextarea}
+                style={{ minHeight: 'auto', padding: '0.6rem' }}
+              />
+            </div>
+
+            {spaceForm.type !== 'quote' && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.82rem', color: '#888', display: 'block', marginBottom: '0.35rem' }}>
+                  URL da Imagem / Foto
+                </label>
+                <input
+                  type="text"
+                  value={spaceForm.imageUrl}
+                  onChange={(e) => setSpaceForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                  placeholder="https://..."
+                  className={styles.shareTextarea}
+                  style={{ minHeight: 'auto', padding: '0.6rem' }}
+                />
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.82rem', color: '#888', display: 'block', marginBottom: '0.35rem' }}>
+                {spaceForm.type === 'quote' ? 'Citação / Frase' : 'Legenda / Subtítulo'}
+              </label>
+              <textarea
+                value={spaceForm.type === 'quote' ? spaceForm.content : spaceForm.subtitle}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSpaceForm(prev => spaceForm.type === 'quote' ? ({ ...prev, content: val }) : ({ ...prev, subtitle: val }));
+                }}
+                placeholder={spaceForm.type === 'quote' ? '“A música expressa o que...”' : 'Ex: JAY-Z & Kanye West'}
+                className={styles.shareTextarea}
+                style={{ minHeight: 70 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ fontSize: '0.82rem', color: '#888', display: 'block', marginBottom: '0.35rem' }}>
+                Tamanho no Mural
+              </label>
+              <select
+                value={spaceForm.size}
+                onChange={(e) => setSpaceForm(prev => ({ ...prev, size: e.target.value }))}
+                style={{ width: '100%', background: '#222', color: '#fff', border: '1px solid #444', borderRadius: 8, padding: '0.6rem' }}
+              >
+                <option value="medium">Médio (1x2)</option>
+                <option value="large">Grande (2x2)</option>
+                <option value="small">Pequeno (1x1)</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button className={styles.attachTagBtn} onClick={() => setIsAddSpaceOpen(false)}>
+                Cancelar
+              </button>
+              <button className={styles.publishShareBtn} onClick={handleAddSpaceItem}>
+                Adicionar ao Mural
+              </button>
+            </div>
           </div>
         </div>
       )}
