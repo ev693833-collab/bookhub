@@ -18,7 +18,12 @@
     },
     "blockedUserIds": [],
     "createdAt": "2026-11-03T14:45:52.555Z",
-    "updatedAt": "2026-11-03T14:45:52.556Z"
+    "updatedAt": "2026-11-04T00:46:12.915Z",
+    "customStatus": {
+      "text": "rj",
+      "emoji": "✨",
+      "updatedAt": "2026-11-04T00:46:12.915Z"
+    }
   },
   {
     "userId": 1,

@@ -6,7 +6,15 @@
     "text": "Bem-vindos à nova Comunidade DevSongs! Conecte-se com amigos, compartilhe o que está ouvindo e descubra novas músicas todos os dias. 🚀🎵",
     "mediaItem": null,
     "likes": [],
-    "comments": [],
+    "comments": [
+      {
+        "id": "cmt_1793753640640_5l3mz",
+        "userId": 2,
+        "text": "de keke pro max",
+        "createdAt": "2026-11-04T00:54:00.640Z",
+        "replies": []
+      }
+    ],
     "sharesCount": 0,
     "createdAt": "2026-11-03T14:46:04.152Z",
     "reactions": {

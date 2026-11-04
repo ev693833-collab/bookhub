@@ -2730,7 +2730,15 @@ async function getUserPurchasedTracks(userId) {
   // 1. Obter álbuns comprados integralmente pelo usuário para aplicar filtro anti-duplicação
   const userPurchasedAlbums = await getUserPurchasedAlbums(uId);
   const purchasedAlbumIds = new Set(userPurchasedAlbums.map(a => Number(a.id)).filter(Boolean));
-  const purchasedAlbumTitles = new Set(userPurchasedAlbums.map(a => (a.title || '').toLowerCase().trim()).filter(Boolean));
+  const GENERIC_ALBUMS = new Set(['single', 'ep', 'variado', 'aovivo', 'deluxe', 'album', 'show', 'oshow']);
+  const purchasedAlbumTitleArtist = new Set(
+    userPurchasedAlbums
+      .filter(a => {
+        const t = (a.title || '').toLowerCase().trim();
+        return t && !GENERIC_ALBUMS.has(t);
+      })
+      .map(a => `${(a.title || '').toLowerCase().trim()}__${(a.artist || '').toLowerCase().trim()}`)
+  );
 
   const purchases = readJson(PURCHASES_FILE, []);
   const tracks = readJson(TRACKS_FILE, []);
@@ -2834,7 +2842,15 @@ async function getUserLibraryTracks(userId, filter = 'all') {
   const now = new Date();
   const userPurchasedAlbums = await getUserPurchasedAlbums(uId);
   const purchasedAlbumIds = new Set(userPurchasedAlbums.map(a => Number(a.id)).filter(Boolean));
-  const purchasedAlbumTitles = new Set(userPurchasedAlbums.map(a => (a.title || '').toLowerCase().trim()).filter(Boolean));
+  const GENERIC_ALBUMS = new Set(['single', 'ep', 'variado', 'aovivo', 'deluxe', 'album', 'show', 'oshow']);
+  const purchasedAlbumTitleArtist = new Set(
+    userPurchasedAlbums
+      .filter(a => {
+        const t = (a.title || '').toLowerCase().trim();
+        return t && !GENERIC_ALBUMS.has(t);
+      })
+      .map(a => `${(a.title || '').toLowerCase().trim()}__${(a.artist || '').toLowerCase().trim()}`)
+  );
 
   const purchases = readJson(PURCHASES_FILE, []);
   const tracks = readJson(TRACKS_FILE, []);
@@ -2876,7 +2892,7 @@ async function getUserLibraryTracks(userId, filter = 'all') {
       const trackAlbumTitle = (track.album || '').toLowerCase().trim();
       const isCoveredByFullAlbum =
         (trackAlbumId && purchasedAlbumIds.has(trackAlbumId)) ||
-        (trackAlbumTitle && purchasedAlbumTitles.has(trackAlbumTitle));
+        (trackAlbumTitle && !GENERIC_ALBUMS.has(trackAlbumTitle) && purchasedAlbumTitleArtist.has(`${trackAlbumTitle}__${(track.artist || '').toLowerCase().trim()}`));
 
       if (isCoveredByFullAlbum) {
         continue;
@@ -3729,6 +3745,7 @@ async function unsubscribeArtist(userId, artistName, artistId) {
 
 /**
  * Registra a reprodução de uma música estritamente associada ao ID do usuário autenticado.
+ * Cada reprodução gera um registro individual preservado no histórico cronológico.
  */
 async function recordPlayback(userId, track) {
   const uId = Number(userId);
@@ -3759,24 +3776,17 @@ async function recordPlayback(userId, track) {
     played_at: now.toISOString()
   };
 
-  // Retenção inteligente de 24 horas: descarta automaticamente reproduções anteriores a 24h
-  const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const activeHistory = history.filter(h => {
-    if (!h.played_at) return true;
-    return new Date(h.played_at) >= cutoffTime;
-  });
+  history.push(newEntry);
 
-  activeHistory.push(newEntry);
-
-  // Manter no máximo 100 registros por usuário para evitar arquivos inflados
-  const userHistory = activeHistory.filter(h => Number(h.user_id) === uId);
-  if (userHistory.length > 100) {
+  // Mantém até 500 registros por usuário para preservar o histórico sem estourar o JSON
+  const userHistory = history.filter(h => Number(h.user_id) === uId);
+  if (userHistory.length > 500) {
     const oldestUserHistoryId = userHistory.sort((a, b) => new Date(a.played_at) - new Date(b.played_at))[0].id;
-    const idx = activeHistory.findIndex(h => h.id === oldestUserHistoryId);
-    if (idx !== -1) activeHistory.splice(idx, 1);
+    const idx = history.findIndex(h => h.id === oldestUserHistoryId);
+    if (idx !== -1) history.splice(idx, 1);
   }
 
-  writeJson(HISTORY_FILE, activeHistory);
+  writeJson(HISTORY_FILE, history);
 
   // Fallback seguro MySQL se disponível
   const hasMySql = await checkMySql();
@@ -3797,11 +3807,6 @@ async function recordPlayback(userId, track) {
           INDEX idx_user_played (user_id, played_at)
         )
       `);
-      // Limpa registros do MySQL com mais de 24h
-      await db.query(
-        `DELETE FROM user_playback_history WHERE user_id = ? AND played_at < ?`,
-        [uId, cutoffTime]
-      ).catch(() => {});
 
       await db.query(
         `INSERT INTO user_playback_history (user_id, track_id, title, artist, album, genre, cover_url, duration_sec, played_at)
@@ -3818,87 +3823,68 @@ async function recordPlayback(userId, track) {
 
 /**
  * Consulta o histórico de reprodução exclusivo do usuário autenticado.
- * Retorna lista deduplicada com a última reprodução de cada faixa.
+ * Retorna cada reprodução com seu próprio registro e horário preservados cronologicamente.
  */
-async function getUserPlaybackHistory(userId, limit = 10) {
+async function getUserPlaybackHistory(userId, limit = 50) {
   const uId = Number(userId);
   if (!uId) return [];
 
-  const RETENTION_MS = 24 * 60 * 60 * 1000; // 24 horas de retenção
-  const cutoffTime = new Date(Date.now() - RETENTION_MS);
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
 
   const hasMySql = await checkMySql();
   if (hasMySql) {
     try {
       const [rows] = await db.query(
-        `SELECT * FROM user_playback_history WHERE user_id = ? AND played_at >= ? ORDER BY played_at DESC LIMIT 50`,
-        [uId, cutoffTime]
+        `SELECT * FROM user_playback_history WHERE user_id = ? ORDER BY played_at DESC LIMIT ?`,
+        [uId, safeLimit]
       );
       if (rows && rows.length > 0) {
-        const seen = new Set();
-        const unique = [];
-        for (const row of rows) {
-          const key = (row.track_id && !String(row.track_id).startsWith('track_'))
-            ? `id_${row.track_id}`
-            : `${(row.title || '').toLowerCase().trim()}__${(row.artist || '').toLowerCase().trim()}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            unique.push({
-              id: row.track_id || row.id,
-              trackId: row.track_id,
-              title: row.title,
-              artist: row.artist,
-              album: row.album || 'Single',
-              genre: row.genre || 'Variado',
-              cover: row.cover_url,
-              cover_url: row.cover_url,
-              durationSec: row.duration_sec || 210,
-              duration: `${Math.floor((row.duration_sec || 210) / 60)}:${String((row.duration_sec || 210) % 60).padStart(2, '0')}`,
-              playedAt: row.played_at
-            });
-            if (unique.length >= limit) break;
-          }
-        }
-        return unique;
+        return rows.map(row => {
+          const dur = row.duration_sec || 210;
+          return {
+            id: row.track_id || row.id,
+            historyId: row.id,
+            trackId: row.track_id,
+            title: row.title,
+            artist: row.artist,
+            album: row.album || 'Single',
+            genre: row.genre || 'Variado',
+            cover: row.cover_url,
+            cover_url: row.cover_url,
+            durationSec: dur,
+            duration: `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, '0')}`,
+            playedAt: row.played_at ? new Date(row.played_at).toISOString() : new Date().toISOString()
+          };
+        });
       }
     } catch (err) {
       console.warn('Erro ao consultar histórico no MySQL, usando fallback:', err.message);
     }
   }
 
-  // Fallback JSON com filtro estrito de 24 horas
+  // Fallback JSON: preserva cada reprodução individual com seu próprio horário e ID
   const history = readJson(HISTORY_FILE, []);
   const userPlays = history
-    .filter(h => Number(h.user_id) === uId && (!h.played_at || new Date(h.played_at) >= cutoffTime))
+    .filter(h => Number(h.user_id) === uId)
     .sort((a, b) => new Date(b.played_at || 0) - new Date(a.played_at || 0));
 
-  const seen = new Set();
-  const unique = [];
-  for (const row of userPlays) {
-    const key = (row.track_id && !String(row.track_id).startsWith('track_'))
-      ? `id_${row.track_id}`
-      : `${(row.title || '').toLowerCase().trim()}__${(row.artist || '').toLowerCase().trim()}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      const dur = row.durationSec || row.duration_sec || 210;
-      unique.push({
-        id: row.track_id || row.id,
-        trackId: row.track_id,
-        title: row.title,
-        artist: row.artist,
-        album: row.album || 'Single',
-        genre: row.genre || 'Variado',
-        cover: row.cover || row.cover_url,
-        cover_url: row.cover || row.cover_url,
-        durationSec: dur,
-        duration: `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, '0')}`,
-        playedAt: row.played_at
-      });
-      if (unique.length >= limit) break;
-    }
-  }
-
-  return unique;
+  return userPlays.slice(0, safeLimit).map(row => {
+    const dur = row.durationSec || row.duration_sec || 210;
+    return {
+      id: row.track_id || row.id,
+      historyId: row.id,
+      trackId: row.track_id,
+      title: row.title,
+      artist: row.artist,
+      album: row.album || 'Single',
+      genre: row.genre || 'Variado',
+      cover: row.cover || row.cover_url,
+      cover_url: row.cover || row.cover_url,
+      durationSec: dur,
+      duration: `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, '0')}`,
+      playedAt: row.played_at || new Date().toISOString()
+    };
+  });
 }
 
 module.exports = {

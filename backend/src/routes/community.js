@@ -363,5 +363,157 @@ router.delete('/block/:targetUserId', verifyToken, async (req, res) => {
   }
 });
 
+// =========================================================================
+// 8. STORIES MUSICAIS (AIRBUDS STORIES)
+// =========================================================================
+
+// GET /api/community/stories - Listar stories ativas
+router.get('/stories', verifyToken, async (req, res) => {
+  try {
+    const stories = communityStorage.getStories(req.user.id);
+    res.json({ success: true, stories });
+  } catch (err) {
+    console.error('Erro ao listar stories:', err);
+    res.status(500).json({ error: 'Erro ao carregar stories.' });
+  }
+});
+
+// POST /api/community/stories - Criar nova story musical
+router.post('/stories', verifyToken, async (req, res) => {
+  try {
+    const { track, text, backgroundGradient, photoUrl } = req.body;
+    const story = communityStorage.createStory(req.user.id, { track, text, backgroundGradient, photoUrl });
+    res.status(201).json({ success: true, story });
+  } catch (err) {
+    console.error('Erro ao criar story:', err);
+    res.status(400).json({ error: err.message || 'Erro ao criar story.' });
+  }
+});
+
+// POST /api/community/stories/:id/react - Reagir a uma story com emoji
+router.post('/stories/:id/react', verifyToken, async (req, res) => {
+  try {
+    const { emoji } = req.body;
+    const result = communityStorage.reactToStory(req.params.id, req.user.id, emoji);
+    res.json(result);
+  } catch (err) {
+    console.error('Erro ao reagir à story:', err);
+    res.status(400).json({ error: err.message || 'Erro ao reagir à story.' });
+  }
+});
+
+// DELETE /api/community/stories/:id - Remover story
+router.delete('/stories/:id', verifyToken, async (req, res) => {
+  try {
+    const result = communityStorage.deleteStory(req.params.id, req.user.id);
+    res.json(result);
+  } catch (err) {
+    console.error('Erro ao deletar story:', err);
+    res.status(400).json({ error: err.message || 'Erro ao deletar story.' });
+  }
+});
+
+// =========================================================================
+// 9. SPACE MURAL (AIRBUDS SPACE TAB)
+// =========================================================================
+
+// GET /api/community/space/:userId - Listar itens do mural Space
+router.get('/space/:userId', verifyToken, async (req, res) => {
+  try {
+    const targetId = Number(req.params.userId);
+    const items = communityStorage.getUserSpace(targetId);
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error('Erro ao listar itens do Space:', err);
+    res.status(500).json({ error: 'Erro ao carregar mural musical.' });
+  }
+});
+
+// POST /api/community/space - Adicionar novo item ao mural Space
+router.post('/space', verifyToken, async (req, res) => {
+  try {
+    const { type, title, subtitle, imageUrl, content, size } = req.body;
+    const item = communityStorage.addSpaceItem(req.user.id, { type, title, subtitle, imageUrl, content, size });
+    res.status(201).json({ success: true, item });
+  } catch (err) {
+    console.error('Erro ao adicionar item ao Space:', err);
+    res.status(400).json({ error: err.message || 'Erro ao adicionar item ao mural.' });
+  }
+});
+
+// DELETE /api/community/space/:id - Remover item do Space
+router.delete('/space/:id', verifyToken, async (req, res) => {
+  try {
+    const result = communityStorage.deleteSpaceItem(req.user.id, req.params.id);
+    res.json(result);
+  } catch (err) {
+    console.error('Erro ao remover item do Space:', err);
+    res.status(400).json({ error: err.message || 'Erro ao remover item do mural.' });
+  }
+});
+
+// =========================================================================
+// 10. BFF (MELHORES AMIGOS) & STATUS CUSTOMIZADO & RECAP
+// =========================================================================
+
+// POST /api/community/friends/:friendId/bff - Alternar status de Melhor Amigo (BFF)
+router.post('/friends/:friendId/bff', verifyToken, async (req, res) => {
+  try {
+    const result = communityStorage.toggleBFF(req.user.id, req.params.friendId);
+    res.json(result);
+  } catch (err) {
+    console.error('Erro ao alternar BFF:', err);
+    res.status(400).json({ error: err.message || 'Erro ao atualizar Melhor Amigo.' });
+  }
+});
+
+// PUT /api/community/status - Atualizar estado/status do perfil ("Qual é o teu estado?")
+router.put('/status', verifyToken, async (req, res) => {
+  try {
+    const { statusText, emoji } = req.body;
+    const status = communityStorage.updateCustomStatus(req.user.id, { statusText, emoji });
+    res.json({ success: true, status });
+  } catch (err) {
+    console.error('Erro ao atualizar status:', err);
+    res.status(400).json({ error: err.message || 'Erro ao atualizar status.' });
+  }
+});
+
+// PUT /api/community/profile/favorite-track - Definir faixa favorita principal do perfil
+router.put('/profile/favorite-track', verifyToken, async (req, res) => {
+  try {
+    const { track } = req.body;
+    const fav = communityStorage.setFavoriteTrack(req.user.id, track);
+    res.json({ success: true, favoriteTrack: fav });
+  } catch (err) {
+    console.error('Erro ao definir faixa favorita:', err);
+    res.status(400).json({ error: err.message || 'Erro ao definir faixa favorita.' });
+  }
+});
+
+// GET /api/community/recents/:userId? - Histórico recente formatado
+router.get('/recents/:userId?', verifyToken, async (req, res) => {
+  try {
+    const targetId = req.params.userId ? Number(req.params.userId) : req.user.id;
+    const recents = communityStorage.getUserRecents(targetId, 30);
+    res.json({ success: true, recents });
+  } catch (err) {
+    console.error('Erro ao listar faixas recentes:', err);
+    res.status(500).json({ error: 'Erro ao carregar faixas recentes.' });
+  }
+});
+
+// GET /api/community/recap/:userId? - Recap musical semanal
+router.get('/recap/:userId?', verifyToken, async (req, res) => {
+  try {
+    const targetId = req.params.userId ? Number(req.params.userId) : req.user.id;
+    const recap = communityStorage.getWeeklyRecap(targetId);
+    res.json({ success: true, recap });
+  } catch (err) {
+    console.error('Erro ao carregar recap:', err);
+    res.status(500).json({ error: 'Erro ao carregar recap.' });
+  }
+});
+
 module.exports = router;
 

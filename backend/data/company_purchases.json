@@ -1253,5 +1253,15 @@
     "price": 4.9,
     "expires_at": null,
     "created_at": "2026-11-03T13:58:17.641Z"
+  },
+  {
+    "id": 108,
+    "company_id": 1,
+    "user_id": 2,
+    "track_id": 69,
+    "type": "rent",
+    "price": 1.9,
+    "expires_at": "2026-12-04T00:31:43.288Z",
+    "created_at": "2026-11-04T00:31:43.279Z"
   }
 ]

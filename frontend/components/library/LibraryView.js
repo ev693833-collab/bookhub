@@ -1047,7 +1047,13 @@ export default function LibraryView({
 
     // 2. Se a faixa constar explicitamente na biblioteca de faixas adquiridas do usuário
     if (userTrack) {
-      const isExpired = Boolean(userTrack.isExpired || userTrack.is_expired);
+      const now = new Date();
+      const isExpired = Boolean(
+        userTrack.isExpired ||
+        userTrack.is_expired ||
+        (userTrack.expiresAt && new Date(userTrack.expiresAt) <= now) ||
+        (userTrack.expires_at && new Date(userTrack.expires_at) <= now)
+      );
       const canPlay = Boolean(userTrack.canPlay !== undefined ? userTrack.canPlay : !isExpired);
       const isLocked = !canPlay || isExpired;
       return {
@@ -1066,19 +1072,35 @@ export default function LibraryView({
 
     // 3. Checagem de Álbum Comprado/Alugado: se a faixa pertence a um álbum adquirido integralmente pelo usuário
     const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const GENERIC_ALBUM_NAMES = new Set(['single', 'ep', 'variado', 'aovivo', 'deluxe', 'album', 'show', 'oshow']);
     const trackAlbum = cleanSimple(typeof trackOrId === 'object' ? (trackOrId.album || selectedAlbum?.title || '') : (selectedAlbum?.title || ''));
+    const trackArtist = cleanSimple(typeof trackOrId === 'object' ? (trackOrId.artist || selectedAlbum?.artist || '') : (selectedAlbum?.artist || ''));
     const trackAlbumId = typeof trackOrId === 'object' ? (trackOrId.album_id || trackOrId.albumId || selectedAlbum?.id) : selectedAlbum?.id;
 
     const matchedPurchasedAlbum = (albums || []).find(alb => {
       const albTitle = cleanSimple(alb.title);
-      const titleMatch = trackAlbum && albTitle && (trackAlbum === albTitle || trackAlbum.includes(albTitle) || albTitle.includes(trackAlbum));
+      const albArtist = cleanSimple(alb.artist);
       const idMatch = trackAlbumId && alb.id && (String(trackAlbumId) === String(alb.id) || String(trackAlbumId) === String(alb.album_id));
-      return titleMatch || idMatch;
+      if (idMatch) return true;
+      if (trackAlbum && albTitle && !GENERIC_ALBUM_NAMES.has(trackAlbum) && !GENERIC_ALBUM_NAMES.has(albTitle)) {
+        if (trackAlbum === albTitle) {
+          if (trackArtist && albArtist) {
+            return trackArtist === albArtist || trackArtist.includes(albArtist) || albArtist.includes(trackArtist);
+          }
+        }
+      }
+      return false;
     });
 
     if (matchedPurchasedAlbum) {
       const isRent = matchedPurchasedAlbum.type === 'rent';
-      const isExpired = Boolean(matchedPurchasedAlbum.isExpired || matchedPurchasedAlbum.is_expired);
+      const now = new Date();
+      const isExpired = isRent && Boolean(
+        matchedPurchasedAlbum.isExpired ||
+        matchedPurchasedAlbum.is_expired ||
+        (matchedPurchasedAlbum.expiresAt && new Date(matchedPurchasedAlbum.expiresAt) <= now) ||
+        (matchedPurchasedAlbum.expires_at && new Date(matchedPurchasedAlbum.expires_at) <= now)
+      );
       const canPlay = !isRent || !isExpired;
       return {
         isExpired,
@@ -2289,8 +2311,8 @@ export default function LibraryView({
                               title="Reproduzir"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (onPlayQueue && selectedAlbum?.tracks && selectedAlbum.tracks.length > 0) {
-                                  onPlayQueue(selectedAlbum.tracks, idx, selectedAlbum?.title || selectedAlbum?.name || 'Álbum');
+                                if (onPlayQueue && selectedArtist?.tracks && selectedArtist.tracks.length > 0) {
+                                  onPlayQueue(selectedArtist.tracks, idx, selectedArtist?.name || 'Artista');
                                 } else if (onPlayTrack) {
                                   onPlayTrack(t);
                                 }
@@ -2490,8 +2512,8 @@ export default function LibraryView({
                                 title="Reproduzir"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (onPlayQueue && selectedAlbum.tracks && selectedAlbum.tracks.length > 0) {
-                                    onPlayQueue(selectedAlbum.tracks, idx, selectedAlbum?.title || selectedAlbum?.name || 'Álbum');
+                                  if (onPlayQueue && filteredTracks && filteredTracks.length > 0) {
+                                    onPlayQueue(filteredTracks, idx, 'Músicas da Biblioteca');
                                   } else if (onPlayTrack) {
                                     onPlayTrack(t);
                                   }
@@ -2925,6 +2947,13 @@ export default function LibraryView({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto', marginTop: '0.65rem' }}>
                     {tracks.map((t) => {
                       const tCleanId = getCleanTrackId(t);
+                      const now = new Date();
+                      const isExpired = Boolean(
+                        t.isExpired ||
+                        t.is_expired ||
+                        (t.expiresAt && new Date(t.expiresAt) <= now) ||
+                        (t.expires_at && new Date(t.expires_at) <= now)
+                      );
                       const alreadyIn = Boolean(
                         tCleanId && (
                           (selectedPlaylist.track_ids && selectedPlaylist.track_ids.includes(tCleanId)) ||
@@ -2937,13 +2966,17 @@ export default function LibraryView({
                           key={t.id}
                           className={styles.privacyOption}
                           style={{
-                            opacity: alreadyIn ? 0.65 : 1,
-                            cursor: alreadyIn ? 'default' : 'pointer',
-                            background: alreadyIn ? 'rgba(34, 197, 94, 0.05)' : undefined,
-                            border: alreadyIn ? '1px solid rgba(34, 197, 94, 0.28)' : undefined
+                            opacity: (alreadyIn || isExpired) ? 0.6 : 1,
+                            cursor: alreadyIn ? 'default' : (isExpired ? 'not-allowed' : 'pointer'),
+                            background: alreadyIn ? 'rgba(34, 197, 94, 0.05)' : (isExpired ? 'rgba(239, 68, 68, 0.05)' : undefined),
+                            border: alreadyIn ? '1px solid rgba(34, 197, 94, 0.28)' : (isExpired ? '1px solid rgba(239, 68, 68, 0.28)' : undefined)
                           }}
-                          title={alreadyIn ? 'Esta música já foi vinculada a esta playlist' : 'Adicionar a esta playlist'}
+                          title={isExpired ? 'Aluguel expirado: renove para adicionar' : (alreadyIn ? 'Esta música já foi vinculada a esta playlist' : 'Adicionar a esta playlist')}
                           onClick={() => {
+                            if (isExpired) {
+                              showNotice('Este aluguel está expirado. Renove para adicionar à playlist.', 'error');
+                              return;
+                            }
                             if (alreadyIn) {
                               showNotice('Esta música já foi vinculada a esta playlist.', 'error');
                               return;
@@ -2966,6 +2999,10 @@ export default function LibraryView({
                           {alreadyIn ? (
                             <span style={{ fontSize: '0.8rem', color: '#22c55e', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                               <Check size={15} /> Já vinculada
+                            </span>
+                          ) : isExpired ? (
+                            <span style={{ fontSize: '0.78rem', color: '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <Clock size={14} /> Expirada
                             </span>
                           ) : (
                             <Plus size={18} style={{ color: '#3b82f6' }} />

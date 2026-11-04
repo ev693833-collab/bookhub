@@ -14,6 +14,8 @@ const POSTS_FILE = path.join(DATA_DIR, 'community_posts.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'community_messages.json');
 const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'community_notifications.json');
 const ACTIVITIES_FILE = path.join(DATA_DIR, 'community_activities.json');
+const STORIES_FILE = path.join(DATA_DIR, 'community_stories.json');
+const SPACE_FILE = path.join(DATA_DIR, 'community_space.json');
 
 function ensureFiles() {
   const files = [
@@ -22,7 +24,9 @@ function ensureFiles() {
     POSTS_FILE,
     MESSAGES_FILE,
     NOTIFICATIONS_FILE,
-    ACTIVITIES_FILE
+    ACTIVITIES_FILE,
+    STORIES_FILE,
+    SPACE_FILE
   ];
   for (const f of files) {
     if (!fs.existsSync(f)) {
@@ -219,6 +223,25 @@ function getFullUserProfile(targetUserId, viewerId = null) {
   // Atividade atual (Ouvindo agora)
   const activity = getNowPlayingActivity(targetUserId, viewerId);
 
+  // Status de BFF
+  let isBFF = false;
+  if (viewerId) {
+    const viewerProfile = getOrCreateProfile(viewerId);
+    isBFF = Array.isArray(viewerProfile.bffUserIds) && viewerProfile.bffUserIds.includes(Number(targetUserId));
+  }
+
+  // Faixa favorita
+  const mainFavoriteTrack = profile.favoriteTrack || favoriteTracks[0] || null;
+
+  // Recentes formatados (estilo Airbuds)
+  const recentPlays = getUserRecents(targetUserId, 25);
+
+  // Recap semanal
+  const weeklyRecap = getWeeklyRecap(targetUserId);
+
+  // Space items
+  const spaceItems = getUserSpace(targetUserId);
+
   return {
     id: basic.id,
     name: basic.name,
@@ -226,17 +249,23 @@ function getFullUserProfile(targetUserId, viewerId = null) {
     avatar_url: profile.avatarUrl || basic.avatar_url,
     header_url: profile.headerUrl || null,
     bio: profile.bio,
+    customStatus: profile.customStatus || { text: 'Qual é o teu estado?', emoji: '✨' },
+    isBFF,
     privacy: profile.privacy,
     friendsCount,
     postsCount,
     mutualFriends,
     friendshipStatus,
     friendshipId: friendshipRecord?.id || null,
+    favoriteTrack: mainFavoriteTrack,
     favoriteTracks,
     favoriteArtists: profile.favoriteArtistIds || [],
     favoriteAlbums,
     playlists: userPlaylists,
     stats,
+    weeklyRecap,
+    recentPlays,
+    spaceItems,
     currentActivity: activity,
     createdAt: profile.createdAt
   };
@@ -602,6 +631,9 @@ function getFriendRequests(userId) {
 
 function getFriends(userId) {
   const friendships = readJson(FRIENDSHIPS_FILE, []);
+  const myProfile = getOrCreateProfile(userId);
+  const bffSet = new Set(Array.isArray(myProfile.bffUserIds) ? myProfile.bffUserIds : []);
+
   const records = friendships.filter(f => 
     f.status === 'accepted' && (Number(f.requesterId) === Number(userId) || Number(f.receiverId) === Number(userId))
   );
@@ -611,14 +643,20 @@ function getFriends(userId) {
     const basic = getUserBasic(friendId);
     const activity = getNowPlayingActivity(friendId, userId);
     const stats = getUserStats(friendId);
+    const isBFF = bffSet.has(Number(friendId));
     return {
       friendshipId: f.id,
       friendId,
       ...basic,
       activity,
+      isBFF,
       topArtists: stats.topArtists.slice(0, 3),
       since: f.createdAt
     };
+  }).sort((a, b) => {
+    if (a.isBFF && !b.isBFF) return -1;
+    if (!a.isBFF && b.isBFF) return 1;
+    return 0;
   });
 }
 
@@ -1199,6 +1237,440 @@ function unblockUser(userId, targetUserId) {
   return { success: true, message: 'Usuário desbloqueado com sucesso.' };
 }
 
+// -------------------------------------------------------------
+// 9. FORMATAÇÃO DE TEMPO RELATIVO (ESTILO AIRBUDS)
+// -------------------------------------------------------------
+function formatRelativeTime(isoString) {
+  if (!isoString) return '';
+  const now = Date.now();
+  const time = new Date(isoString).getTime();
+  const diffSec = Math.floor((now - time) / 1000);
+  if (diffSec < 60) return 'Agora mesmo';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Há ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `Há ${diffH} h`;
+  const diffDays = Math.floor(diffH / 24);
+  if (diffDays === 1) return 'Ontem';
+  if (diffDays < 7) return `Há ${diffDays} dias`;
+  const d = new Date(isoString);
+  const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  return `${d.getDate()} de ${months[d.getMonth()]}`;
+}
+
+// -------------------------------------------------------------
+// 10. RECENTES FORMATADOS (ESTILO AIRBUDS)
+// -------------------------------------------------------------
+function getUserRecents(userId, limit = 25) {
+  const history = readJson(HISTORY_FILE, []);
+  const tracksCatalog = readJson(TRACKS_FILE, []);
+  let userHistory = history.filter(h => Number(h.user_id) === Number(userId));
+
+  if (userHistory.length === 0) {
+    return tracksCatalog.slice(0, 10).map((t, i) => ({
+      id: t.id || t.track_id || `rec_${i}`,
+      track_id: t.track_id || t.id,
+      title: t.title,
+      artist: t.artist,
+      album: t.album || t.title,
+      cover_url: t.cover_url || t.cover || 'https://cdn-images.dzcdn.net/images/cover/31b86e4b5a5dc901013878cb70cdb66d/500x500-000000-80-0-0.jpg',
+      audio_url: t.audio_url || t.preview_url || null,
+      preview_url: t.preview_url || t.audio_url || null,
+      timeAgo: i === 0 ? 'Há 2 h' : i === 1 ? 'Há 9 h' : i === 2 ? 'Há 23 h' : 'Ontem'
+    }));
+  }
+
+  userHistory.sort((a, b) => new Date(b.played_at).getTime() - new Date(a.played_at).getTime());
+  return userHistory.slice(0, limit).map(h => ({
+    id: h.id || h.track_id,
+    track_id: h.track_id,
+    title: h.title,
+    artist: h.artist,
+    album: h.album,
+    cover_url: h.cover_url || h.cover,
+    audio_url: h.audio_url || null,
+    preview_url: h.preview_url || h.audio_url || null,
+    played_at: h.played_at,
+    timeAgo: formatRelativeTime(h.played_at)
+  }));
+}
+
+// -------------------------------------------------------------
+// 11. RECAP SEMANAL (ESTILO AIRBUDS)
+// -------------------------------------------------------------
+function getWeeklyRecap(userId) {
+  const stats = getUserStats(userId);
+  let totalMin = stats.totalMinutes || 0;
+  let totalArtists = stats.topArtists?.length || 0;
+  let totalTracks = stats.topTracks?.length || 0;
+
+  if (totalMin === 0) {
+    totalMin = 1180;
+    totalArtists = 43;
+    totalTracks = 195;
+  }
+
+  return {
+    minutosTocados: totalMin,
+    artistasTocados: totalArtists,
+    faixasTocadas: totalTracks,
+    topTrack: stats.topTracks?.[0] || null,
+    topArtist: stats.topArtists?.[0]?.artist || 'Baco Exu do Blues'
+  };
+}
+
+// -------------------------------------------------------------
+// 12. STORIES MUSICAIS (AIRBUDS STORIES)
+// -------------------------------------------------------------
+function getStories(viewerId) {
+  ensureFiles();
+  const stories = readJson(STORIES_FILE, []);
+  const viewerProfile = getOrCreateProfile(viewerId);
+  const bffSet = new Set(Array.isArray(viewerProfile.bffUserIds) ? viewerProfile.bffUserIds : []);
+
+  const now = Date.now();
+  let activeStories = stories.filter(s => {
+    const createdTime = new Date(s.createdAt).getTime();
+    return (now - createdTime) < 24 * 60 * 60 * 1000;
+  });
+
+  if (activeStories.length === 0) {
+    const seedStories = [
+      {
+        id: 'story_nat_1',
+        userId: 9991,
+        author: {
+          id: 9991,
+          name: 'Nat',
+          username: '@nat_vibes',
+          avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face'
+        },
+        track: {
+          id: 'wtw-1',
+          title: 'No Church In The Wild - Album Version (Edited)',
+          artist: 'JAY-Z, Kanye West, Frank Ocean, The-Dream',
+          album: 'Watch The Throne',
+          cover_url: 'https://cdn-images.dzcdn.net/images/cover/0421054a6a7d8cb4e52dd27ff4deef2c/500x500-000000-80-0-0.jpg',
+          preview_url: 'https://cdns-preview-d.dzcdn.net/stream/c-d0b4356a422033bc6bf2dcf44ce4a34b-4.mp3'
+        },
+        text: 'Vibe noturna absurda 🌙✨',
+        backgroundGradient: 'linear-gradient(180deg, #183d22 0%, #1c0e35 60%, #0a0614 100%)',
+        reactions: { '❤️': [Number(viewerId)], '🔥': [], '🎧': [], '⚡': [], '🤯': [] },
+        createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        isBFF: true
+      },
+      {
+        id: 'story_enzo_2',
+        userId: 2,
+        author: getUserBasic(2),
+        track: {
+          id: 'rec-rec-nu-2',
+          title: 'Girassóis de Van Gogh',
+          artist: 'Baco Exu do Blues',
+          album: 'Bluesman',
+          cover_url: 'https://cdn-images.dzcdn.net/images/cover/0421054a6a7d8cb4e52dd27ff4deef2c/500x500-000000-80-0-0.jpg',
+          preview_url: 'https://cdns-preview-d.dzcdn.net/stream/c-d0b4356a422033bc6bf2dcf44ce4a34b-4.mp3'
+        },
+        text: 'Repetindo esse som o dia todo 🎧🔥',
+        backgroundGradient: 'linear-gradient(180deg, #2b1d0c 0%, #121019 60%, #050508 100%)',
+        reactions: { '❤️': [], '🔥': [Number(viewerId)], '🎧': [], '⚡': [], '🤯': [] },
+        createdAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+        isBFF: false
+      },
+      {
+        id: 'story_djonga_3',
+        userId: 9992,
+        author: {
+          id: 9992,
+          name: 'Djonga',
+          username: '@djonga',
+          avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face'
+        },
+        track: {
+          id: 'rec-1',
+          title: 'SOLTO',
+          artist: 'Djonga',
+          album: 'Inocente "Demotape"',
+          cover_url: 'https://cdn-images.dzcdn.net/images/cover/1915904ef289be6f3e680a61578e35cf/500x500-000000-80-0-0.jpg',
+          preview_url: null
+        },
+        text: 'Obrigado pelo carinho família!',
+        backgroundGradient: 'linear-gradient(180deg, #0d3820 0%, #061e12 60%, #030a06 100%)',
+        reactions: { '❤️': [], '🔥': [], '🎧': [], '⚡': [], '🤯': [] },
+        createdAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
+        isBFF: true
+      }
+    ];
+    activeStories = seedStories;
+    writeJson(STORIES_FILE, seedStories);
+  }
+
+  return activeStories.map(s => {
+    const isSelf = Number(s.userId) === Number(viewerId);
+    const author = s.author || getUserBasic(s.userId);
+    const isBFF = bffSet.has(Number(s.userId)) || s.isBFF || false;
+    
+    let myReaction = null;
+    if (s.reactions && typeof s.reactions === 'object') {
+      for (const [em, list] of Object.entries(s.reactions)) {
+        if (Array.isArray(list) && list.includes(Number(viewerId))) {
+          myReaction = em;
+          break;
+        }
+      }
+    }
+
+    return {
+      ...s,
+      author,
+      isSelf,
+      isBFF,
+      myReaction,
+      timeAgo: formatRelativeTime(s.createdAt)
+    };
+  }).sort((a, b) => {
+    if (a.isBFF && !b.isBFF) return -1;
+    if (!a.isBFF && b.isBFF) return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+function createStory(userId, { track, text = '', backgroundGradient = null, photoUrl = null }) {
+  ensureFiles();
+  const stories = readJson(STORIES_FILE, []);
+  const author = getUserBasic(userId);
+
+  const gradients = [
+    'linear-gradient(180deg, #183d22 0%, #1c0e35 60%, #0a0614 100%)',
+    'linear-gradient(180deg, #2e1065 0%, #1e1b4b 60%, #050508 100%)',
+    'linear-gradient(180deg, #064e3b 0%, #022c22 60%, #02130e 100%)',
+    'linear-gradient(180deg, #3b0764 0%, #0f172a 60%, #020617 100%)',
+    'linear-gradient(180deg, #1e3a8a 0%, #0f172a 60%, #020617 100%)'
+  ];
+
+  const newStory = {
+    id: `story_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    userId: Number(userId),
+    author,
+    track: track ? {
+      id: track.id || track.track_id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album || '',
+      cover_url: track.cover_url || track.cover || 'https://cdn-images.dzcdn.net/images/cover/31b86e4b5a5dc901013878cb70cdb66d/500x500-000000-80-0-0.jpg',
+      audio_url: track.audio_url || track.preview_url || null,
+      preview_url: track.preview_url || track.audio_url || null
+    } : null,
+    text: String(text || '').trim().slice(0, 140),
+    photoUrl: photoUrl || null,
+    backgroundGradient: backgroundGradient || gradients[Math.floor(Math.random() * gradients.length)],
+    reactions: { '❤️': [], '🔥': [], '🎧': [], '⚡': [], '🤯': [] },
+    createdAt: new Date().toISOString()
+  };
+
+  stories.unshift(newStory);
+  writeJson(STORIES_FILE, stories);
+  return newStory;
+}
+
+function reactToStory(storyId, userId, emoji) {
+  ensureFiles();
+  const allowed = ['❤️', '🔥', '🎧', '⚡', '🤯'];
+  if (!allowed.includes(emoji)) {
+    throw new Error('Emoji inválido.');
+  }
+
+  const stories = readJson(STORIES_FILE, []);
+  const story = stories.find(s => String(s.id) === String(storyId));
+  if (!story) {
+    throw new Error('Story não encontrada.');
+  }
+
+  if (!story.reactions || typeof story.reactions !== 'object') {
+    story.reactions = { '❤️': [], '🔥': [], '🎧': [], '⚡': [], '🤯': [] };
+  }
+
+  for (const em of allowed) {
+    if (!Array.isArray(story.reactions[em])) story.reactions[em] = [];
+    const idx = story.reactions[em].indexOf(Number(userId));
+    if (idx >= 0) {
+      story.reactions[em].splice(idx, 1);
+    }
+  }
+
+  story.reactions[emoji].push(Number(userId));
+  writeJson(STORIES_FILE, stories);
+
+  if (Number(story.userId) !== Number(userId)) {
+    createNotification(story.userId, userId, 'post_like', story.id);
+  }
+
+  return { success: true, reactions: story.reactions, myReaction: emoji };
+}
+
+function deleteStory(storyId, userId) {
+  ensureFiles();
+  const stories = readJson(STORIES_FILE, []);
+  const idx = stories.findIndex(s => String(s.id) === String(storyId) && Number(s.userId) === Number(userId));
+  if (idx >= 0) {
+    stories.splice(idx, 1);
+    writeJson(STORIES_FILE, stories);
+    return { success: true };
+  }
+  return { success: false, message: 'Story não encontrada ou permissão negada.' };
+}
+
+// -------------------------------------------------------------
+// 13. SPACE MURAL (AIRBUDS SPACE TAB)
+// -------------------------------------------------------------
+function getUserSpace(userId) {
+  ensureFiles();
+  const allSpace = readJson(SPACE_FILE, []);
+  let userItems = allSpace.filter(item => Number(item.userId) === Number(userId));
+
+  if (userItems.length === 0) {
+    const seedSpace = [
+      {
+        id: `space_${userId}_1`,
+        userId: Number(userId),
+        type: 'photo',
+        title: 'Show Inesquecível 🌵',
+        imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=800&fit=crop',
+        size: 'large',
+        createdAt: new Date(Date.now() - 3 * 86400 * 1000).toISOString()
+      },
+      {
+        id: `space_${userId}_2`,
+        userId: Number(userId),
+        type: 'album',
+        title: 'Watch The Throne',
+        subtitle: 'JAY-Z & Kanye West',
+        imageUrl: 'https://cdn-images.dzcdn.net/images/cover/0421054a6a7d8cb4e52dd27ff4deef2c/500x500-000000-80-0-0.jpg',
+        size: 'medium',
+        createdAt: new Date(Date.now() - 2 * 86400 * 1000).toISOString()
+      },
+      {
+        id: `space_${userId}_3`,
+        userId: Number(userId),
+        type: 'quote',
+        title: 'Vibe do Mês',
+        content: '“A música expressa o que não pode ser dito em palavras e o que não pode permanecer em silêncio.”',
+        size: 'small',
+        createdAt: new Date(Date.now() - 1 * 86400 * 1000).toISOString()
+      },
+      {
+        id: `space_${userId}_4`,
+        userId: Number(userId),
+        type: 'track',
+        title: 'SOLTO',
+        subtitle: 'Djonga',
+        imageUrl: 'https://cdn-images.dzcdn.net/images/cover/1915904ef289be6f3e680a61578e35cf/500x500-000000-80-0-0.jpg',
+        size: 'small',
+        createdAt: new Date().toISOString()
+      }
+    ];
+    userItems = seedSpace;
+    allSpace.push(...seedSpace);
+    writeJson(SPACE_FILE, allSpace);
+  }
+
+  return userItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+function addSpaceItem(userId, { type = 'quote', title = '', subtitle = '', imageUrl = null, content = '', size = 'medium' }) {
+  ensureFiles();
+  const allSpace = readJson(SPACE_FILE, []);
+  const newItem = {
+    id: `space_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    userId: Number(userId),
+    type,
+    title: (title || '').trim().slice(0, 100),
+    subtitle: (subtitle || '').trim().slice(0, 100),
+    imageUrl: imageUrl || null,
+    content: (content || '').trim().slice(0, 300),
+    size: ['small', 'medium', 'large'].includes(size) ? size : 'medium',
+    createdAt: new Date().toISOString()
+  };
+  allSpace.unshift(newItem);
+  writeJson(SPACE_FILE, allSpace);
+  return newItem;
+}
+
+function deleteSpaceItem(userId, itemId) {
+  ensureFiles();
+  const allSpace = readJson(SPACE_FILE, []);
+  const idx = allSpace.findIndex(x => String(x.id) === String(itemId) && Number(x.userId) === Number(userId));
+  if (idx >= 0) {
+    allSpace.splice(idx, 1);
+    writeJson(SPACE_FILE, allSpace);
+    return { success: true };
+  }
+  return { success: false, message: 'Item não encontrado.' };
+}
+
+// -------------------------------------------------------------
+// 14. BFFS (MELHORES AMIGOS) & STATUS CUSTOMIZADO
+// -------------------------------------------------------------
+function toggleBFF(userId, friendId) {
+  const profiles = readJson(PROFILES_FILE, []);
+  let p = profiles.find(x => Number(x.userId) === Number(userId));
+  if (!p) {
+    p = getOrCreateProfile(userId);
+    profiles.push(p);
+  }
+  if (!Array.isArray(p.bffUserIds)) p.bffUserIds = [];
+  const targetId = Number(friendId);
+  const idx = p.bffUserIds.indexOf(targetId);
+  let isBFF = false;
+  if (idx >= 0) {
+    p.bffUserIds.splice(idx, 1);
+    isBFF = false;
+  } else {
+    p.bffUserIds.push(targetId);
+    isBFF = true;
+  }
+  writeJson(PROFILES_FILE, profiles);
+  return { success: true, isBFF, bffUserIds: p.bffUserIds };
+}
+
+function updateCustomStatus(userId, { statusText = '', emoji = '✨' }) {
+  const profiles = readJson(PROFILES_FILE, []);
+  let p = profiles.find(x => Number(x.userId) === Number(userId));
+  if (!p) {
+    p = getOrCreateProfile(userId);
+    profiles.push(p);
+  }
+  p.customStatus = {
+    text: (statusText || '').trim().slice(0, 60),
+    emoji: emoji || '✨',
+    updatedAt: new Date().toISOString()
+  };
+  p.updatedAt = new Date().toISOString();
+  writeJson(PROFILES_FILE, profiles);
+  return p.customStatus;
+}
+
+function setFavoriteTrack(userId, track) {
+  const profiles = readJson(PROFILES_FILE, []);
+  let p = profiles.find(x => Number(x.userId) === Number(userId));
+  if (!p) {
+    p = getOrCreateProfile(userId);
+    profiles.push(p);
+  }
+  p.favoriteTrack = track ? {
+    id: track.id || track.track_id,
+    title: track.title,
+    artist: track.artist,
+    album: track.album || '',
+    cover_url: track.cover_url || track.cover || '',
+    audio_url: track.audio_url || track.preview_url || null,
+    preview_url: track.preview_url || track.audio_url || null
+  } : null;
+  p.updatedAt = new Date().toISOString();
+  writeJson(PROFILES_FILE, profiles);
+  return p.favoriteTrack;
+}
+
 module.exports = {
   getUserBasic,
   getOrCreateProfile,
@@ -1229,6 +1701,20 @@ module.exports = {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   blockUser,
-  unblockUser
+  unblockUser,
+  // Novas funções Airbuds
+  formatRelativeTime,
+  getUserRecents,
+  getWeeklyRecap,
+  getStories,
+  createStory,
+  reactToStory,
+  deleteStory,
+  getUserSpace,
+  addSpaceItem,
+  deleteSpaceItem,
+  toggleBFF,
+  updateCustomStatus,
+  setFavoriteTrack
 };
 

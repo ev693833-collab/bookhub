@@ -2101,9 +2101,18 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
   const [smartQueue, setSmartQueue] = useState([]);
   const [queueSource, setQueueSource] = useState('');
 
-  // Faixas adquiridas válidas (compradas definitivas ou aluguel vigente não expirado)
+  // Faixas adquiridas válidas (compradas definitivas ou aluguel vigente não expirado com data real verificada)
   const validPurchases = useMemo(() => {
-    return (userPurchases || []).filter(p => p.type === 'buy' || (!p.isExpired && p.canPlay !== false));
+    const now = new Date();
+    return (userPurchases || []).filter(p => {
+      if (p.payment_status === 'pending') return false;
+      if (p.type === 'buy') return true;
+      if (p.type === 'rent') {
+        const isExpired = Boolean(p.isExpired || p.is_expired || (p.expires_at && new Date(p.expires_at) <= now) || (p.expiresAt && new Date(p.expiresAt) <= now));
+        return !isExpired && p.canPlay !== false;
+      }
+      return false;
+    });
   }, [userPurchases]);
 
   // Sistema Inteligente de Fila de Reprodução (Referência Spotify)
@@ -2116,6 +2125,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
   const contextQueueRef = useRef([]);
   const playbackContextNameRef = useRef('');
   const playedSessionHistoryRef = useRef([]);
+  const hasRecordedPlaybackRef = useRef(false);
 
   useEffect(() => {
     manualQueueRef.current = manualQueue;
@@ -2173,150 +2183,153 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     }, 2800);
   }, []);
 
-  // Validador universal de permissão de reprodução da faixa
-  const isTrackPlayable = useCallback((track) => {
-    if (!track) return false;
-    // Se a faixa já possui flag de autorização avaliada pelo backend/biblioteca
-    if (track.canPlay === true || track.can_play === true) {
-      if (!track.isExpired && !track.is_expired && !track.isLocked && !track.is_locked) {
-        return true;
-      }
-    }
-    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-    const trackKey = (track.title || '').trim().toLowerCase();
-    const trackTitleClean = cleanSimple(track.title);
-    const trackAlbumClean = cleanSimple(track.album);
-    const trackIdStr = String(track.dbTrackId || track.id || '').replace('ct-', '').replace('dz-track-', '').replace('it-track-', '');
-    const trackAlbumIdStr = String(track.album_id || track.albumId || '').replace('dz-alb-', '').replace('it-alb-', '');
-
-    const isLocallyUnlocked = Boolean(unlockedTrackMap[trackKey] || unlockedTrackMap[trackTitleClean] || (track.id && unlockedTrackMap[track.id]));
-
-    const isAlbumOwned = (userPurchases || []).some(p => {
-      if (p.payment_status === 'pending') return false;
-      const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
-      if (!isAlb || p.type !== 'buy') return false;
-      const pTitleClean = cleanSimple(p.title);
-      const pAlbId = String(p.album_id || '').replace('dz-alb-', '').replace('it-alb-', '');
-      const titleMatch = trackAlbumClean && pTitleClean && (
-        trackAlbumClean === pTitleClean || trackAlbumClean.includes(pTitleClean) || pTitleClean.includes(trackAlbumClean)
-      );
-      const idMatch = (trackAlbumIdStr && pAlbId && (trackAlbumIdStr === pAlbId || String(track.album_id) === String(p.album_id)));
-      return titleMatch || idMatch;
-    });
-
-    const isAlbumRentedActive = (userPurchases || []).some(p => {
-      if (p.payment_status === 'pending') return false;
-      const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
-      if (!isAlb || p.type !== 'rent' || p.isExpired) return false;
-      const pTitleClean = cleanSimple(p.title);
-      const pAlbId = String(p.album_id || '').replace('dz-alb-', '').replace('it-alb-', '');
-      const titleMatch = trackAlbumClean && pTitleClean && (
-        trackAlbumClean === pTitleClean || trackAlbumClean.includes(pTitleClean) || pTitleClean.includes(trackAlbumClean)
-      );
-      const idMatch = (trackAlbumIdStr && pAlbId && (trackAlbumIdStr === pAlbId || String(track.album_id) === String(p.album_id)));
-      return titleMatch || idMatch;
-    });
-
-    const isOwned = isLocallyUnlocked || track.isPurchased || isAlbumOwned || (userPurchases || []).some(p => {
-      if (p.payment_status === 'pending' || p.type !== 'buy') return false;
-      const pTitleClean = cleanSimple(p.title);
-      const pTrackId = String(p.track_id || p.dbTrackId || p.id || '').replace('ct-', '');
-      const titleMatch = pTitleClean && trackTitleClean && pTitleClean === trackTitleClean;
-      const idMatch = pTrackId && trackIdStr && pTrackId === trackIdStr;
-      return titleMatch || idMatch;
-    });
-
-    const isRentedActive = isLocallyUnlocked || (track.isRented && !track.isExpired) || isAlbumRentedActive || (userPurchases || []).some(p => {
-      if (p.payment_status === 'pending' || p.type !== 'rent' || p.isExpired) return false;
-      const pTitleClean = cleanSimple(p.title);
-      const pTrackId = String(p.track_id || p.dbTrackId || p.id || '').replace('ct-', '');
-      const titleMatch = pTitleClean && trackTitleClean && pTitleClean === trackTitleClean;
-      const idMatch = pTrackId && trackIdStr && pTrackId === trackIdStr;
-      return titleMatch || idMatch;
-    });
-
-    return Boolean(isOwned || isRentedActive);
-  }, [unlockedTrackMap, userPurchases]);
+  const GENERIC_ALBUM_NAMES = useMemo(() => new Set(['single', 'ep', 'variado', 'aovivo', 'deluxe', 'album', 'show', 'oshow']), []);
 
   // Identificador formal de propriedade definitiva (Comprada)
   const isTrackOwned = useCallback((track) => {
     if (!track) return false;
-    if (track.isPurchased || track.is_purchased || track.badge === 'Comprada' || track.access_status === 'purchased') return true;
     const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
     const trackTitleClean = cleanSimple(track.title);
     const trackArtistClean = cleanSimple(track.artist);
     const trackAlbumClean = cleanSimple(track.album);
-    const trackIdStr = String(track.dbTrackId || track.id || '').replace(/^ct-/, '').replace(/^dz-track-/, '').replace(/^it-track-/, '');
-    const trackAlbumIdStr = String(track.album_id || track.albumId || '').replace(/^dz-alb-/, '').replace(/^it-alb-/, '');
 
+    const trackLocalId = track.dbTrackId ? Number(track.dbTrackId) : (String(track.id || '').startsWith('ct-') ? Number(String(track.id).replace('ct-', '')) : null);
+    const trackRawId = String(track.id || track.dbTrackId || '');
+
+    // 1. Checagem por álbum adquirido integralmente
     const isAlbumOwned = (userPurchases || []).some(p => {
-      if (p.payment_status === 'pending') return false;
+      if (p.payment_status === 'pending' || p.type !== 'buy') return false;
       const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
-      if (!isAlb || p.type !== 'buy') return false;
-      const pTitleClean = cleanSimple(p.title);
-      const pAlbId = String(p.album_id || '').replace(/^dz-alb-/, '').replace(/^it-alb-/, '');
-      const titleMatch = trackAlbumClean && pTitleClean && (
-        trackAlbumClean === pTitleClean || trackAlbumClean.includes(pTitleClean) || pTitleClean.includes(trackAlbumClean)
-      );
-      const idMatch = (trackAlbumIdStr && pAlbId && (trackAlbumIdStr === pAlbId || String(track.album_id) === String(p.album_id)));
-      return titleMatch || idMatch;
+      if (!isAlb) return false;
+
+      // Correspondência por ID do álbum
+      if (track.album_id && p.album_id && String(track.album_id) === String(p.album_id)) return true;
+      if (track.albumId && p.album_id && String(track.albumId) === String(p.album_id)) return true;
+
+      // Correspondência por Título do Álbum + Artista (títulos genéricos nunca casam)
+      const pAlbumTitleClean = cleanSimple(p.title);
+      const pArtistClean = cleanSimple(p.artist);
+      if (trackAlbumClean && pAlbumTitleClean && !GENERIC_ALBUM_NAMES.has(trackAlbumClean) && !GENERIC_ALBUM_NAMES.has(pAlbumTitleClean)) {
+        if (trackAlbumClean === pAlbumTitleClean) {
+          if (trackArtistClean && pArtistClean) {
+            return trackArtistClean === pArtistClean || trackArtistClean.includes(pArtistClean) || pArtistClean.includes(trackArtistClean);
+          }
+        }
+      }
+      return false;
     });
 
     if (isAlbumOwned) return true;
 
+    // 2. Checagem por faixa individual adquirida
     return (userPurchases || []).some(p => {
       if (p.payment_status === 'pending' || p.type !== 'buy') return false;
+      if (p.item_type === 'album') return false;
+
+      // Regra 4: NUNCA utilizar p.id (ID da transação) como ID de faixa!
+      const pLocalId = p.track_id ? Number(String(p.track_id).replace(/^ct-/, '')) : (p.dbTrackId ? Number(p.dbTrackId) : null);
+      const pRawId = String(p.track_id || p.dbTrackId || '');
+
+      // Correspondência exata por ID de faixa local (ct-X ou numérico)
+      if (trackLocalId && pLocalId && trackLocalId === pLocalId) {
+        return true;
+      }
+      // Correspondência exata por ID externo completo (ex: dz-track-X)
+      if (trackRawId && pRawId && trackRawId === pRawId && (trackRawId.startsWith('dz-') || trackRawId.startsWith('it-'))) {
+        return true;
+      }
+
+      // Correspondência por Título E Artista (ambos obrigatórios)
       const pTitleClean = cleanSimple(p.title);
       const pArtistClean = cleanSimple(p.artist);
-      const pTrackId = String(p.track_id || p.dbTrackId || p.id || '').replace(/^ct-/, '');
-      if (trackIdStr && pTrackId && trackIdStr === pTrackId) return true;
       if (trackTitleClean && pTitleClean && trackTitleClean === pTitleClean) {
-        if (!trackArtistClean || !pArtistClean) return true;
-        return trackArtistClean === pArtistClean || trackArtistClean.includes(pArtistClean) || pArtistClean.includes(trackArtistClean);
+        if (trackArtistClean && pArtistClean) {
+          return trackArtistClean === pArtistClean || trackArtistClean.includes(pArtistClean) || pArtistClean.includes(trackArtistClean);
+        }
       }
       return false;
     });
-  }, [userPurchases]);
+  }, [userPurchases, GENERIC_ALBUM_NAMES]);
 
-  // Identificador formal de aluguel ativo (Alugada)
+  // Identificador formal de aluguel ativo (Alugada com data de expiração válida)
   const isTrackRentedActive = useCallback((track) => {
     if (!track) return false;
-    if ((track.isRented || track.is_rented || track.badge === 'Alugada' || track.access_status === 'rent_active') && !track.isExpired) return true;
+    const now = new Date();
     const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
     const trackTitleClean = cleanSimple(track.title);
     const trackArtistClean = cleanSimple(track.artist);
     const trackAlbumClean = cleanSimple(track.album);
-    const trackIdStr = String(track.dbTrackId || track.id || '').replace(/^ct-/, '').replace(/^dz-track-/, '').replace(/^it-track-/, '');
-    const trackAlbumIdStr = String(track.album_id || track.albumId || '').replace(/^dz-alb-/, '').replace(/^it-alb-/, '');
 
+    const trackLocalId = track.dbTrackId ? Number(track.dbTrackId) : (String(track.id || '').startsWith('ct-') ? Number(String(track.id).replace('ct-', '')) : null);
+    const trackRawId = String(track.id || track.dbTrackId || '');
+
+    // 1. Checagem por álbum alugado com prazo ativo
     const isAlbumRentedActive = (userPurchases || []).some(p => {
-      if (p.payment_status === 'pending') return false;
+      if (p.payment_status === 'pending' || p.type !== 'rent') return false;
+      const isExpired = Boolean(p.isExpired || p.is_expired || (p.expires_at && new Date(p.expires_at) <= now) || (p.expiresAt && new Date(p.expiresAt) <= now));
+      if (isExpired) return false;
+
       const isAlb = p.item_type === 'album' || (!p.track_id && p.album_id);
-      if (!isAlb || p.type !== 'rent' || p.isExpired) return false;
-      const pTitleClean = cleanSimple(p.title);
-      const pAlbId = String(p.album_id || '').replace(/^dz-alb-/, '').replace(/^it-alb-/, '');
-      const titleMatch = trackAlbumClean && pTitleClean && (
-        trackAlbumClean === pTitleClean || trackAlbumClean.includes(pTitleClean) || pTitleClean.includes(trackAlbumClean)
-      );
-      const idMatch = (trackAlbumIdStr && pAlbId && (trackAlbumIdStr === pAlbId || String(track.album_id) === String(p.album_id)));
-      return titleMatch || idMatch;
+      if (!isAlb) return false;
+
+      if (track.album_id && p.album_id && String(track.album_id) === String(p.album_id)) return true;
+      if (track.albumId && p.album_id && String(track.albumId) === String(p.album_id)) return true;
+
+      const pAlbumTitleClean = cleanSimple(p.title);
+      const pArtistClean = cleanSimple(p.artist);
+      if (trackAlbumClean && pAlbumTitleClean && !GENERIC_ALBUM_NAMES.has(trackAlbumClean) && !GENERIC_ALBUM_NAMES.has(pAlbumTitleClean)) {
+        if (trackAlbumClean === pAlbumTitleClean) {
+          if (trackArtistClean && pArtistClean) {
+            return trackArtistClean === pArtistClean || trackArtistClean.includes(pArtistClean) || pArtistClean.includes(trackArtistClean);
+          }
+        }
+      }
+      return false;
     });
 
     if (isAlbumRentedActive) return true;
 
+    // 2. Checagem por faixa individual alugada com prazo ativo
     return (userPurchases || []).some(p => {
-      if (p.payment_status === 'pending' || p.type !== 'rent' || p.isExpired) return false;
+      if (p.payment_status === 'pending' || p.type !== 'rent') return false;
+      const isExpired = Boolean(p.isExpired || p.is_expired || (p.expires_at && new Date(p.expires_at) <= now) || (p.expiresAt && new Date(p.expiresAt) <= now));
+      if (isExpired) return false;
+      if (p.item_type === 'album') return false;
+
+      // Regra 4: NUNCA utilizar p.id como ID de faixa!
+      const pLocalId = p.track_id ? Number(String(p.track_id).replace(/^ct-/, '')) : (p.dbTrackId ? Number(p.dbTrackId) : null);
+      const pRawId = String(p.track_id || p.dbTrackId || '');
+
+      if (trackLocalId && pLocalId && trackLocalId === pLocalId) {
+        return true;
+      }
+      if (trackRawId && pRawId && trackRawId === pRawId && (trackRawId.startsWith('dz-') || trackRawId.startsWith('it-'))) {
+        return true;
+      }
+
       const pTitleClean = cleanSimple(p.title);
       const pArtistClean = cleanSimple(p.artist);
-      const pTrackId = String(p.track_id || p.dbTrackId || p.id || '').replace(/^ct-/, '');
-      if (trackIdStr && pTrackId && trackIdStr === pTrackId) return true;
       if (trackTitleClean && pTitleClean && trackTitleClean === pTitleClean) {
-        if (!trackArtistClean || !pArtistClean) return true;
-        return trackArtistClean === pArtistClean || trackArtistClean.includes(pArtistClean) || pArtistClean.includes(trackArtistClean);
+        if (trackArtistClean && pArtistClean) {
+          return trackArtistClean === pArtistClean || trackArtistClean.includes(pArtistClean) || pArtistClean.includes(trackArtistClean);
+        }
       }
       return false;
     });
-  }, [userPurchases]);
+  }, [userPurchases, GENERIC_ALBUM_NAMES]);
+
+  // Validador universal de permissão de reprodução da faixa
+  const isTrackPlayable = useCallback((track) => {
+    if (!track) return false;
+    const cleanSimple = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+    const trackKey = (track.title || '').trim().toLowerCase();
+    const trackTitleClean = cleanSimple(track.title);
+
+    const isLocallyUnlocked = Boolean(unlockedTrackMap[trackKey] || unlockedTrackMap[trackTitleClean] || (track.id && unlockedTrackMap[track.id]));
+    if (isLocallyUnlocked) return true;
+
+    return isTrackOwned(track) || isTrackRentedActive(track);
+  }, [unlockedTrackMap, isTrackOwned, isTrackRentedActive]);
 
   // Fila contextual efetiva ("Próximas de: [Contexto]")
   const effectiveContextQueue = useMemo(() => {
@@ -2518,13 +2531,24 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       const now = new Date();
       const diffMs = now - date;
       const diffMins = Math.floor(diffMs / (1000 * 60));
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      if (diffMins < 1) return 'Agora mesmo';
-      if (diffMins < 60) return `Há ${diffMins} min`;
-      if (diffHours < 24) return `Hoje às ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-      if (diffDays === 1) return `Ontem às ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' às ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const isToday = date.getFullYear() === now.getFullYear() &&
+                      date.getMonth() === now.getMonth() &&
+                      date.getDate() === now.getDate();
+
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday = date.getFullYear() === yesterday.getFullYear() &&
+                          date.getMonth() === yesterday.getMonth() &&
+                          date.getDate() === yesterday.getDate();
+
+      const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      if (diffMs >= 0 && diffMins < 1 && isToday) return 'Agora mesmo';
+      if (diffMs >= 0 && diffMins < 60 && isToday) return `Há ${diffMins} min`;
+      if (isToday) return `Hoje às ${timeStr}`;
+      if (isYesterday) return `Ontem às ${timeStr}`;
+      return `${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} às ${timeStr}`;
     } catch (_) {
       return 'Recentemente';
     }
@@ -2555,11 +2579,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       const userHist = localStorage.getItem(`devsongs_recent_history_${userId}`);
       if (userHist) {
         const parsedHist = JSON.parse(userHist);
-        const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-        const validRecent = Array.isArray(parsedHist)
-          ? parsedHist.filter(t => !t.playedAt || new Date(t.playedAt).getTime() >= cutoff)
-          : [];
-        setRecentHistory(validRecent);
+        setRecentHistory(Array.isArray(parsedHist) ? parsedHist : []);
       } else {
         setRecentHistory([]);
       }
@@ -2573,7 +2593,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
     // 2. Consulta histórico oficial do usuário no backend e atualiza o estado
     if (token) {
-      fetch(`${API_URL}/api/music/history`, {
+      fetch(`${API_URL}/api/music/history?limit=100`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => (res.ok ? res.json() : null))
@@ -2897,6 +2917,60 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     }
   }, []);
 
+  const parseTrackDurationSec = (t) => {
+    if (!t) return 214;
+    if (typeof t.durationSec === 'number' && t.durationSec > 0) return t.durationSec;
+    if (typeof t.duration_sec === 'number' && t.duration_sec > 0) return t.duration_sec;
+    if (typeof t.duration === 'number' && t.duration > 0) return t.duration;
+    if (typeof t.duration === 'string' && t.duration.includes(':')) {
+      const parts = t.duration.split(':').map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts[0] * 60 + parts[1];
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return 214;
+  };
+
+  // Gravação precisa de histórico estritamente quando a música realmente começar a tocar
+  const recordActualPlayback = useCallback((trackToRecord) => {
+    const track = trackToRecord || currentTrackRef.current;
+    if (!track || hasRecordedPlaybackRef.current) return;
+    hasRecordedPlaybackRef.current = true;
+
+    const realDurationSec = parseTrackDurationSec(track);
+    const recordedTrack = {
+      ...track,
+      durationSec: realDurationSec,
+      playedAt: new Date().toISOString()
+    };
+
+    setLastTrack(recordedTrack);
+
+    try {
+      if (user && user.id) {
+        const userId = user.id;
+        localStorage.setItem(`devsongs_last_track_${userId}`, JSON.stringify(recordedTrack));
+        setRecentHistory(prev => {
+          // Cada reprodução é preservada com seu próprio registro e horário cronológico
+          const updated = [recordedTrack, ...(prev || [])].slice(0, 100);
+          localStorage.setItem(`devsongs_recent_history_${userId}`, JSON.stringify(updated));
+          return updated;
+        });
+
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (token) {
+          fetch(`${API_URL}/api/music/history`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ track: recordedTrack })
+          }).catch(err => console.warn('Aviso ao sincronizar histórico no servidor:', err));
+        }
+      }
+    } catch (_) {}
+  }, [user]);
+
   // Fallback seguro para áudio oficial em alta definição caso YouTube tenha erro ou restrição
   const fallbackToAudioStream = useCallback(() => {
     if (!currentTrackRef.current) return;
@@ -2906,11 +2980,12 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       audioFallbackRef.current.volume = volume;
       audioFallbackRef.current.play().then(() => {
         setIsPlaying(true);
+        recordActualPlayback(track);
       }).catch(err => {
         console.warn('Erro ao reproduzir áudio direto:', err);
       });
     }
-  }, [volume]);
+  }, [volume, recordActualPlayback]);
 
   // 3. YouTube Player API Setup (Sem autoplay automático para não tocar sozinho)
   useEffect(() => {
@@ -2973,8 +3048,11 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                 const realDur = ytPlayerRef.current?.getDuration?.() || 0;
                 const expectedDur = currentTrackRef.current?.durationSec || 214;
                 const isAd = realDur > 0 && realDur < 45 && expectedDur >= 60;
-                if (!isAd && realDur > 0) {
-                  setDuration(realDur);
+                if (!isAd) {
+                  if (realDur > 0) {
+                    setDuration(realDur);
+                  }
+                  recordActualPlayback(currentTrackRef.current);
                 }
               }
               if (e.data === 2) setIsPlaying(false);
@@ -3034,6 +3112,18 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
   useEffect(() => {
     if (isPlaying) {
       progressTimerRef.current = setInterval(() => {
+        // Confirmação de início real de reprodução (somente quando a faixa está realmente tocando)
+        if (!hasRecordedPlaybackRef.current && currentTrackRef.current) {
+          const isAudioPlaying = audioFallbackRef.current && !audioFallbackRef.current.paused && (audioFallbackRef.current.currentTime || 0) >= 1;
+          const isYtPlaying = ytPlayerRef.current && typeof ytPlayerRef.current.getPlayerState === 'function' && ytPlayerRef.current.getPlayerState() === 1;
+          const ytCur = ytPlayerRef.current?.getCurrentTime?.() || 0;
+          const ytDur = ytPlayerRef.current?.getDuration?.() || 0;
+          const isAd = ytDur > 0 && ytDur < 45 && (currentTrackRef.current?.durationSec || 214) >= 60;
+          if (isAudioPlaying || (isYtPlaying && !isAd && ytCur >= 1)) {
+            recordActualPlayback(currentTrackRef.current);
+          }
+        }
+
         // 1. Se o áudio nativo estiver tocando:
         if (audioFallbackRef.current && !audioFallbackRef.current.paused && audioFallbackRef.current.currentTime > 0) {
           const cur = audioFallbackRef.current.currentTime || 0;
@@ -3073,20 +3163,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     return () => {
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     };
-  }, [isPlaying]);
-
-  const parseTrackDurationSec = (t) => {
-    if (!t) return 214;
-    if (typeof t.durationSec === 'number' && t.durationSec > 0) return t.durationSec;
-    if (typeof t.duration_sec === 'number' && t.duration_sec > 0) return t.duration_sec;
-    if (typeof t.duration === 'number' && t.duration > 0) return t.duration;
-    if (typeof t.duration === 'string' && t.duration.includes(':')) {
-      const parts = t.duration.split(':').map(Number);
-      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts[0] * 60 + parts[1];
-      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    }
-    return 214;
-  };
+  }, [isPlaying, recordActualPlayback]);
 
   // Reprodução de faixa com proteção multibase e gerenciamento inteligente de fila estilo Spotify
   const playTrack = async (track, forcePlay = false, contextQueueArg = null, contextNameArg = null, preserveExistingContext = false) => {
@@ -3163,11 +3240,13 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
       setPlayedSessionHistory(prev => [...prev, currentTrackRef.current]);
     }
 
+    // Reinicia o bloqueio de gravação: o histórico só será registrado quando a reprodução do som/vídeo realmente iniciar
+    hasRecordedPlaybackRef.current = false;
+
     const realDurationSec = parseTrackDurationSec(track);
     const enrichedTrack = {
       ...track,
-      durationSec: realDurationSec,
-      playedAt: new Date().toISOString()
+      durationSec: realDurationSec
     };
 
     isClosingRef.current = false;
@@ -3175,47 +3254,6 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
     setIsPlaying(true);
     setCurrentTime(0);
     setDuration(realDurationSec);
-    setLastTrack(enrichedTrack);
-
-    // Salva no histórico de ouvidas recentemente (Estilo Spotify - Isolado por usuário)
-    try {
-      localStorage.removeItem('devsongs_last_track');
-      localStorage.removeItem('devsongs_recent_history');
-
-      if (user && user.id) {
-        const userId = user.id;
-        localStorage.setItem(`devsongs_last_track_${userId}`, JSON.stringify(enrichedTrack));
-        setRecentHistory(prev => {
-          const isSameTrack = (t) => {
-            if (track.id && t.id && String(track.id) === String(t.id)) return true;
-            if (track.dbTrackId && t.dbTrackId && Number(track.dbTrackId) === Number(t.dbTrackId)) return true;
-            const tTitle = (t.title || '').toLowerCase().trim();
-            const trackTitle = (track.title || '').toLowerCase().trim();
-            const tArtist = (t.artist || '').toLowerCase().trim();
-            const trackArtist = (track.artist || '').toLowerCase().trim();
-            return Boolean(tTitle && trackTitle && tTitle === trackTitle && tArtist === trackArtist);
-          };
-          const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-          const filtered = (prev || []).filter(t => !isSameTrack(t) && (!t.playedAt || new Date(t.playedAt).getTime() >= cutoff));
-          const updated = [enrichedTrack, ...filtered].slice(0, 50);
-          localStorage.setItem(`devsongs_recent_history_${userId}`, JSON.stringify(updated));
-          return updated;
-        });
-
-        // Persiste a reprodução de forma segura no backend associada ao usuário autenticado
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        if (token) {
-          fetch(`${API_URL}/api/music/history`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ track: enrichedTrack })
-          }).catch(err => console.warn('Aviso ao sincronizar histórico no servidor:', err));
-        }
-      }
-    } catch (_) {}
 
     try {
       const cleanArtist = (track.artist || '').replace(/\.(wav\d*|mp3|m4a|flac|ogg)/gi, '').trim();
@@ -5271,15 +5309,29 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
                   {/* ─── CONTINUAR OUVINDO (6 Músicas Recentes e Histórico Completo) ─── */}
                   {(() => {
-                    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
                     const rawList = (recentHistory && recentHistory.length > 0)
                       ? recentHistory
                       : (lastTrack ? [lastTrack] : []);
-                    const displayList = rawList.filter(t => !t.playedAt || new Date(t.playedAt).getTime() >= cutoff);
 
-                    if (displayList.length === 0) return null;
+                    if (rawList.length === 0) return null;
 
-                    const visibleTracks = displayList.slice(0, 6);
+                    // Na grade de atalhos da Home, exibe faixas únicas recentes (Estilo Spotify: atalhos distintos)
+                    const seen = new Set();
+                    const uniqueTracks = [];
+                    for (const t of rawList) {
+                      const titleKey = `${(t.title || '').trim().toLowerCase()}__${(t.artist || '').trim().toLowerCase()}`;
+                      const idKey = t.dbTrackId ? `ct_${t.dbTrackId}` : (t.id ? String(t.id) : null);
+                      const key = idKey || titleKey;
+                      if (!seen.has(key) && !seen.has(titleKey)) {
+                        seen.add(key);
+                        seen.add(titleKey);
+                        uniqueTracks.push(t);
+                      }
+                    }
+
+                    if (uniqueTracks.length === 0) return null;
+
+                    const visibleTracks = uniqueTracks.slice(0, 6);
 
                     return (
                       <section className={styles.spotifyRecentSection}>
@@ -7944,13 +7996,12 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
                   <div className={styles.historyModalTitleRow}>
                     <Clock size={20} className={styles.historyModalIcon} />
                     <h3 className={styles.historyModalTitle}>Histórico de Reprodução</h3>
-                    <span className={styles.historyDurationBadge}>Últimas 24h</span>
+                    <span className={styles.historyDurationBadge}>Linha do tempo</span>
                   </div>
                   <span className={styles.historyModalSubtitle}>
                     {(() => {
-                      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-                      const validCount = (recentHistory || []).filter(t => !t.playedAt || new Date(t.playedAt).getTime() >= cutoff).length;
-                      return `${validCount} ${validCount === 1 ? 'música ouvida nas últimas 24 horas' : 'músicas ouvidas nas últimas 24 horas'}`;
+                      const totalCount = (recentHistory || []).length;
+                      return `${totalCount} ${totalCount === 1 ? 'reprodução registrada no histórico' : 'reproduções registradas no histórico'}`;
                     })()}
                   </span>
                 </div>
@@ -7990,11 +8041,10 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
               {/* Tabela / Lista compacta de faixas */}
               <div className={styles.historyModalBody}>
                 {(() => {
-                  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
                   const rawList = (recentHistory && recentHistory.length > 0)
                     ? recentHistory
                     : (lastTrack ? [lastTrack] : []);
-                  const displayList = rawList.filter(t => !t.playedAt || new Date(t.playedAt).getTime() >= cutoff);
+                  const displayList = rawList;
 
                   const filtered = historySearchTerm.trim()
                     ? displayList.filter(t => {
@@ -8039,7 +8089,7 @@ export default function HomeUnifiedYouTubeMusic(props = {}) {
 
                             return (
                               <div
-                                key={track.id || `${track.title}-${idx}`}
+                                key={track.historyId ? `hist-${track.historyId}` : `${track.id || track.title}-${track.playedAt || idx}-${idx}`}
                                 className={`${styles.historyTableRow} ${isCurrent ? styles.historyTableRowActive : ''}`}
                                 onClick={() => playTrack(track)}
                                 title={`Tocar ${track.title} - ${track.artist}`}

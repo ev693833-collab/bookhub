@@ -1,0 +1,78 @@
+[
+  {
+    "id": "space_2_1",
+    "userId": 2,
+    "type": "photo",
+    "title": "Show Inesquecível 🌵",
+    "imageUrl": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=800&fit=crop",
+    "size": "large",
+    "createdAt": "2026-11-01T00:32:02.842Z"
+  },
+  {
+    "id": "space_2_2",
+    "userId": 2,
+    "type": "album",
+    "title": "Watch The Throne",
+    "subtitle": "JAY-Z & Kanye West",
+    "imageUrl": "https://cdn-images.dzcdn.net/images/cover/0421054a6a7d8cb4e52dd27ff4deef2c/500x500-000000-80-0-0.jpg",
+    "size": "medium",
+    "createdAt": "2026-11-02T00:32:02.842Z"
+  },
+  {
+    "id": "space_2_3",
+    "userId": 2,
+    "type": "quote",
+    "title": "Vibe do Mês",
+    "content": "“A música expressa o que não pode ser dito em palavras e o que não pode permanecer em silêncio.”",
+    "size": "small",
+    "createdAt": "2026-11-03T00:32:02.842Z"
+  },
+  {
+    "id": "space_2_4",
+    "userId": 2,
+    "type": "track",
+    "title": "SOLTO",
+    "subtitle": "Djonga",
+    "imageUrl": "https://cdn-images.dzcdn.net/images/cover/1915904ef289be6f3e680a61578e35cf/500x500-000000-80-0-0.jpg",
+    "size": "small",
+    "createdAt": "2026-11-04T00:32:02.842Z"
+  },
+  {
+    "id": "space_100_1",
+    "userId": 100,
+    "type": "photo",
+    "title": "Show Inesquecível 🌵",
+    "imageUrl": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=800&fit=crop",
+    "size": "large",
+    "createdAt": "2026-11-01T00:54:47.286Z"
+  },
+  {
+    "id": "space_100_2",
+    "userId": 100,
+    "type": "album",
+    "title": "Watch The Throne",
+    "subtitle": "JAY-Z & Kanye West",
+    "imageUrl": "https://cdn-images.dzcdn.net/images/cover/0421054a6a7d8cb4e52dd27ff4deef2c/500x500-000000-80-0-0.jpg",
+    "size": "medium",
+    "createdAt": "2026-11-02T00:54:47.286Z"
+  },
+  {
+    "id": "space_100_3",
+    "userId": 100,
+    "type": "quote",
+    "title": "Vibe do Mês",
+    "content": "“A música expressa o que não pode ser dito em palavras e o que não pode permanecer em silêncio.”",
+    "size": "small",
+    "createdAt": "2026-11-03T00:54:47.286Z"
+  },
+  {
+    "id": "space_100_4",
+    "userId": 100,
+    "type": "track",
+    "title": "SOLTO",
+    "subtitle": "Djonga",
+    "imageUrl": "https://cdn-images.dzcdn.net/images/cover/1915904ef289be6f3e680a61578e35cf/500x500-000000-80-0-0.jpg",
+    "size": "small",
+    "createdAt": "2026-11-04T00:54:47.286Z"
+  }
+]
